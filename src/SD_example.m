@@ -171,6 +171,20 @@ Mixture.Probabilities = [PD PS];                 % Probability of target detecti
 Mixture.Clutter.Density = Vc;                    % Number of false measurements along the orbit (uniform density)
 Mixture.Clutter.Rate = Pc;                       % Probability of generating false measurements
 
+%% Mixture definition
+J = 100; 
+Jmax = 100; 
+Mean = Mixture.Mean; 
+Sigma = Mixture.Sigma;
+PHD = PHDFilter(J, Jmax, Mean, Sigma, PS, PD);
+
+PHD = PHD.DefineDomain(0,2*pi,1000);
+PHD = PHD.birth(1, pi, (0.5*pi)^2);
+
+PHD = PHD.DefinePruning(1e-8, 4);
+
+PHD = PHD.AssignLikelihood(@(y,z,P)likelihood_function(y,z,P));
+
 %% Estimation 
 % Estimation
 [theta, f, N(2,:), X] = kinematic_estimator(tspan, meas, Mixture, UKF_estimator);
@@ -311,6 +325,11 @@ function [y, H] = radar(theta)
 
     % Observation matrix 
     H = [-sin(theta); cos(theta)];
+end
+
+% Compute the likelihood function 
+function [q] = likelihood_function(z, m, P)
+    q = exp(-0.5*(z-m).'*P^(-1)*(z-m))/sqrt(det(P)*(2*pi)^size(P,1));
 end
 
 function set_graphics()

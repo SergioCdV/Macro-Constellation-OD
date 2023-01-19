@@ -17,31 +17,26 @@
 % Outputs:  - 
 
 % Bayesian estimation based on EKF-PHD
-function [L, f, N, X] = kinematic_estimator(obj, t, observations, Estimator)
+function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
     % Constants 
-    prune_thresh = Mixture.Th.Prune;    % Threshold to prune components
-    merge_thresh = Mixture.Th.Merge;    % Threshold to merge components
-    Jmax = Mixture.Jmax;                % Maximum number of components 
-    Jb = Mixture.Birth.J;               % Number of birth sources
-    J = Mixture.J;                      % Number of mixture components
+    Jb = obj.Jbirth;                   % Number of birth sources
+    J = obj.J;                         % Number of mixture components
 
-    mu_b = Mixture.Birth.Mean;          % Mean location of births
-    sigma_b = Mixture.Birth.Sigma;      % Variance of births location 
-    w_b = Mixture.Birth.Weights;        % Weights of birth mixture
+    mu_b = obj.BirthMeans;             % Mean location of births
+    sigma_b = obj.BirthSigma;          % Variance of births location 
+    w_b = obj.Birth.Weights;           % Weights of birth mixture
 
     % False measurements
-    Pc = Mixture.Clutter.Rate;          % Probability of generating a false measurement
-    Vc = Mixture.Clutter.Density;       % Number of false measurements per orbit
-    kappa = Vc*Pc;                      % Clutter distribution
+    Pc = obj.ClutterRate;              % Probability of generating a false measurement
+    Vc = obj.ClutterDensity;           % Number of false measurements per orbit
+    kappa = Vc*Pc;                     % Clutter distribution
 
     % Problem estimation parameters
-    pd = Mixture.Probabilities(1);      % Detection probability
-    ps = Mixture.Probabilities(2);      % Surviving probability
-    
-    % Angular domain
-    Npart = 1e3;                        % Discretization of the angular domain
-    L = linspace(0,2*pi,Npart);         % Angular domain draws
+    pd = obj.PD;                       % Detection probability
+    ps = obj.PS;                       % Surviving probability
 
+    L = obj.Domain;                    % Estimation domain
+    
     % Preallocation 
     m = zeros(J,length(t));             % Mean of the mixtures  
     sigma = zeros(J,length(t));         % Variance of the mixtures
@@ -52,11 +47,12 @@ function [L, f, N, X] = kinematic_estimator(obj, t, observations, Estimator)
     N = zeros(1,length(t));             % Number of targets
     X = cell(length(t),1);              % Multi-target state
 
-    Mixture = safety_checks(Mixture);
+    % Safety checks
+    obj = safety_checks(obj);
 
     % Initial state 
-    m(:,1) = Mixture.Mean;              % Gaussian means    
-    sigma(:,1) = Mixture.Sigma;         % Variance means
+    m(:,1) = obj.Mean;                  % Gaussian means    
+    sigma(:,1) = obj.Sigma;             % Variance means
     N(1) = 0;                           % Expected number of target
 
     dim = Estimator.MeasDim;
@@ -177,47 +173,7 @@ function [L, f, N, X] = kinematic_estimator(obj, t, observations, Estimator)
             end
 
             % Pruning 
-            Set = w(i,:) > prune_thresh;
-            if (any(Set))
-                l = 0;
-                while (any(Set))
-                    l = l+1; 
-                    [~, index] = sort(w(i,Set));
-                    max = m(Set,i);
-                    P = sigma(Set,i);
-                    Mergeable = (max-max(index(end))).^2./sigma(Set,i) <= merge_thresh;
-                    aux = w(i,Set);
-                    w(i,l) = sum(aux(Mergeable));
-    
-                    m(l,i) = dot(aux(Mergeable),max(Mergeable))/w(i,l);
-                    sigma(l,i) = dot(aux(Mergeable),(P(Mergeable)+(m(l,i)-max(Mergeable)).^2))/w(i,l);
-                    
-                    q = 1;
-                    for k = 1:length(Set)
-                        if (Set(k))
-                            Set(k) = ~Mergeable(q);
-                            q = q+1;
-                        end
-                    end
-                end
-            else
-               l = (j+1)*J;
-            end
-
-            % Check if there are more than Jmax components 
-            if (size(w(i,:),2) > Jmax)
-                [~,index] = sort(w(i,:)); 
-                index = index(end-Jmax+1:end);
-                w = w(:,index);
-                m = m(index,:);
-                sigma = sigma(index,:);
-                J = Jmax; 
-            else
-                w = w(:,1:l);
-                m = m(1:l,:);
-                sigma = sigma(1:l,:);
-                J = l; 
-            end
+            [w, m, sigma, J] = pruner(obj, j, J, w, m, sigma, i);
         else
             if (i ~= 1)
                 % Birth proposal 
@@ -243,7 +199,7 @@ function [L, f, N, X] = kinematic_estimator(obj, t, observations, Estimator)
         % Intensity function at time t_i
         m(:,i) = mod(m(:,i), 2*pi);
         for k = 1:J
-            M(:,k) = wrapped_normal(L.', sigma(k,i), m(k,i), 1e-7);
+            M(:,k) = obj.wrapped_normal(L.', sigma(k,i), m(k,i), 1e-7);
         end
         f(:,i) = sum(w(i,:).*M(:,1:size(w,2)),2);
 
@@ -256,78 +212,10 @@ function [L, f, N, X] = kinematic_estimator(obj, t, observations, Estimator)
         end
 
         if (N(i) > 0)
-            [C, S] = kp_means(N(i),aux);
+            [C, S] = obj.kp_means(N(i),aux);
             X{i} = [C.'; S.'];
         else
             X{i} = [];
         end
-    end
-end
-
-%% Auxiliary functions 
-% Safety checks
-function [Mixture] = safety_checks(Mixture)
-    % Safety checks 
-    if (size(Mixture.Mean,1) == 1 && size(Mixture.Mean,2) ~= 1)
-        warning('Dimensions for the mixture are not consistent.')
-        Mixture.Mean = Mixture.Mean.';
-    end
-
-    if (size(Mixture.Sigma,1) == 1 && size(Mixture.Sigma,2) ~= 1)
-        warning('Dimensions for the mixture are not consistent.')
-        Mixture.Mean = Mixture.Sigma.';
-    end
-
-    if (size(Mixture.Birth.Mean,1) == 1 && size(Mixture.Birth.Mean,2) ~= 1)
-        warning('Dimensions for the mixture are not consistent.')
-        Mixture.Mean = Mixture.Birth.Mean.';
-    end
-
-    if (size(Mixture.Birth.Sigma,1) == 1 && size(Mixture.Birth.Sigma,2) ~= 1)
-        warning('Dimensions for the mixture are not consistent.')
-        Mixture.Mean = Mixture.Birth.Sigma.';
-    end
-end
-
-% Compute the wrapped normal distribution
-function [f] = wrapped_normal(L, sigma, mu, error_tol)
-    % Compute the error bound 
-    n(1) = max(1+sqrt(-log(4*pi^3*error_tol^2)*sigma),1+sqrt(sigma/2)/pi);
-    n(2) = max(sqrt(-log(2*pi^2*sigma*error_tol^2)/sigma),sqrt(2)/pi);
-    n = ceil(n);
-
-    f = zeros(length(L),1);
-
-    % Compute the wrapped normal distributions
-    if (min(n) == n(1))
-        % Compute the wrapped normal
-        for i = -n:n
-            f = f+exp(-0.5*(L-mu+2*pi*i).^2/sigma);
-        end
-        f = f/sqrt(sigma*2*pi);
-    else
-        rho = exp(-sigma/2);
-        for i = 1:n
-            f = f+rho^(i^2)*cos(i*(L-mu));
-        end
-        f = (1+2*f)/(2*pi);
-    end
-end
-
-% Compute the likelihood function 
-function [q] = likelihood_function(z, m, P)
-    q = exp(-0.5*(z-m).'*P^(-1)*(z-m))/sqrt(det(P)*(2*pi)^size(P,1));
-end
-
-% K-means 
-function [M, S] = kp_means(N,X)
-    % Compute the centroids 
-    [index, M] = kmeans(X,N);
-
-    % Compute the covariances
-    S = zeros(N,1);
-    for i = 1:N
-        sigma = (X(index(index == i))-M(i)).^2;
-        S(i) = sum(sigma)/sum(index(index == i));
     end
 end
