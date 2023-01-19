@@ -139,7 +139,7 @@ meas = meas(index,:);
 
 %% Estimator configuration
 % UKF
-UKF_estimator = EstimatorUKF('UKF-A', 2, 1E-4, 0); 
+UKF_estimator = EstimatorUKF('UKF-A', 2, 1E-1, 0); 
 UKF_estimator = UKF_estimator.AssignStateProcess(1, @(time_step, theta)kinematic_proposal(r, sigma_r, time_step, theta, 0));
 UKF_estimator = UKF_estimator.AssignObservationProcess(2, @(theta)radar(theta));
 UKF_estimator = UKF_estimator.AditiveCovariances(sigma_r, sigma_m*eye(size(R,2)));
@@ -155,13 +155,13 @@ EKF_estimator = EKF_estimator.AditiveCovariances(sigma_r, sigma_m*eye(size(R,2))
 % Hyperparameters 
 Mixture.J = 100;                                 % Number of Gaussian mixtures 
 Mixture.Mean = linspace(0,2*pi,Mixture.J).';     % Mean of the Gaussian mixture component
-Mixture.Sigma = 1e-3*ones(Mixture.J,1);          % Mean of the Gaussian mixture component
+Mixture.Sigma = 1e-1*ones(Mixture.J,1);          % Mean of the Gaussian mixture component
 
 Mixture.Th.Prune = 1e-8;                         % Threshol to delete weights
 Mixture.Th.Merge = 4;                            % Malahanobis distance to merge components
 Mixture.Jmax = 100;                              % Maximum number of components
 
-Mixture.Birth.J = 0;                             % Number of birth sources
+Mixture.Birth.J = 1;                             % Number of birth sources
 Mixture.Birth.Mean = pi;                         % Location of the sources
 Mixture.Birth.Sigma = (0.5*pi)^2;                % Uncertainty in the location of the source
 Mixture.Birth.Weights = 1e-3;                    % Relative weights of each source
@@ -171,12 +171,9 @@ Mixture.Probabilities = [PD PS];                 % Probability of target detecti
 Mixture.Clutter.Density = Vc;                    % Number of false measurements along the orbit (uniform density)
 Mixture.Clutter.Rate = Pc;                       % Probability of generating false measurements
 
-% Mixture.Model = [r sigma_r]; 
-% Mixture.Measurements.Covariance = sigma_m*eye(2);
-
 %% Estimation 
 % Estimation
-[theta, f, N(2,:), X] = kinematic_estimator_UKF(tspan, meas, Mixture, UKF_estimator);
+[theta, f, N(2,:), X] = kinematic_estimator(tspan, meas, Mixture, UKF_estimator);
 
 % State estimation 
 if (~isempty(X{end}))

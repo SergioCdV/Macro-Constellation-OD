@@ -11,21 +11,19 @@
 %         - array observations, array mx3, which each row is an observation
 %         - structure Mixture, containing the definition of the Gaussian
 %           Mixture model
+%         - class Estimator, the estimator core to be used within the
+%           problem
 
 % Outputs:  - 
 
 % Bayesian estimation based on EKF-PHD
-function [L, f, N, X] = kinematic_estimator(t, observations, Mixture)
+function [L, f, N, X] = kinematic_estimator(t, observations, Mixture, Estimator)
     % Constants 
     prune_thresh = Mixture.Th.Prune;    % Threshold to prune components
     merge_thresh = Mixture.Th.Merge;    % Threshold to merge components
     Jmax = Mixture.Jmax;                % Maximum number of components 
-
-    % Dynamic model 
     Jb = Mixture.Birth.J;               % Number of birth sources
     J = Mixture.J;                      % Number of mixture components
-    r = Mixture.Model(:,1);             % Radius of the circle 
-    sigma_r = Mixture.Model(:,2);       % Variance of the radius of the circle
 
     mu_b = Mixture.Birth.Mean;          % Mean location of births
     sigma_b = Mixture.Birth.Sigma;      % Variance of births location 
@@ -37,9 +35,8 @@ function [L, f, N, X] = kinematic_estimator(t, observations, Mixture)
     kappa = Vc*Pc;                      % Clutter distribution
 
     % Problem estimation parameters
-    R = Mixture.Measurements.Covariance;    % Covariance of the measurements
-    pd = Mixture.Probabilities(1);          % Detection probability
-    ps = Mixture.Probabilities(2);          % Surviving probability
+    pd = Mixture.Probabilities(1);      % Detection probability
+    ps = Mixture.Probabilities(2);      % Surviving probability
     
     % Angular domain
     Npart = 1e3;                        % Discretization of the angular domain
@@ -62,6 +59,8 @@ function [L, f, N, X] = kinematic_estimator(t, observations, Mixture)
     sigma(:,1) = Mixture.Sigma;         % Variance means
     N(1) = 0;                           % Expected number of target
 
+    dim = Estimator.MeasDim;
+
     % Bayesian estimation
     for i = 1:length(t)
         % Check for measurements
@@ -74,10 +73,18 @@ function [L, f, N, X] = kinematic_estimator(t, observations, Mixture)
             meas = observations(index,:);
 
             % Preallocation 
-            z = zeros(2,J);                 % Measurements
-            H = zeros(2,J);                 % Observation matrix
-            P = zeros(2,2*J);               % Covariance matrix
-            K = zeros(1,2*J);               % Kalman gain
+            z = zeros(Estimator.MeasDim,J);                                 % Measurements
+
+            switch (Estimator.Algorithm)
+                case 'EKF'
+                    H = zeros(Estimator.MeasDim,J);                                 % Observation matrix
+                    P = zeros(Estimator.MeasDim,Estimator.MeasDim*J);               % Covariance matrix
+                    K = zeros(Estimator.StateDim,Estimator.MeasDim*J);              % Kalman gain
+
+                otherwise
+                    S = zeros(J, 1, 2*Estimator.StateDim+1);
+                    Y = zeros(J, Estimator.MeasDim, 2*Estimator.StateDim+1);
+            end
 
             % Birth proposal 
             J = J+Jb;                       % Current number of Gaussian components
@@ -100,22 +107,37 @@ function [L, f, N, X] = kinematic_estimator(t, observations, Mixture)
                 end
             end
 
-            if (i ~= 1)
-                % Kinematic proposal
-                Dt = t(i)-t(i-1);
-                [m(Jb+1:end,i), sigma(Jb+1:end,i)] = step_ahead(m(Jb+1:end,i-1), sigma(Jb+1:end,i-1), r, sigma_r, Dt);
+            for k = 1:Jb
+                Dt = 0;
+                Estimator.InitFlag = true;
+                Estimator = Estimator.InitConditions(m(k,i), sigma(k,i));
+
+                % Prediction
+                switch (Estimator.Algorithm)
+                    case 'EKF'
+                        [m(k,i), sigma(k,i), z(:,k), H(:,k), P(:,1+dim*(k-1):dim*k), K(:,1+dim*(k-1):dim*k)] = Estimator.EKF_prediction(Dt);
+                    otherwise
+                        [m(k,i), sigma(k,i), z(:,k), S(k,:,:), Y(k,:,:)] = Estimator.UKF_prediction(Dt);
+                end
             end
 
-            dim = size(meas(:,2:end),2);
-            for k = 1:J
-                % Compute the observation process
-                H(:,k) = [-sin(m(k,i)); cos(m(k,i))];        % Observation matrix 
-                z(:,k) = [cos(m(k,i)); sin(m(k,i))];         % Measurements
+            for k = Jb+1:J
+                if (i ~= 1)
+                    Dt = t(i)-t(i-1);
+                    Estimator = Estimator.InitConditions(m(k,i-1), sigma(k,i-1));
+                else
+                    Dt = 0;
+                    Estimator.InitFlag = true; 
+                    Estimator = Estimator.InitConditions(m(k,i), sigma(k,i));
+                end
 
-                P(:,1+size(R,2)*(k-1):size(R,2)*k) = R+H(:,k)*sigma(k,i)*H(:,k).';
-        
-                % Kalman gain 
-                K(:,1+dim*(k-1):dim*k) = sigma(k,i)*H(:,k).'*P(:,1+size(R,2)*(k-1):size(R,2)*k)^(-1);       
+                % Prediction
+                switch (Estimator.Algorithm)
+                    case 'EKF'
+                        [m(k,i), sigma(k,i), z(:,k), H(:,k), P(:,1+dim*(k-1):dim*k), K(:,1+dim*(k-1):dim*k)] = Estimator.EKF_prediction(Dt);
+                    otherwise
+                        [m(k,i), sigma(k,i), z(:,k), S(k,:,:), Y(k,:,:)] = Estimator.UKF_prediction(Dt);
+                end
             end
 
             % Detections 
@@ -124,11 +146,15 @@ function [L, f, N, X] = kinematic_estimator(t, observations, Mixture)
             for k = 1:j
                 for l = 1:J
                     % State update with Joseph form for covariance update
-                    m(k*J+l,i) = m(l,i) + K(:,1+dim*(l-1):dim*l)*(meas(k,2:end).'-z(:,l));
-                    sigma(k*J+l,i) = (1-K(:,1+dim*(l-1):dim*l)*H(:,l))*sigma(l,i)*(1-K(:,1+dim*(l-1):dim*l)*H(:,l)).'+K(:,1+dim*(l-1):dim*l)*R*K(:,1+dim*(l-1):dim*l).';
-
-                    % Weight update 
-                    q = likelihood_function(meas(k,2:end).', z(:,l), P(:,1+size(R,2)*(l-1):size(R,2)*l));
+                    switch (Estimator.Algorithm)
+                        case 'EKF'
+                            [m(k*J+l,i), sigma(k*J+l,i)] = Estimator.EKF_correction(m(l,i), sigma(l,i), z(:,l), meas(k,2:end).', H(:,l), K(:,1+dim*(l-1):dim*l));
+                            q = likelihood_function(meas(k,2:end).', z(:,l), P(:,1+dim*(l-1):dim*l));
+                            
+                        otherwise
+                            [m(k*J+l,i), sigma(k*J+l,i), P] = Estimator.UKF_correction(m(l,i), sigma(l,i), z(:,l), shiftdim(S(l,:,:)).', shiftdim(Y(l,:,:)), meas(k,2:end).');
+                            q = likelihood_function(meas(k,2:end).', z(:,l), P);
+                    end
                     
                     if (i ~= 1)
                         w(i,k*J+l) = pd*ps*w(i-1,l)*q;
@@ -193,17 +219,24 @@ function [L, f, N, X] = kinematic_estimator(t, observations, Mixture)
                 J = l; 
             end
         else
-            % Step ahead the prior
             if (i ~= 1)
                 % Birth proposal 
                 m(1:Jb,i) = m(1:Jb,i-1);
                 sigma(1:Jb,i) = sigma(1:Jb,i-1);
 
-                % Kinematic proposal
-                Dt = t(i)-t(i-1);
-                [m(Jb+1:end,i), sigma(Jb+1:end,i)] = step_ahead(m(Jb+1:end,i-1), sigma(Jb+1:end,i-1), r, sigma_r, Dt);
-
+                % Number of object
                 N(i) = N(i-1);
+
+                Dt = t(i)-t(i-1);
+                for k = Jb+1:J
+                    Estimator = Estimator.InitConditions(m(k,i-1), sigma(k,i-1));
+                    switch (Estimator.Algorithm)
+                        case 'EKF'
+                            [m(k,i), sigma(k,i), ~, ~, ~] = Estimator.EKF_prediction(Dt);
+                        otherwise
+                            [m(k,i), sigma(k,i), ~, ~, ~] = Estimator.UKF_prediction(Dt);
+                    end
+                end
             end
         end
 
@@ -232,13 +265,6 @@ function [L, f, N, X] = kinematic_estimator(t, observations, Mixture)
 end
 
 %% Auxiliary functions 
-% STM function 
-function [theta, sigma] = step_ahead(theta, sigma, r, sigma_r, dt)
-    % Update equations
-    theta = theta+dt*r^(-3/2);
-    sigma = sigma + (9/4)*r^(-5)*dt^2*sigma_r;
-end
-
 % Safety checks
 function [Mixture] = safety_checks(Mixture)
     % Safety checks 
@@ -261,11 +287,6 @@ function [Mixture] = safety_checks(Mixture)
         warning('Dimensions for the mixture are not consistent.')
         Mixture.Mean = Mixture.Birth.Sigma.';
     end
-end
-
-% Compute the normal distribution
-function [f] = normal_distribution(L, sigma, mu)
-    f = exp(-0.5*(L-mu).^2/sigma);
 end
 
 % Compute the wrapped normal distribution
@@ -309,64 +330,4 @@ function [M, S] = kp_means(N,X)
         sigma = (X(index(index == i))-M(i)).^2;
         S(i) = sum(sigma)/sum(index(index == i));
     end
-end
-
-% K-means clustering 
-function [M, S, GoOn] = k_means(N, X)
-    % Constants 
-    tol = 1e-3; 
-
-    % Initialize at random the clusters 
-    P = cell(N,1);            % Partitions
-    M = zeros(N,1);           % Means
-    S = zeros(N,1);           % Covariance
-    
-    n = 0;
-    i = 1; 
-    while (n < N)
-        if (randi([0 1]))
-            n = n+1; 
-            M(n) = X(i);
-        elseif (i+1 == length(X))
-            i = 0;
-        end
-        i = i+1;
-    end
-    j = 2; 
-
-    % Compute the means 
-    GoOn = true; 
-    iter = 1; 
-    maxIter = 100;
-    while (GoOn && iter < maxIter)
-        % Compute the partitions 
-        for i = 1:length(X)
-            min_index = 1;
-            d = 1e7;
-            for j = 1:N
-                aux = norm(X(i)-M(j));
-                if (aux < d)
-                    min_index = j; 
-                    d = aux;
-                end
-            end
-
-            P{min_index} = [P{min_index} X(i)];
-        end
-
-        % Compute the means
-        for i = 1:N
-            M(i) = mean(P{i});
-        end
-        j = j+1;
-
-        % Convergence analysis
-        if (abs(cost - past_cost) < tol)
-        else
-            iter = iter+1;
-        end
-    end
-    GoOn = ~GoOn;
-
-    % Compute the covariances
 end

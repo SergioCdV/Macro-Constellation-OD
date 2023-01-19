@@ -8,6 +8,9 @@
 classdef EstimatorEKF
     % Properties
     properties
+        Algorithm = 'EKF'   % EKF version in use
+        InitFlag = true;
+
         % State variables
         Clock = 0
         State 

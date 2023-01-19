@@ -10,6 +10,7 @@ classdef EstimatorUKF
     % Properties
     properties
         % UKF hyperparameters
+        Algorithm = 'UKF-A'   % UKF version in use
         beta    
         alpha
         k
@@ -33,7 +34,6 @@ classdef EstimatorUKF
 
     properties (Access = private)
         % Hyperparameters
-        Algorithm = 'UKF-A'   % UKF version in use
         W                     % UKF weights
 
         L           % Number of sigma points 
