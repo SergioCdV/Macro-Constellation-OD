@@ -29,10 +29,6 @@ classdef PHDFilter
         ClutterRate = 0        % Rate of generation of false measurements
 
         LikelihoodFunction = 1
-    end
-
-    % Private properties
-    properties (Access = private)
         Domain = 0
     end
 
@@ -55,12 +51,12 @@ classdef PHDFilter
         end
 
         % Domain constructor
-        function [obj] = DefineDomain(a, b, N)
+        function [obj] = DefineDomain(obj, a, b, N)
             obj.Domain = linspace(a,b,N);
         end
 
         % Birth configuration 
-        function [obj] = birth(myJbirth, myBirthMeans, myBirthSigma)
+        function [obj] = birth(obj, myJbirth, myBirthMeans, myBirthSigma)
             obj.Jbirth = myJbirth; 
             obj.BirthMeans = myBirthMeans;
             obj.BirthSigma = myBirthSigma;
@@ -71,19 +67,19 @@ classdef PHDFilter
         end
 
         % Pruning heuristic configuration 
-        function [obj] = DefinePruning(myPruneThresh, MergeThresh)
+        function [obj] = DefinePruning(obj, myPruneThresh, MergeThresh)
             obj.PruneThresh = myPruneThresh; 
             obj.MergeThresh = MergeThresh; 
         end
 
         % Clutter configuration 
-        function [obj] = clutterer(myClutterDensity, myClutterRate)
+        function [obj] = clutterer(obj, myClutterDensity, myClutterRate)
             obj.ClutterDensity = myClutterDensity;
             obj.ClutterRate = myClutterRate;
         end
 
         % Likelihood function 
-        function [obj] = AssignLikelihood(myLikelihoodFunction)
+        function [obj] = AssignLikelihood(obj, myLikelihoodFunction)
             obj.LikelihoodFunction = myLikelihoodFunction;
         end
     end
@@ -104,7 +100,7 @@ classdef PHDFilter
         
             if (size(obj.BirthMeans,1) == 1 && size(obj.BirthMeans,2) ~= 1)
                 warning('Dimensions for the mixture are not consistent.')
-                obj.BirthMean = obj.BirthMeans.';
+                obj.BirthMeans = obj.BirthMeans.';
             end
         
             if (size(obj.BirthSigma,1) == 1 && size(obj.BirthSigma,2) ~= 1)
@@ -114,7 +110,7 @@ classdef PHDFilter
         end
 
         % Compute the wrapped normal distribution
-        function [f] = wrapped_normal(L, sigma, mu, error_tol)
+        function [f] = wrapped_normal(obj, L, sigma, mu, error_tol)
             % Compute the error bound 
             n(1) = max(1+sqrt(-log(4*pi^3*error_tol^2)*sigma),1+sqrt(sigma/2)/pi);
             n(2) = max(sqrt(-log(2*pi^2*sigma*error_tol^2)/sigma),sqrt(2)/pi);
@@ -184,7 +180,7 @@ classdef PHDFilter
         end
 
         % K-means 
-        function [M, S] = kp_means(N,X)
+        function [M, S] = kp_means(obj, N, X)
             % Compute the centroids 
             [index, M] = kmeans(X,N);
         
@@ -193,6 +189,23 @@ classdef PHDFilter
             for i = 1:N
                 sigma = (X(index(index == i))-M(i)).^2;
                 S(i) = sum(sigma)/sum(index(index == i));
+            end
+        end
+
+        % State estimation
+        function [X] = state_estimation(obj, J, N, w, m)
+            aux = [];
+            for l = 1:J
+                if (w(l) > 0.5)
+                    aux = [aux; m(l)];
+                end
+            end
+    
+            if (N > 0)
+                [C, S] = obj.kp_means(N,aux);
+                X = [C.'; S.'];
+            else
+                X = [];
             end
         end
     end

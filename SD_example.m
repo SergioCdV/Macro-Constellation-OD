@@ -13,14 +13,14 @@ clear;
 %% Input data 
 % Constants
 mu = 1;                 % Gravitational parameter
-r = 10;                 % Mean radial vector 
-sigma_r = 1e-4;         % Standard deviation of the radius 
+r = 100;                 % Mean radial vector 
+sigma_r = 1e-2;         % Standard deviation of the radius 
 
-T = 40;                 % Stopping simulation time
+T = 20;                 % Stopping simulation time
 tspan = 0:5e-1:2*pi*T; 
 
 % Initial conditions
-Nmax = 3;                  % Number of targets
+Nmax = 7;                  % Number of targets
 
 %% Generation of targets
 % Births 
@@ -103,13 +103,13 @@ s_meas = reshape(s_meas.',[size(s_meas,2)*size(s_meas,1) 1]);
 [time_meas, index] = sort(time_meas); 
 s_meas = s_meas(index,:);
 
-PD = 0.98;
+PD = 0.9;
 index = logical(randsrc(length(time_meas),1,[0, 1; 1-PD, PD]));
 time_meas = time_meas(index);
 s_meas = s_meas(index,:);
 
 % Measurements
-sigma_m = 1e-3;
+sigma_m = 1e-2;
 x = normrnd(cos(s_meas),sigma_m,size(s_meas,1),1);
 y = normrnd(sin(s_meas),sigma_m,size(s_meas,1),1);
 
@@ -138,22 +138,24 @@ meas = [meas; clutter];
 meas = meas(index,:);
 
 %% Estimator configuration
+% UKF
+UKF_estimator = EstimatorUKF('UKF-A', 2, 1E-1, 0); 
+UKF_estimator = UKF_estimator.AssignStateProcess(1, @(time_step, theta)kinematic_proposal(r, sigma_r, time_step, theta, 0));
+UKF_estimator = UKF_estimator.AssignObservationProcess(2, @(theta)radar(theta));
+UKF_estimator = UKF_estimator.AditiveCovariances(sigma_r, sigma_m*eye(size(R,2)));
+UKF_estimator = UKF_estimator.Init();
 
-UKF_estimator = EstimatorUKF
-Mixture.UKF.L = 3;               % Number of sigma points 
-Mixture.UKF.alpha = 1e-3;        % UKF parameter, 1
-Mixture.UKF.beta = 2;            % UKF parameter, 2
-Mixture.UKF.k = 0;               % UKF parameter, 3
-
-Mixture.Model = [r sigma_r 0];                                  % Ring dynamics
-Mixture.Measurements.Covariance = sigma_m*eye(size(R,2));       % Observation covariance
+% EKF
+EKF_estimator = EstimatorEKF;
+EKF_estimator = EKF_estimator.AssignStateProcess(1, @(Q, time_step, theta, sigma)kinematic_proposal(r, Q, time_step, theta, sigma));
+EKF_estimator = EKF_estimator.AssignObservationProcess(2, @(theta)radar(theta));
+EKF_estimator = EKF_estimator.AditiveCovariances(sigma_r, sigma_m*eye(size(R,2)));
 
 %% Mixture model configuration
 % Hyperparameters 
-Mixture.Method = 'EKF';                          % Use the EKF filter
-Mixture.J = 10;                                 % Number of Gaussian mixtures 
+Mixture.J = 100;                                 % Number of Gaussian mixtures 
 Mixture.Mean = linspace(0,2*pi,Mixture.J).';     % Mean of the Gaussian mixture component
-Mixture.Sigma = 10*ones(Mixture.J,1);          % Mean of the Gaussian mixture component
+Mixture.Sigma = 1*ones(Mixture.J,1);          % Mean of the Gaussian mixture component
 
 Mixture.Th.Prune = 1e-8;                         % Threshol to delete weights
 Mixture.Th.Merge = 4;                            % Malahanobis distance to merge components
@@ -169,12 +171,31 @@ Mixture.Probabilities = [PD PS];                 % Probability of target detecti
 Mixture.Clutter.Density = Vc;                    % Number of false measurements along the orbit (uniform density)
 Mixture.Clutter.Rate = Pc;                       % Probability of generating false measurements
 
+%% Mixture definition
+J = 100; 
+Jmax = 100; 
+Mean = Mixture.Mean; 
+Sigma = Mixture.Sigma;
+PHD = PHDFilter(J, Jmax, Mean, Sigma, PS, PD);
+
+PHD = PHD.DefineDomain(0,2*pi,1000);
+PHD = PHD.birth(1, pi, (0.5*pi)^2);
+
+PHD = PHD.DefinePruning(1e-8, 4);
+
+PHD = PHD.AssignLikelihood(@(y,z,P)likelihood_function(y,z,P));
+
 %% Estimation 
 % Estimation
-[theta, f, N(2,:), X] = kinematic_estimator_UKF(tspan, meas, Mixture);
+[f, X, N(2,:)] = PHD.kinematic_estimator(tspan, meas, UKF_estimator);
+theta = PHD.Domain;
 
 % State estimation 
-Se = sort(X{end}(1,:));
+if (~isempty(X{end}))
+    Se = sort(X{end}(1,:));
+else
+    Se = [];
+end
 St = [];
 for i = 1:size(S,1)
     if (S{i}(end,1) >= tspan(end))
@@ -287,6 +308,29 @@ end
 % Orbital dynamics
 function [dtheta] = dynamics(mu,omega,t,s)
     dtheta = omega;
+end
+
+% Kinematic proposal 
+function [theta_plus, sigma_plus] = kinematic_proposal(r, sigma_r, time_step, theta, sigma)
+    % State update
+    theta_plus = theta + time_step*r^(-3/2);
+
+    % Covariance update
+    sigma_plus = sigma + (9/4)*time_step^2*r^(-5)*sigma_r;
+end
+
+% Observation proess 
+function [y, H] = radar(theta)
+    % Expected observation
+    y = [cos(theta); sin(theta)];
+
+    % Observation matrix 
+    H = [-sin(theta); cos(theta)];
+end
+
+% Compute the likelihood function 
+function [q] = likelihood_function(z, m, P)
+    q = exp(-0.5*(z-m).'*P^(-1)*(z-m))/sqrt(det(P)*(2*pi)^size(P,1));
 end
 
 function set_graphics()

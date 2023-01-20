@@ -24,8 +24,8 @@ function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
 
     mu_b = obj.BirthMeans;             % Mean location of births
     sigma_b = obj.BirthSigma;          % Variance of births location 
-    w_b = obj.Birth.Weights;           % Weights of birth mixture
-
+    w_b = obj.BirthWeights;            % Weights of birth mixture
+ 
     % False measurements
     Pc = obj.ClutterRate;              % Probability of generating a false measurement
     Vc = obj.ClutterDensity;           % Number of false measurements per orbit
@@ -145,11 +145,11 @@ function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
                     switch (Estimator.Algorithm)
                         case 'EKF'
                             [m(k*J+l,i), sigma(k*J+l,i)] = Estimator.EKF_correction(m(l,i), sigma(l,i), z(:,l), meas(k,2:end).', H(:,l), K(:,1+dim*(l-1):dim*l));
-                            q = likelihood_function(meas(k,2:end).', z(:,l), P(:,1+dim*(l-1):dim*l));
+                            q = obj.LikelihoodFunction(meas(k,2:end).', z(:,l), P(:,1+dim*(l-1):dim*l));
                             
                         otherwise
                             [m(k*J+l,i), sigma(k*J+l,i), P] = Estimator.UKF_correction(m(l,i), sigma(l,i), z(:,l), shiftdim(S(l,:,:)).', shiftdim(Y(l,:,:)), meas(k,2:end).');
-                            q = likelihood_function(meas(k,2:end).', z(:,l), P);
+                            q = obj.LikelihoodFunction(meas(k,2:end).', z(:,l), P);
                     end
                     
                     if (i ~= 1)
@@ -204,18 +204,6 @@ function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
         f(:,i) = sum(w(i,:).*M(:,1:size(w,2)),2);
 
         % Multi-target state
-        aux = [];
-        for l = 1:J
-            if (w(i,l) > 0.5)
-                aux = [aux; m(l,i)];
-            end
-        end
-
-        if (N(i) > 0)
-            [C, S] = obj.kp_means(N(i),aux);
-            X{i} = [C.'; S.'];
-        else
-            X{i} = [];
-        end
+        X{i} = obj.state_estimation(J, N(i), w(i,:), m(:,i));
     end
 end
