@@ -145,12 +145,13 @@ function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
                     switch (Estimator.Algorithm)
                         case 'EKF'
                             [m(k*J+l,i), sigma(k*J+l,i)] = Estimator.EKF_correction(m(l,i), sigma(l,i), z(:,l), meas(k,2:end).', H(:,l), K(:,1+dim*(l-1):dim*l));
-                            q = obj.LikelihoodFunction(meas(k,2:end).', z(:,l), P(:,1+dim*(l-1):dim*l));
+                            Q = P(:,1+dim*(l-1):dim*l);
                             
                         otherwise
-                            [m(k*J+l,i), sigma(k*J+l,i), P] = Estimator.UKF_correction(m(l,i), sigma(l,i), z(:,l), shiftdim(S(l,:,:)).', shiftdim(Y(l,:,:)), meas(k,2:end).');
-                            q = obj.LikelihoodFunction(meas(k,2:end).', z(:,l), P);
+                            [m(k*J+l,i), sigma(k*J+l,i), Q] = Estimator.UKF_correction(m(l,i), sigma(l,i), z(:,l), shiftdim(S(l,:,:)).', shiftdim(Y(l,:,:)), meas(k,2:end).');
                     end
+
+                    q = obj.LikelihoodFunction(meas(k,2:end).', z(:,l), Q);
                     
                     if (i ~= 1)
                         w(i,k*J+l) = pd*ps*w(i-1,l)*q;

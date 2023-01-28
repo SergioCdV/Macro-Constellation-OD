@@ -51,7 +51,7 @@ classdef EstimatorEKF
         end
 
         % Additive covariances
-        function [obj] = AditiveCovariances(obj, Q, R)
+        function [obj] = AdditiveCovariances(obj, Q, R)
             obj.Q = Q;
             obj.R = R;
         end

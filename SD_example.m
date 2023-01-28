@@ -16,11 +16,11 @@ mu = 1;                 % Gravitational parameter
 r = 100;                 % Mean radial vector 
 sigma_r = 1e-2;         % Standard deviation of the radius 
 
-T = 20;                 % Stopping simulation time
+T = 30;                 % Stopping simulation time
 tspan = 0:5e-1:2*pi*T; 
 
 % Initial conditions
-Nmax = 7;                  % Number of targets
+Nmax = 3;                  % Number of targets
 
 %% Generation of targets
 % Births 
@@ -103,7 +103,7 @@ s_meas = reshape(s_meas.',[size(s_meas,2)*size(s_meas,1) 1]);
 [time_meas, index] = sort(time_meas); 
 s_meas = s_meas(index,:);
 
-PD = 0.9;
+PD = 0.98;
 index = logical(randsrc(length(time_meas),1,[0, 1; 1-PD, PD]));
 time_meas = time_meas(index);
 s_meas = s_meas(index,:);
@@ -139,43 +139,43 @@ meas = meas(index,:);
 
 %% Estimator configuration
 % UKF
-UKF_estimator = EstimatorUKF('UKF-A', 2, 1E-1, 0); 
+UKF_estimator = EstimatorUKF('UKF-A', 2, 5E-2, 0); 
 UKF_estimator = UKF_estimator.AssignStateProcess(1, @(time_step, theta)kinematic_proposal(r, sigma_r, time_step, theta, 0));
 UKF_estimator = UKF_estimator.AssignObservationProcess(2, @(theta)radar(theta));
-UKF_estimator = UKF_estimator.AditiveCovariances(sigma_r, sigma_m*eye(size(R,2)));
+UKF_estimator = UKF_estimator.AdditiveCovariances(sigma_r, sigma_m*eye(size(R,2)));
 UKF_estimator = UKF_estimator.Init();
 
 % EKF
 EKF_estimator = EstimatorEKF;
 EKF_estimator = EKF_estimator.AssignStateProcess(1, @(Q, time_step, theta, sigma)kinematic_proposal(r, Q, time_step, theta, sigma));
 EKF_estimator = EKF_estimator.AssignObservationProcess(2, @(theta)radar(theta));
-EKF_estimator = EKF_estimator.AditiveCovariances(sigma_r, sigma_m*eye(size(R,2)));
+EKF_estimator = EKF_estimator.AdditiveCovariances(sigma_r, sigma_m*eye(size(R,2)));
 
 %% Mixture model configuration
 % Hyperparameters 
-Mixture.J = 100;                                 % Number of Gaussian mixtures 
-Mixture.Mean = linspace(0,2*pi,Mixture.J).';     % Mean of the Gaussian mixture component
-Mixture.Sigma = 1*ones(Mixture.J,1);          % Mean of the Gaussian mixture component
-
-Mixture.Th.Prune = 1e-8;                         % Threshol to delete weights
-Mixture.Th.Merge = 4;                            % Malahanobis distance to merge components
-Mixture.Jmax = 100;                              % Maximum number of components
-
-Mixture.Birth.J = 1;                             % Number of birth sources
-Mixture.Birth.Mean = pi;                         % Location of the sources
-Mixture.Birth.Sigma = (0.5*pi)^2;                % Uncertainty in the location of the source
-Mixture.Birth.Weights = 1e-3;                    % Relative weights of each source
-
-Mixture.Probabilities = [PD PS];                 % Probability of target detection and probability of survival
-
-Mixture.Clutter.Density = Vc;                    % Number of false measurements along the orbit (uniform density)
-Mixture.Clutter.Rate = Pc;                       % Probability of generating false measurements
+% Mixture.J = 100;                                 % Number of Gaussian mixtures 
+% Mixture.Mean = linspace(0,2*pi,Mixture.J).';     % Mean of the Gaussian mixture component
+% Mixture.Sigma = 1*ones(Mixture.J,1);          % Mean of the Gaussian mixture component
+% 
+% Mixture.Th.Prune = 1e-8;                         % Threshol to delete weights
+% Mixture.Th.Merge = 4;                            % Malahanobis distance to merge components
+% Mixture.Jmax = 100;                              % Maximum number of components
+% 
+% Mixture.Birth.J = 1;                             % Number of birth sources
+% Mixture.Birth.Mean = pi;                         % Location of the sources
+% Mixture.Birth.Sigma = (0.5*pi)^2;                % Uncertainty in the location of the source
+% Mixture.Birth.Weights = 1e-3;                    % Relative weights of each source
+% 
+% Mixture.Probabilities = [PD PS];                 % Probability of target detection and probability of survival
+% 
+% Mixture.Clutter.Density = Vc;                    % Number of false measurements along the orbit (uniform density)
+% Mixture.Clutter.Rate = Pc;                       % Probability of generating false measurements
 
 %% Mixture definition
 J = 100; 
 Jmax = 100; 
-Mean = Mixture.Mean; 
-Sigma = Mixture.Sigma;
+Mean = linspace(0,2*pi,J).'; 
+Sigma = 1*ones(J,1);
 PHD = PHDFilter(J, Jmax, Mean, Sigma, PS, PD);
 
 PHD = PHD.DefineDomain(0,2*pi,1000);
@@ -187,7 +187,7 @@ PHD = PHD.AssignLikelihood(@(y,z,P)likelihood_function(y,z,P));
 
 %% Estimation 
 % Estimation
-[f, X, N(2,:)] = PHD.kinematic_estimator(tspan, meas, UKF_estimator);
+[f, X, N(2,:)] = PHD.kinematic_estimator(tspan, meas, EKF_estimator);
 theta = PHD.Domain;
 
 % State estimation 
@@ -210,7 +210,7 @@ figure
 hold on
 plot(theta, f(:,end), 'r')
 for i = 1:size(S,1)
-    if (S{1}(end,1) >= tspan(end))
+    if (S{i}(end,1) >= tspan(end))
         xline(mod(S{i}(end,2), 2*pi),'k'); 
     end
 end
