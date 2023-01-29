@@ -182,6 +182,10 @@ classdef PHDFilter
         % K-means 
         function [M, S] = kp_means(obj, N, X)
             % Compute the centroids 
+            if (N > size(X,1))
+                N = size(X,1);
+            end
+
             [index, M] = kmeans(X,N);
         
             % Compute the covariances

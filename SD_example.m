@@ -16,11 +16,11 @@ mu = 1;                 % Gravitational parameter
 r = 100;                 % Mean radial vector 
 sigma_r = 1e-2;         % Standard deviation of the radius 
 
-T = 30;                 % Stopping simulation time
+T = 10;                 % Stopping simulation time
 tspan = 0:5e-1:2*pi*T; 
 
 % Initial conditions
-Nmax = 3;                  % Number of targets
+Nmax = 4;                  % Number of targets
 
 %% Generation of targets
 % Births 
@@ -139,7 +139,7 @@ meas = meas(index,:);
 
 %% Estimator configuration
 % UKF
-UKF_estimator = EstimatorUKF('UKF-A', 2, 5E-2, 0); 
+UKF_estimator = EstimatorUKF('UKF-A', 2, 1E-1, 0); 
 UKF_estimator = UKF_estimator.AssignStateProcess(1, @(time_step, theta)kinematic_proposal(r, sigma_r, time_step, theta, 0));
 UKF_estimator = UKF_estimator.AssignObservationProcess(2, @(theta)radar(theta));
 UKF_estimator = UKF_estimator.AdditiveCovariances(sigma_r, sigma_m*eye(size(R,2)));
@@ -187,7 +187,7 @@ PHD = PHD.AssignLikelihood(@(y,z,P)likelihood_function(y,z,P));
 
 %% Estimation 
 % Estimation
-[f, X, N(2,:)] = PHD.kinematic_estimator(tspan, meas, EKF_estimator);
+[f, X, N(2,:)] = PHD.kinematic_estimator(tspan, meas, UKF_estimator);
 theta = PHD.Domain;
 
 % State estimation 

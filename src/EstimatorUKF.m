@@ -77,8 +77,8 @@ classdef EstimatorUKF
         function [obj] = AdditiveCovariances(obj, Q, R)
             switch (obj.Algorithm)
                 case 'UKF-S'
-                    obj.Q = chol(Q);
-                    obj.R = chol(R);
+                    obj.Q = sqrt(Q);
+                    obj.R = sqrt(R);
                 otherwise
                     obj.Q = Q;
                     obj.R = R;
@@ -149,8 +149,6 @@ classdef EstimatorUKF
                 case 'UKF-S'
                     [State, Sigma] = UKFS_prediction(obj, sigma);
             end
-
-            sigma = sigma_points(obj, State, Sigma);
             
             % Measurement prediction 
             y = obj.ObservationModel(sigma);
@@ -217,8 +215,13 @@ classdef EstimatorUKF
             X = sum(obj.W(1,:).*sigma,2);
 
             % Covariance prediction
-            [~, S] = qr([sqrt(obj.W(2,2:end)).*(sigma(2:end)-X) obj.Q].',0);
-            P = cholupdate(S, obj.W(2,1)*(sigma(:,1)-X));
+            [~, S] = qr([sqrt(obj.W(2,2:end)).*(sigma(:,2:end)-X) obj.Q].',0);
+
+            if (obj.W(2,1) < 0)
+                P = cholupdate(S, sqrt(abs(obj.W(2,1)))*(sigma(:,1)-X), '-');
+            else
+                P = cholupdate(S, sqrt(abs(obj.W(2,1)))*(sigma(:,1)-X), '+');
+            end
         end
         
         % UKF-S correction
@@ -226,7 +229,12 @@ classdef EstimatorUKF
             % Covariance computation
             Sy = [sqrt(obj.W(2,2:end)).*(Y(:,2:end)-y) obj.R];
             [~, Sy] = qr(Sy.', 0);
-            Sy = cholupdate(Sy, obj.W(2,1)*(Y(:,1)-y));
+
+            if (obj.W(2,1) < 0)
+                Sy = cholupdate(Sy, sqrt(abs(obj.W(2,1)))*(Y(:,1)-y), '-');
+            else
+                Sy = cholupdate(Sy, sqrt(abs(obj.W(2,1)))*(Y(:,1)-y), '+');
+            end
 
             Pxy = (sigma-State)*diag(obj.W(2,:))*(Y-y).';
 
@@ -240,5 +248,3 @@ classdef EstimatorUKF
         end
     end
 end
-
-%% Auxiliary functions
