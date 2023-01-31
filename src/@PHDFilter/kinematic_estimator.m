@@ -200,7 +200,7 @@ function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
         % Intensity function at time t_i
         m(:,i) = mod(m(:,i), 2*pi);
         for k = 1:J
-            M(:,k) = obj.wrapped_normal(L.', sigma(k,i), m(k,i), 1e-7);
+            M(:,k) = obj.Gaussian(L.', sigma(k,i), m(k,i));
         end
         f(:,i) = sum(w(i,:).*M(:,1:size(w,2)),2);
 

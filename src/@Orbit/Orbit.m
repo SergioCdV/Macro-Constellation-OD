@@ -19,7 +19,7 @@ classdef Orbit
         FinalEpoch              % Final orbit epoch
         TimeStep                % Integration time step
 
-        StateEvolution = {};    % Evolution of the orbital element set
+        StateEvolution;         % Evolution of the orbital element set
     end
 
     % Private properties 
@@ -32,6 +32,10 @@ classdef Orbit
 
         Dynamics;               % Dynamical model to be used
         Trajectory;             % Cartesian trajectory
+
+        Lc;                     % Characteristic length 
+        Tc;                     % Characteristic time 
+        Normalized = false;     % Flag to account for normalized coordinates
     end
 
     % Public methods 
@@ -47,10 +51,15 @@ classdef Orbit
             obj.IntegrationOptions = odeset('RelTol', 2.25e-14, 'AbsTol', 1e-22);      % Integration tolerances
 
             % Sanity checks 
-            if (length(myElementSet) ~= obj.m)
+            if (length(myElementSet) < obj.m)
                 error('The state vector dimension is not valid.');
             end
 
+            if (size(myElementSet,1) <= 1)
+                myElementSet = myElementSet.';
+            end
+
+            % Assignment
             switch (myElementType)
                 case 'Cartesian'
                     obj.ElementType = myElementType;
@@ -64,7 +73,25 @@ classdef Orbit
                     error('No valid stated vector was introduced.')
             end
 
-            obj.StateEvolution{1} = {myElementType, myInitialEpoch, myElementSet};
+            try 
+                switch (myElementType)
+                    case 'Cartesian'
+                        obj.ElementSet = myElementSet(1,1:obj.m);
+                    case 'COE'
+                        obj.ElementSet = myElementSet(1,1:obj.m);
+                        obj.ElementSet = [obj.ElementSet obj.ElementSet(1)*(1-obj.ElementSet(2)^2)];
+                    case 'MOE'
+                        obj.ElementSet = myElementSet(1,1:obj.m);
+                    case 'KS'
+                        obj.ElementSet = myElementSet(1,1:obj.m+2);
+                    otherwise
+                        error('No valid stated vector was introduced.')
+                end
+            catch ME
+                rethrow(ME);
+            end
+
+            obj.StateEvolution(1,:) = [myInitialEpoch, myElementSet];
         end
 
         % Add final epoch 
@@ -128,11 +155,13 @@ classdef Orbit
             % Check time span limits 
             if (obj.Tspan(end) < obj.CurrentEpoch)
                 obj.Tspan = obj.InitialEpoch:obj.TimeStep:obj.CurrentEpoch;
-                obj.PropagatedEpoch = obj.Tspan(end);
             end
 
             % Perform the propagation 
             obj = obj.Dynamics(obj);  
+
+            % Update the last propagated epoch 
+            obj.PropagatedEpoch = obj.Tspan(end);
         end
         
         % Plot the state evolution 
@@ -183,6 +212,53 @@ classdef Orbit
                     otherwise
                         error('No valid stated vector was introduced.')
                 end
+
+                obj.ElementType = myElementType;
+            end
+        end
+
+        % Normalize elements 
+        function [obj] = Normalize(obj, direction, myLc)
+            if (obj.Normalized)
+                obj = obj.Normalize(obj, obj.Lc, false);
+            end
+
+            if (direction)
+                obj.Lc = myLc;
+                obj.Tc = sqrt(myLc^3/obj.mu);
+                obj.mu = 1; 
+
+                switch (obj.ElementType)
+                    case 'Cartesian'
+                        obj.ElementSet = obj.ElementSet./[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
+                        obj.StateEvolution = obj.StateEvolution./[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
+                    case 'COE'
+                        obj.ElementSet([1 7]) = obj.ElementSet([1 7])/obj.Lc;
+                        obj.StateEvolution(:,[2 obj.m+2]) = obj.StateEvolution(:,[2 obj.m+2])./obj.Lc;
+                    case 'MOE'
+                        obj.ElementSet(1) = obj.ElementSet(1)./obj.Lc;
+                        obj.StateEvolution(:,2) = obj.StateEvolution(:,2)./obj.Lc;
+                    otherwise
+                        error('The current element set cannot be normalized.');
+                end
+
+                obj.Normalized = true;
+            else
+                switch (obj.ElementType)
+                    case 'Cartesian'
+                        obj.ElementSet = obj.ElementSet.*[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
+                        obj.StateEvolution(:,2:obj.m+2) = obj.StateEvolution(:,2:obj.m+2)./[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
+                    case 'COE'
+                        obj.ElementSet([1 7]) = obj.ElementSet([1 7])*obj.Lc;
+                        obj.StateEvolution(:,[2 obj.m+2]) = obj.StateEvolution(:,[2 obj.m+2])*obj.Lc;
+                    case 'MOE'
+                        obj.ElementSet(1) = obj.ElementSet(1).*obj.Lc;
+                        obj.StateEvolution(:,2) = obj.StateEvolution(:,2)*obj.Lc;
+                    otherwise
+                        error('The current element set cannot be normalized.');
+                end
+
+                obj.Normalized = false;
             end
         end
     end
@@ -196,12 +272,86 @@ classdef Orbit
         end
 
         % Change the state evolution to the Cartesian format
+        function [obj] = State2Cartesian(obj)
+            switch (obj.ElementType)
+                case 'COE'
+                    obj.ElementSet = ECI2COE(obj.mu, obj.ElementSet, false);
+                    obj.StateEvolution(:,2:end) = ECI2COE(obj.mu, obj.StateEvolution(:,2:end), false);
+                case 'MOE'
+                    obj.ElementSet = ECI2MOE(obj.mu, obj.ElementSet, false);
+                    obj.StateEvolution(:,2:end) = ECI2MOE(obj.mu, obj.StateEvolution(:,2:end), false);
+                case 'KS'
+                    obj.ElementSet = ECI2KS(obj.mu, obj.ElementSet, false);
+                    obj.StateEvolution(:,2:end) = ECI2KS(obj.mu, obj.StateEvolution(:,2:end), false);
+                otherwise
+                    error('Requested transformation is not currently supported.');
+            end
+        end
 
         % Change the state evolution to the COE format
+        function [obj] = State2COE(obj)
+           switch (obj.ElementType)
+                case 'Cartesian'
+                    obj.ElementSet = ECI2COE(obj.mu, obj.ElementSet, true);
+                    obj.StateEvolution(:,2:end) = ECI2COE(obj.mu, obj.StateEvolution(:,2:end), true);
+                case 'MOE'
+                    obj.ElementSet = COE2MOE(obj.mu, obj.ElementSet, false);
+                    obj.StateEvolution(:,2:end) = COE2MOE(obj.mu, obj.StateEvolution(:,2:end), false);
+                case 'KS'
+                    aux = ECI2KS(obj.ElementSet, false);
+                    obj.ElementSet = ECI2COE(obj.mu, aux, false);
+                    aux = ECI2KS(obj.StateEvolution(:,2:end), false);
+                    obj.StateEvolution(:,2:end) = ECI2COE(obj.mu, aux, false);
+                otherwise
+                    error('Requested transformation is not currently supported.');
+            end
+        end
 
         % Change the state evolution to the MOE format
+        function [obj] = State2MOE(obj)
+           switch (obj.ElementType)
+                case 'Cartesian'
+                    obj.ElementSet = ECI2COE(obj.mu, obj.ElementSet, true);
+                    obj.ElementSet = COE2MOE(obj.mu, obj.ElementSet, true);
+                    obj.StateEvolution(:,2:end) = ECI2COE(obj.mu, obj.StateEvolution(:,2:end), true);
+                    obj.StateEvolution(:,2:end) = COE2MOE(obj.mu, obj.StateEvolution(:,2:end), true);
+                case 'COE'
+                    obj.ElementSet = COE2MOE(obj.mu, obj.ElementSet, true);
+                    obj.StateEvolution(:,2:end) = COE2MOE(obj.mu, obj.StateEvolution(:,2:end), true);
+                case 'KS'
+                    obj.ElementSet = ECI2KS(obj.mu, obj.ElementSet, false);
+                    obj.ElementSet = ECI2COE(obj.mu, obj.ElementSet, true);
+                    obj.ElementSet = COE2MOE(obj.mu, obj.ElementSet, true);
+                    obj.StateEvolution(:,2:end) = ECI2KS(obj.mu, obj.StateEvolution(:,2:end), true);
+                    obj.StateEvolution(:,2:end) = ECI2COE(obj.mu, obj.StateEvolution(:,2:end), true);
+                    obj.StateEvolution(:,2:end) = COE2MOE(obj.mu, obj.StateEvolution(:,2:end), true);
+                otherwise
+                    error('Requested transformation is not currently supported.');
+            end
+        end
 
         % Change the state evolution to the KS format
+        function [obj] = State2KS(obj)
+           lastwarn('The required transformation is not bijective.');
+
+           switch (obj.ElementType)
+                case 'Cartesian'
+                    obj.ElementSet = ECI2KS(obj.mu, obj.ElementSet, true);
+                    obj.StateEvolution(:,2:end) = ECI2KS(obj.mu, obj.StateEvolution(:,2:end), true);
+                case 'COE'
+                    obj.ElementSet = ECI2COE(obj.mu, obj.ElementSet, false);
+                    obj.ElementSet = ECI2KS(obj.mu, obj.ElementSet, true);
+                    obj.StateEvolution(:,2:end) = ECI2COE(obj.mu, obj.StateEvolution(:,2:end), false);
+                    obj.StateEvolution(:,2:end) = ECI2KS(obj.mu, obj.StateEvolution(:,2:end), true);
+                case 'MOE'
+                    obj.ElementSet = ECI2MOE(obj.mu, obj.ElementSet, false);
+                    obj.ElementSet = ECI2KS(obj.mu, obj.ElementSet, true);
+                    obj.StateEvolution(:,2:end) = ECI2MOE(obj.mu, obj.StateEvolution(:,2:end), false);
+                    obj.StateEvolution(:,2:end) = ECI2KS(obj.mu, obj.StateEvolution(:,2:end), true);
+                otherwise
+                    error('Requested transformation is not currently supported.');
+            end
+        end
 
         % Set graphics 
         function set_graphics(obj)

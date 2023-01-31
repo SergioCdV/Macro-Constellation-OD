@@ -28,8 +28,10 @@ classdef PHDFilter
         ClutterDensity = 0     % Density of false measurements along the space
         ClutterRate = 0        % Rate of generation of false measurements
 
-        LikelihoodFunction = 1
+        LikelihoodFunction = 1 % Likelihood function to be used
         Domain = 0
+
+        Gaussian;              % Gaussian function to be used
     end
 
     % Public methods
@@ -44,7 +46,7 @@ classdef PHDFilter
             
             % Maximum number components
             obj.Jmax = Jmax; 
-
+        
             % Survivial and detection models 
             obj.PS = PS; 
             obj.PD = PD; 
@@ -53,6 +55,18 @@ classdef PHDFilter
         % Domain constructor
         function [obj] = DefineDomain(obj, a, b, N)
             obj.Domain = linspace(a,b,N);
+        end
+
+        % Define Gaussian functions 
+        function [obj] = AddGaussian(obj,myGaussian)
+            switch (myGaussian)
+                case 'Normal'
+                    obj.Gaussian = @(L, sigma, mu)obj.normal(L, sigma, mu);
+                case 'Wrapped'
+                    obj.Gaussian = @(L, sigma, mu)obj.wrapped_normal(1E-7, L, sigma, mu);
+                otherwise
+                    error('No implemented Gaussian distribution was selected.')
+            end
         end
 
         % Birth configuration 
@@ -107,10 +121,15 @@ classdef PHDFilter
                 warning('Dimensions for the mixture are not consistent.')
                 obj.BirthSigma = obj.BirthSigma.';
             end
-        end
+         end
 
-        % Compute the wrapped normal distribution
-        function [f] = wrapped_normal(obj, L, sigma, mu, error_tol)
+         % Compute the wrapped normal distribution
+         function [f] = normal(obj, L, sigma, mu)
+            f = exp(-0.5*(L-mu).^2/sigma);
+         end
+
+         % Compute the wrapped normal distribution
+         function [f] = wrapped_normal(obj, error_tol, L, sigma, mu)
             % Compute the error bound 
             n(1) = max(1+sqrt(-log(4*pi^3*error_tol^2)*sigma),1+sqrt(sigma/2)/pi);
             n(2) = max(sqrt(-log(2*pi^2*sigma*error_tol^2)/sigma),sqrt(2)/pi);
@@ -132,10 +151,10 @@ classdef PHDFilter
                 end
                 f = (1+2*f)/(2*pi);
             end
-        end
+         end
 
-        % Pruning 
-        function [w, m, sigma, J] = pruner(obj, j, J, w, m, sigma, i)
+         % Pruning 
+         function [w, m, sigma, J] = pruner(obj, j, J, w, m, sigma, i)
             Set = w(i,:) > obj.PruneThresh;
             if (any(Set))
                 l = 0;
@@ -177,10 +196,27 @@ classdef PHDFilter
                 sigma = sigma(1:l,:);
                 J = l; 
             end
-        end
+         end
 
-        % K-means 
-        function [M, S] = kp_means(obj, N, X)
+         % State estimation
+         function [X] = state_estimation(obj, J, N, w, m)
+            aux = [];
+            for l = 1:J
+                if (w(l) > 0.5)
+                    aux = [aux; m(l)];
+                end
+            end
+        
+            if (N > 0)
+                [C, S] = obj.kp_means(N,aux);
+                X = [C.'; S.'];
+            else
+                X = [];
+            end
+         end
+
+         % K-means 
+         function [M, S] = kp_means(obj, N, X)
             % Compute the centroids 
             if (N > size(X,1))
                 N = size(X,1);
@@ -194,23 +230,6 @@ classdef PHDFilter
                 sigma = (X(index(index == i))-M(i)).^2;
                 S(i) = sum(sigma)/sum(index(index == i));
             end
-        end
-
-        % State estimation
-        function [X] = state_estimation(obj, J, N, w, m)
-            aux = [];
-            for l = 1:J
-                if (w(l) > 0.5)
-                    aux = [aux; m(l)];
-                end
-            end
-    
-            if (N > 0)
-                [C, S] = obj.kp_means(N,aux);
-                X = [C.'; S.'];
-            else
-                X = [];
-            end
-        end
+         end
     end
 end
