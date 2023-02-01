@@ -44,22 +44,35 @@ function [S] = MOEK_dynamics(obj, s, InitialEpoch, tspan)
     mu = obj.mu; 
 
     % Preallocation
-    S = zeros(length(tpsan),7); 
+    S = zeros(length(tspan),6); 
 
     % Frozen dynamics
-    S(:,[1:5 7]) = repmat(s, length(tspan), 1);
+    S(:,[1:5 6]) = repmat(s, length(tspan), 1);
 
     % Anomaly dynamics 
-    dL = @(theta)(sqrt(mu*s(1))*((1+s(2)*cos(theta)+s(3)*cos(theta))/s(1))^2);
-    [~, S(:,6)] = ode45(@(s)dL(s), tspan, s(6), obj.IntegrationOptions);
+    dL = @(t,theta)(sqrt(mu*s(1))*((1+s(2)*cos(theta)+s(3)*cos(theta))/s(1))^2);
+    [~, S(:,6)] = ode45(@(t,s)dL(t,s), tspan, s(6), obj.IntegrationOptions);
 end
 
 % Kepler dynamics in the KS representation 
 function [S] = KSK_dynamics(mu, s, InitialEpoch, tspan)
+    % Deprecated 
+    error('KS propagation is not currently supported.');
+
     % Constants of motion 
-    alpha = 2*(mu/2-dot(s(5:8),s(5:8)))/dot(s(1:4),s(1:4));     % Inverse of the semimajor axis
+    E = 4*(-mu/2+dot(s(5:8),s(5:8)))/dot(s(1:4),s(1:4));        % Orbital energy 
+    alpha = -2/mu*E;                                            % Inverse of the semimajor axis
     W = sqrt(mu*alpha/4);                                       % KS oscillation frequency
     
     % State trajectory
-    S = [s(1:4).*cos(W*tspan.')+s(5:8)/W.*sin(W*tspan.') -W*s(1:4).*sin(W*tspan.')+s(5:8).*cos(W*tspan.')];
+    ds = 0:1e-3:1e3;
+    S = [s(1:4).*cos(W*ds.')+s(5:8)/W.*sin(W*ds.') -W*s(1:4).*sin(W*ds.')+s(5:8).*cos(W*ds.')];
+
+    t = cumtrapz(ds, dot(S(:,1:4),S(:,1:4),2));
+
+    diff = abs(t-tspan(end));
+    [~, index] = sort(diff); 
+    S = S(1:index(1),:);
+    t = t(1:index(1));
 end
+

@@ -22,9 +22,9 @@ function [S] = ECI2MOE(obj, s, direction)
         S = zeros(size(s));
 
         % ECI to MOE transformation
-        for i = 1:size(s,2)
-            coe = state2coe(mu, s(i,:));
-            S(i,:) = COE2MOE(coe, true);
+        for i = 1:size(s,1)
+            coe = obj.ECI2COE(s(i,:), true);
+            S(i,:) = obj.COE2MOE(coe, true);
         end
     else
         % Dimension checking 

@@ -22,11 +22,11 @@ EndEpoch = juliandate(datetime('tomorrow'));
 
 % Orbit definition
 ElementType = 'COE'; 
-ElementSet = [r0 1e-3 0 deg2rad(0) deg2rad(0) deg2rad(0)]; 
+ElementSet = [r0 1e-3 0 deg2rad(90) deg2rad(0) deg2rad(0)]; 
 
 Orbit = Orbit(mu, ElementType, ElementSet, InitialEpoch);
-Orbit = Orbit.Normalize(true, r0);
-Orbit = Orbit.Normalize(true, 2*r0);
+% Orbit = Orbit.Normalize(true, r0);
+% Orbit = Orbit.Normalize(true, 2*r0);
 Orbit = Orbit.SetFinalEpoch(EndEpoch); 
 
 % Transformation of elements 
@@ -37,7 +37,9 @@ Orbit = Orbit.ChangeStateFormat('COE');
 Orbit = Orbit.ChangeStateFormat('Cartesian');
 Orbit = Orbit.ChangeStateFormat('KS');
 Orbit = Orbit.ChangeStateFormat('MOE');
+Orbit = Orbit.ChangeStateFormat('COE');
 Orbit = Orbit.ChangeStateFormat('KS');
+Orbit = Orbit.ChangeStateFormat('COE');
 Orbit = Orbit.ChangeStateFormat('Cartesian');
 Orbit = Orbit.ChangeStateFormat('MOE');
 Orbit = Orbit.ChangeStateFormat('KS');
@@ -47,8 +49,8 @@ Orbit = Orbit.ChangeStateFormat('KS');
 Orbit = Orbit.ChangeStateFormat('Cartesian');
 
 % Orbit propagation 
-Orbit = Orbit.AddPropagator('Keplerian', 1E-1);
-Orbit = Orbit.SetCurrentEpoch(juliandate(datetime('now'))+5000);
+Orbit = Orbit.AddPropagator('Keplerian', 0.5);
+Orbit = Orbit.SetCurrentEpoch(juliandate(datetime('now'))+6000);
 Orbit = Orbit.Propagate();
 
 % Set graphics 

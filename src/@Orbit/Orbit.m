@@ -19,7 +19,7 @@ classdef Orbit
         FinalEpoch              % Final orbit epoch
         TimeStep                % Integration time step
 
-        StateEvolution;         % Evolution of the orbital element set
+        StateEvolution = [];    % Evolution of the orbital element set
         Dynamics;               % Dynamical model to be used
     end
 
@@ -151,7 +151,7 @@ classdef Orbit
         function [obj] = Propagate(obj)
             % Check time span limits 
             if (obj.PropagatedEpoch < obj.CurrentEpoch)
-                aux_tspan = obj.PropagatedEpoch:obj.TimeStep:obj.CurrentEpoch;
+                aux_tspan = 0:obj.TimeStep:obj.CurrentEpoch-obj.PropagatedEpoch;
 
                 if (obj.Normalized)
                     aux_tspan = aux_tspan / obj.Tc;
@@ -164,7 +164,7 @@ classdef Orbit
                 obj.StateEvolution = [obj.StateEvolution; [obj.StateEvolution(end,1)+aux_tspan(2:end).' AuxEvolution(2:end,:)]];
                 obj.ElementSet = AuxEvolution(end,:);
 
-                obj.Tspan = aux_tspan;
+                obj.Tspan = [obj.Tspan obj.PropagatedEpoch:obj.TimeStep:obj.CurrentEpoch];
     
                 % Update the last propagated epoch 
                 obj.PropagatedEpoch = obj.CurrentEpoch;
@@ -204,8 +204,8 @@ classdef Orbit
 
                 switch (obj.ElementType)
                     case 'Cartesian'
-                        obj.ElementSet = obj.ElementSet./[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
-                        obj.StateEvolution = obj.StateEvolution./[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
+                        obj.ElementSet = obj.ElementSet./[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
+                        obj.StateEvolution(:,2:end) = obj.StateEvolution(:,2:end)./[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
                     case 'COE'
                         obj.ElementSet([1 7]) = obj.ElementSet([1 7])/obj.Lc;
                         obj.StateEvolution(:,[2 obj.m+2]) = obj.StateEvolution(:,[2 obj.m+2])./obj.Lc;
@@ -217,10 +217,9 @@ classdef Orbit
                 end
 
                 obj.StateEvolution(:,1) = obj.StateEvolution(:,1)/obj.Tc;
-                obj.Tspan = obj.Tspan/obj.Tc;
 
                 obj.Normalized = true;
-            else
+            elseif (obj.Normalized && ~direction)
                 switch (obj.ElementType)
                     case 'Cartesian'
                         obj.ElementSet = obj.ElementSet.*[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
@@ -236,7 +235,6 @@ classdef Orbit
                 end
 
                 obj.StateEvolution(:,1) = obj.StateEvolution(:,1)*obj.Tc;
-                obj.Tspan = obj.Tspan*obj.Tc;
 
                 obj.mu = (obj.Lc^3/obj.Tc^2);
 
@@ -265,15 +263,15 @@ classdef Orbit
         % Plot the state evolution 
         function PlotTrajectory(obj, figureObj, InitialEpoch, FinalEpoch)
             % Sanity check 
-            if (~isempty(obj.Tspan))
+            if (size(obj.StateEvolution,1) >= 2)
                 if (FinalEpoch > obj.PropagatedEpoch)
                     FinalEpoch = obj.PropagatedEpoch;
                 end
-    
-                if (FinalEpoch > obj.Tspan(1))
-                    FinalEpoch = obj.Tspan(1);
+
+                if (InitialEpoch > obj.PropagatedEpoch)
+                    InitialEpoch = obj.Tspan(1);
                 end
-    
+        
                 % Plot the trajectory
                 diff = abs(obj.Tspan-FinalEpoch); 
                 [~, PosFinal] = sort(diff); 
@@ -284,12 +282,16 @@ classdef Orbit
                 PosInit = PosInit(1);
     
                 % Change to Cartesian coordinates
-                obj.Trajectory = obj.State2Cartesian(obj);
+                switch (obj.ElementType)
+                    case 'Cartesian'
+                    otherwise
+                    obj = obj.State2Cartesian();
+                end
     
                 % Plot the Cartesian trajectory
                 figureObj;
-                obj.set_graphics();
-                plot3(obj.Trajectory(PosInit:PosFinal,1), obj.Trajectory(PosInit:PosFinal,2), obj.Trajectory(PosInit:PosFinal,3));
+                view(3)
+                plot3(obj.StateEvolution(PosInit:PosFinal,2), obj.StateEvolution(PosInit:PosFinal,3), obj.StateEvolution(PosInit:PosFinal,4));
                 grid on; 
                 xlabel('$x$');
                 ylabel('$y$');
@@ -345,9 +347,9 @@ classdef Orbit
                     obj.StateEvolution = [obj.StateEvolution(:,1) aux];
                 case 'KS'
                     aux = obj.ECI2KS(obj.ElementSet, false);
-                    obj.ElementSet = obj.ECI2COE(aux, false);
+                    obj.ElementSet = obj.ECI2COE(aux, true);
                     aux = obj.ECI2KS(obj.StateEvolution(:,2:end), false);
-                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2COE(aux, false)];
+                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2COE(aux, true)];
                 otherwise
                     error('Requested transformation is not currently supported.');
            end
@@ -357,10 +359,9 @@ classdef Orbit
         function [obj] = State2MOE(obj)
            switch (obj.ElementType)
                 case 'Cartesian'
-                    obj.ElementSet = obj.ECI2COE(obj.ElementSet, true);
-                    obj.ElementSet = obj.COE2MOE(obj.ElementSet, true);
-                    aux = obj.ECI2COE(obj.StateEvolution(:,2:end), true);
-                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.COE2MOE(aux, true)];
+                    obj.ElementSet = obj.ECI2MOE(obj.ElementSet, true);
+                    aux = obj.ECI2MOE(obj.StateEvolution(:,2:end), true);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) aux];
                 case 'COE'
                     obj.ElementSet = obj.COE2MOE(obj.ElementSet, true);
                     aux = obj.COE2MOE(obj.StateEvolution(:,2:end), true);
@@ -380,6 +381,7 @@ classdef Orbit
         % Change the state evolution to the KS format
         function [obj] = State2KS(obj)
            lastwarn('The required transformation is not bijective.');
+           lastwarn('Only for unperturbed circular orbits.');
 
            switch (obj.ElementType)
                 case 'Cartesian'
@@ -389,8 +391,7 @@ classdef Orbit
                     obj.ElementSet = obj.ECI2COE(obj.ElementSet, false);
                     obj.ElementSet = obj.ECI2KS(obj.ElementSet, true);
                     aux = obj.ECI2COE(obj.StateEvolution(:,2:end), false);
-                    aux = obj.ECI2KS(aux, true);
-                    obj.StateEvolution = [obj.StateEvolution(:,1) aux];
+                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2KS(aux, true)];
                 case 'MOE'
                     obj.ElementSet = obj.ECI2MOE(obj.ElementSet, false);
                     obj.ElementSet = obj.ECI2KS(obj.ElementSet, true);
