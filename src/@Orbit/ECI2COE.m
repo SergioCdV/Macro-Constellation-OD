@@ -11,7 +11,10 @@
 
 % Ouputs: - vector elements, containing the mean classical Euler orbital elements (a, e, RAAN, i, omega, M, p)
 
-function [elements] = ECI2COE(mu, s, direction)
+function [elements] = ECI2COE(obj, s, direction)
+    % Constants
+    mu = obj.mu; 
+    
     % Main computation 
     if (direction)
         % Preallocation 
@@ -34,6 +37,8 @@ end
 % Function to compute the orbital elements from the inertial state vector 
 function [elements] = rv2coe(mu, s)
     % State variables 
+    s = s.';
+    
     r = s(1:3);                                     % Position vector
     v = s(4:6);                                     % Velocity vector 
     
@@ -219,4 +224,56 @@ function [s] = coe2state(mu, elements)
     r = Q.'*r;      % Position vector in the inertial frame
     v = Q.'*v;      % Velocity vector in the inertial frame
     s = [r; v];     % State vector
+end
+
+% Kepler equation 
+function [theta] = kepler(elements)
+    % Constants 
+    e = elements(2);                                            % Eccentricity of the orbit
+    M0 = elements(6);                                           % Mean anomaly of the orbit 
+    
+    % Set up the loop 
+    k = 5;                                                      % Conway constant
+    tol = 1e-15;                                                % Convergence tolerance
+    iterMax = 10^6;                                             % Maximum number of iterations
+    GoOn = true;                                                % Convergence flag
+    iter = 1;                                                   % Initial iteration
+    u = M0+e;                                                   % Conway method variable
+    E(iter) = (M0*(1-sin(u))+u*sin(M0))/(1+sin(M0)-sin(u));     % Initial guess for the eccentric anomaly
+    
+    % Main computation 
+    while ((GoOn) && (iter < iterMax))
+        % Laguerre-Conway iterations
+        f = E(iter)-e*sin(E(iter))-M0; 
+        df = 1-e*cos(E(iter));
+        ddf = e*sin(E(iter));
+        dn = -k*(f)/(df+sqrt((k-1)^2*df^2-k*(k-1)*f*ddf));
+        E(iter+1) = E(iter)+dn;
+        
+        % Convergence checking 
+        if (abs(dn) < tol)
+            GoOn = false;
+        else
+            iter = iter+1;
+        end
+    end  
+    
+    % True anomaly
+    theta = atan2(sqrt(1-e^2)*sin(E(end))/(1-e*cos(E(end))), (cos(E(end))-e)/(1-e*cos(E(end))));
+end
+
+% ECI to PF rotation matrix
+% Inputs: - vector elements, the mean classical Euler elements
+% Outputs: - matrix Q, the rotation matrix from the inertial to the perifocal frame
+function [Q] = euler_matrix(elements)
+    % Elements of interest 
+    RAAN = elements(3); 
+    i = elements(4); 
+    omega = elements(5); 
+    
+    % Compute the rotation matrix (Euler sequence ZXZ)
+    Q1 = [cos(RAAN) sin(RAAN) 0; -sin(RAAN) cos(RAAN) 0; 0 0 1];
+    Q2 = [1 0 0; 0 cos(i) sin(i); 0 -sin(i) cos(i)];
+    Q3 = [cos(omega) sin(omega) 0; -sin(omega) cos(omega) 0; 0 0 1];
+    Q = Q3*Q2*Q1;
 end

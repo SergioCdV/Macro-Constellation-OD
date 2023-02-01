@@ -12,7 +12,10 @@
 
 % Outputs: - vector S, the transformed orbital state vector
 
-function [S] = COE2MOE(s, direction)
+function [S] = COE2MOE(obj, s, direction)
+    % Constants
+    mu = obj.mu; 
+    
     % Sanity check on the s dimensions 
     if (size(s,1) ~= 6)
         lastwarn('Input orbital element set is not valid')
