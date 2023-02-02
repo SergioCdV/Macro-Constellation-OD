@@ -7,6 +7,7 @@
 classdef Orbit
     % Fundamental definition 
     properties 
+        Label = "MyOrbit";
         mu                      % Central body gravitational parameter
     
         ElementType             % Type of orbital elements in use
@@ -104,6 +105,11 @@ classdef Orbit
             else
                 obj.FinalEpoch = myFinalEpoch;
             end
+        end
+
+        % Change the orbit label
+        function [obj] = ChangeLabel(obj, myName)
+            obj.Name = myName;
         end
 
         % Specify current epoch 
@@ -266,6 +272,7 @@ classdef Orbit
             if (size(obj.StateEvolution,1) >= 2)
                 if (FinalEpoch > obj.PropagatedEpoch)
                     FinalEpoch = obj.PropagatedEpoch;
+                    warning('Propagation is not available spanning the selected epoch span.')
                 end
 
                 if (InitialEpoch > obj.PropagatedEpoch)

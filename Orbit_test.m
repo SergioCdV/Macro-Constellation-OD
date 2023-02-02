@@ -18,7 +18,7 @@ mu = 3.86e14;
 
 % Epochs
 InitialEpoch = juliandate(datetime('now'));
-EndEpoch = juliandate(datetime('tomorrow'));
+EndEpoch = juliandate(datetime('tomorrow')+60000);
 
 % Orbit definition
 ElementType = 'COE'; 
@@ -50,11 +50,29 @@ Orbit = Orbit.ChangeStateFormat('Cartesian');
 
 % Orbit propagation 
 Orbit = Orbit.AddPropagator('Keplerian', 0.5);
-Orbit = Orbit.SetCurrentEpoch(juliandate(datetime('now'))+6000);
-Orbit = Orbit.Propagate();
-
-% Set graphics 
-Orbit.set_graphics();
 
 % Set trajectory 
-Orbit.PlotTrajectory(figure(1), Orbit.InitialEpoch, Orbit.CurrentEpoch)
+Orbit.set_graphics();
+
+%% Constellation definition
+% Constellation constructor
+Constellation_test = Constellation('User defined', 4,4,4);
+
+% Add/remove orbits
+Constellation_test = Constellation_test.AddOrbit(Orbit);
+Constellation_test = Constellation_test.AddOrbit(Orbit);
+Constellation_test = Constellation_test.AddOrbit(Orbit);
+Constellation_test = Constellation_test.AddOrbit(Orbit);
+
+Orbit_2 = Orbit; 
+Orbit_2.ElementSet(3) = pi; 
+Orbit_2.SetCurrentEpoch(Orbit_2.InitialEpoch); 
+Constellation_test = Constellation_test.AddOrbit(Orbit_2);
+
+% Compute number of planes, spacecraft and spacecraft per plane
+Constellation_test.N = Constellation_test.NumberOfSpacecraft();
+[Constellation_test.Np, Constellation_test.n] = Constellation_test.NumberOfPlanes();
+
+% Propagation 
+Constellation_test = Constellation_test.Propagate(juliandate(datetime('now'))+6000);
+Constellation_test.OrbitSet{1,2}.PlotTrajectory(figure(1), Constellation_test.OrbitSet{1,2}.InitialEpoch, Constellation_test.OrbitSet{1,2}.FinalEpoch);
