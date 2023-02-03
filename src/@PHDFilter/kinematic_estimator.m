@@ -161,6 +161,7 @@ function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
                 end
 
                 eta = kappa+sum(w(i,1+k*J:(k+1)*J),2);
+                eta
                 if (eta ~= 0)
                     w(i,1+k*J:(k+1)*J) = w(i,1+k*J:(k+1)*J)./eta;
                 end

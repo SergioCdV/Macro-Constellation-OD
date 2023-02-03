@@ -44,7 +44,7 @@ classdef Constellation
         function [obj] = AddOrbit(obj, Orbit)
             obj.OrbitSet = [obj.OrbitSet; {size(obj.OrbitSet,1)+1, Orbit}];
 
-            if (Orbit.InitialEpoch > 0 && Orbit.InitialEpoch < obj.InitialEpoch)
+            if (Orbit.InitialEpoch >= 0 && Orbit.InitialEpoch < obj.InitialEpoch)
                 obj.InitialEpoch = Orbit.InitialEpoch; 
             end
 
@@ -54,7 +54,7 @@ classdef Constellation
         end
         
         % Change time step 
-        function [obj] = ChangeTimeStep(myTimeStep)
+        function [obj] = ChangeTimeStep(obj, myTimeStep)
             if (myTimeStep > 0)
                 obj.TimeStep = myTimeStep;
             end

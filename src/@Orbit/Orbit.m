@@ -116,7 +116,7 @@ classdef Orbit
         function [obj] = SetCurrentEpoch(obj, myCurrentEpoch)
             if (myCurrentEpoch < obj.CurrentEpoch)
                 error('New current epoch is not greater than the actual current epoch');
-            elseif (myCurrentEpoch < obj.FinalEpoch)
+            elseif (myCurrentEpoch <= obj.FinalEpoch)
                 obj.CurrentEpoch = myCurrentEpoch;
             elseif (myCurrentEpoch > obj.FinalEpoch)
                 obj.FinalEpoch = myCurrentEpoch;

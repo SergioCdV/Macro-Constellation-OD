@@ -70,9 +70,6 @@ while (GoOn)
         S{i+Nmax} = [tspan(tb) tspan(td) omega theta0];          % Targets 
         i = i+1;
         N(1,tb:td) = N(1,tb:td)+1; 
-        if (max(N) > Nmax)
-            a = 1;
-        end
     end
 
     % Convergence 
@@ -211,10 +208,8 @@ St = sort(St.');
 figure
 hold on
 plot(theta, f(:,end), 'r')
-for i = 1:size(S,1)
-    if (S{i}(end,1) >= tspan(end))
-        xline(mod(S{i}(end,2), 2*pi),'k'); 
-    end
+for i = 1:size(St,2)
+    xline(mod(St(i), 2*pi),'k'); 
 end
 xlabel('$\theta$')
 ylabel('$p(\theta)$')
