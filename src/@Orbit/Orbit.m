@@ -9,6 +9,9 @@ classdef Orbit
     properties 
         Label = "MyOrbit";
         mu                      % Central body gravitational parameter
+
+        J2 = 0;                 % First zonal harmonic of the central body 
+        Re = 0;                 % Reference radius of the central body for its spherical Legendre gravitational expansion
     
         ElementType             % Type of orbital elements in use
         ElementSet              % Parametrizing orbital element set
@@ -148,6 +151,17 @@ classdef Orbit
             obj.Dynamics = obj.AddModel(myModel);
         end
 
+        % Define J2 problem 
+        function [obj] = DefineJ2Problem(obj, myJ2, myRe)
+            obj.J2 = myJ2; 
+            
+            if (obj.Normalized)
+                obj.Re = myRe/obj.Lc;
+            else
+                obj.Re = myRe;
+            end
+        end
+        
         % Add integration tolerances
         function [obj] = AddIntegrationTolerances(myIntegrationOptions)
             obj.IntegrationOptions = myIntegrationOptions;
@@ -208,6 +222,8 @@ classdef Orbit
                 obj.Tc = sqrt(myLc^3/obj.mu);
                 obj.mu = 1; 
 
+                obj.Re = obj.Re/obj.Lc;
+
                 switch (obj.ElementType)
                     case 'Cartesian'
                         obj.ElementSet = obj.ElementSet./[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
@@ -243,6 +259,8 @@ classdef Orbit
                 obj.StateEvolution(:,1) = obj.StateEvolution(:,1)*obj.Tc;
 
                 obj.mu = (obj.Lc^3/obj.Tc^2);
+
+                obj.Re = obj.Re*obj.Lc;
 
                 obj.Normalized = false;
             end
@@ -316,8 +334,12 @@ classdef Orbit
             switch (myModel)
                 case 'Keplerian'
                     f = @(tspan)obj.KeplerDynamics(tspan);
-                case 'J2'
-                    f = obj.AddModel(obj, myModel);
+                case 'Osculating J2'
+                    f = @(tspan)obj.APSDynamics(tspan, 0);
+                case 'Mean J2'
+                    f = @(tspan)obj.APSDynamics(tspan, 1);
+                 case 'SGP4'
+                    f = @(tspan)obj.APSDynamics(tspan, 2);
                 otherwise
                     error('The selected propagator model is not currently implemented.');
             end

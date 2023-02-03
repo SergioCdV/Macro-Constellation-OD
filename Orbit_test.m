@@ -8,6 +8,8 @@
 close all; 
 clear;
 
+setup_path();
+
 %% Orbit definition 
 % Constants of the environment 
 r0 = 149597870700;                      % 1 AU [m]
@@ -24,47 +26,78 @@ EndEpoch = juliandate(datetime('tomorrow')+60000);
 ElementType = 'COE'; 
 ElementSet = [r0 1e-3 0 deg2rad(90) deg2rad(0) deg2rad(0)]; 
 
-Orbit = Orbit(mu, ElementType, ElementSet, InitialEpoch);
+Orbit_1 = Orbit(mu, ElementType, ElementSet, InitialEpoch);
 % Orbit = Orbit.Normalize(true, r0);
 % Orbit = Orbit.Normalize(true, 2*r0);
-Orbit = Orbit.SetFinalEpoch(EndEpoch); 
+Orbit_1 = Orbit_1.SetFinalEpoch(EndEpoch); 
 
 % Transformation of elements 
-Orbit = Orbit.ChangeStateFormat('MOE');
-Orbit = Orbit.ChangeStateFormat('COE');
-Orbit = Orbit.ChangeStateFormat('Cartesian');
-Orbit = Orbit.ChangeStateFormat('COE');
-Orbit = Orbit.ChangeStateFormat('Cartesian');
-Orbit = Orbit.ChangeStateFormat('KS');
-Orbit = Orbit.ChangeStateFormat('MOE');
-Orbit = Orbit.ChangeStateFormat('COE');
-Orbit = Orbit.ChangeStateFormat('KS');
-Orbit = Orbit.ChangeStateFormat('COE');
-Orbit = Orbit.ChangeStateFormat('Cartesian');
-Orbit = Orbit.ChangeStateFormat('MOE');
-Orbit = Orbit.ChangeStateFormat('KS');
-Orbit = Orbit.ChangeStateFormat('MOE');
-Orbit = Orbit.ChangeStateFormat('COE');
-Orbit = Orbit.ChangeStateFormat('KS');
-Orbit = Orbit.ChangeStateFormat('Cartesian');
+Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+Orbit_1 = Orbit_1.ChangeStateFormat('Cartesian');
+Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+Orbit_1 = Orbit_1.ChangeStateFormat('Cartesian');
+Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+Orbit_1 = Orbit_1.ChangeStateFormat('Cartesian');
+Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+Orbit_1 = Orbit_1.ChangeStateFormat('Cartesian');
 
 % Orbit propagation 
-Orbit = Orbit.AddPropagator('Keplerian', 0.5);
+Orbit_1 = Orbit_1.AddPropagator('Keplerian', 0.5);
 
 % Set trajectory 
-Orbit.set_graphics();
+Orbit_1.set_graphics();
+
+%% J2 problem testing
+% Constants of the environment 
+J2 = 1.08263e-3;            % Second zonal harmonic of the Earth
+Re = 6378.14e3;             % Reference J2 radius [m] 
+
+% Orbit definition
+ElementType = 'COE'; 
+ElementSet = [r0 1e-3 0 deg2rad(90) deg2rad(0) deg2rad(0)]; 
+
+Orbit_2 = Orbit(mu, ElementType, ElementSet, InitialEpoch);
+
+Orbit_2 = Orbit_2.DefineJ2Problem(J2, Re);
+Orbit_2 = Orbit_2.Normalize(true, r0);
+Orbit_2 = Orbit_2.SetFinalEpoch(EndEpoch); 
+Orbit_3 = Orbit_2;
+
+% Orbit propagation 
+Orbit_2 = Orbit_2.AddPropagator('Mean J2', 0.5);
+Orbit_3 = Orbit_3.AddPropagator('Osculating J2', 0.5);
+
+Orbit_2 = Orbit_2.SetCurrentEpoch(EndEpoch);
+Orbit_2 = Orbit_2.Propagate();
+Orbit_2.set_graphics();
+Orbit_2.PlotTrajectory(figure(1), Orbit_2.InitialEpoch, Orbit_2.PropagatedEpoch);
+
+Orbit_3 = Orbit_3.SetCurrentEpoch(EndEpoch);
+Orbit_3 = Orbit_3.Propagate();
+Orbit_3.set_graphics();
+hold on;
+Orbit_3.PlotTrajectory(figure(1), Orbit_3.InitialEpoch, Orbit_3.PropagatedEpoch);
 
 %% Constellation definition
 % Constellation constructor
 Constellation_test = Constellation('User defined', 4,4,4);
 
 % Add/remove orbits
-Constellation_test = Constellation_test.AddOrbit(Orbit);
-Constellation_test = Constellation_test.AddOrbit(Orbit);
-Constellation_test = Constellation_test.AddOrbit(Orbit);
-Constellation_test = Constellation_test.AddOrbit(Orbit);
+Constellation_test = Constellation_test.AddOrbit(Orbit_1);
+Constellation_test = Constellation_test.AddOrbit(Orbit_1);
+Constellation_test = Constellation_test.AddOrbit(Orbit_1);
+Constellation_test = Constellation_test.AddOrbit(Orbit_1);
 
-Orbit_2 = Orbit; 
+Orbit_2 = Orbit_1; 
 Orbit_2.ElementSet(3) = pi; 
 Orbit_2.SetCurrentEpoch(Orbit_2.InitialEpoch); 
 Constellation_test = Constellation_test.AddOrbit(Orbit_2);
