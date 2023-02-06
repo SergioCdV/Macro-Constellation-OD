@@ -340,6 +340,8 @@ classdef Orbit
                     f = @(tspan)obj.APSDynamics(tspan, 1);
                  case 'SGP4'
                     f = @(tspan)obj.APSDynamics(tspan, 2);
+                case 'High-precision'
+                    f = @(tspan)obj.NumericalProp(tspan);
                 otherwise
                     error('The selected propagator model is not currently implemented.');
             end
