@@ -109,3 +109,19 @@ Constellation_test.N = Constellation_test.NumberOfSpacecraft();
 % Propagation 
 Constellation_test = Constellation_test.Propagate(juliandate(datetime('now'))+6000);
 Constellation_test.OrbitSet{1,2}.PlotTrajectory(figure(1), Constellation_test.OrbitSet{1,2}.InitialEpoch, Constellation_test.OrbitSet{1,2}.FinalEpoch);
+
+%% Observations 
+% Define an inertial observer
+InObs = GibbsObserver().probability_detection(0.98).AddCovariance(eye(2,2)).AddInitialState(juliandate(datetime('now')), [1 0 0]);
+
+% Prepare the measurements
+[timestamp, meas, StateEvolution] = InObs.Observe(Orbit_2, juliandate(datetime('now'))+9000);
+
+Measurements = {[timestamp, meas], StateEvolution, @(meas, y)InObs.LikelihoodFunction(InObs.Sigma, meas, y), @(Orbit)InObs.ObservationProcess(timestamp, Orbit, StateEvolution)};
+
+% Plot results 
+figure 
+view(3)
+plot3(meas(:,1),meas(:,2),meas(:,3));
+grid on; 
+
