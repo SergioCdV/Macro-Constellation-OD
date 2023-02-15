@@ -48,7 +48,7 @@ classdef GibbsObserver
 
         % Add an initial state 
         function [obj] = AddInitialState(obj, myInitialEpoch, myInitialState)
-            if (myInitialEpoch > 0)
+            if (myInitialEpoch >= 0)
                 obj.InitialEpoch = myInitialEpoch; 
             end
 
@@ -67,17 +67,11 @@ classdef GibbsObserver
             % Propagate the observer and take the measurements
             AuxOrbit = AuxOrbit.Normalize(false, 1);
             Tspan = AuxOrbit.StateEvolution(:,1);
-            [Tspan, StateEvolution] = obj.Dynamics(obj.State, Tspan+AuxOrbit.InitialEpoch); 
+            AuxOrbitEvolution = AuxOrbit.StateEvolution(:,2:end);
+            [Tspan, StateEvolution] = obj.Dynamics(AuxOrbit.InitialEpoch, obj.State, Tspan); 
 
-            index = Tspan >= obj.InitialEpoch;
-            AuxOrbitEvolution = AuxOrbit.StateEvolution(index,2:end);
-            Tspan = Tspan(index);
-
-            if (~isempty(Tspan) && ~isempty(StateEvolution))
-                % Restrict the orbit state evolution    
-                meas = []; 
-                timestamp = [];
-                
+            if (~isempty(StateEvolution))
+                % Restrict the orbit state evolution                    
                 [timestamp, meas] = obj.ObservationProcess(Tspan, AuxOrbitEvolution, StateEvolution);
     
                 % Apply the probability of detection
@@ -116,14 +110,15 @@ classdef GibbsObserver
     
     methods (Access = private)
         % Dynamics 
-        function [Tspan, StateEvolution] = Dynamics(obj, State, Tspan)
+        function [Tspan, StateEvolution] = Dynamics(obj, Epoch, State, Tspan)
             % Check if an initial state has been given 
             if (~isempty(obj.State))
                 % Check the tspan 
-                index = Tspan >= obj.InitialEpoch;
+                index = Epoch + Tspan >= obj.InitialEpoch;
     
                 % Copy the state
                 StateEvolution = repmat(State, length(Tspan(index)), 1);
+                Tspan = Tspan(index);
             else
                 error('No obsever state has been given.');
             end

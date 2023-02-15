@@ -20,7 +20,7 @@ mu = 3.86e14;
 
 % Epochs
 InitialEpoch = juliandate(datetime('now'));
-EndEpoch = juliandate(datetime('tomorrow')+60000);
+EndEpoch = juliandate(datetime('tomorrow'));
 
 % Orbit definition
 ElementType = 'COE'; 
@@ -112,16 +112,25 @@ Constellation_test.OrbitSet{1,2}.PlotTrajectory(figure(1), Constellation_test.Or
 
 %% Observations 
 % Define an inertial observer
-InObs = GibbsObserver().probability_detection(0.98).AddCovariance(eye(2,2)).AddInitialState(juliandate(datetime('now')), [1 0 0]);
+InObs = GibbsObserver().probability_detection(0.98).AddCovariance(eye(2,2)).AddInitialState(0, [1 0 0]);
 
 % Prepare the measurements
-[timestamp, meas, StateEvolution] = InObs.Observe(Orbit_2, juliandate(datetime('now'))+9000);
+[timestamp, meas, StateEvolution] = InObs.Observe(Orbit_2, juliandate(datetime('now')));
 
 Measurements = {[timestamp, meas], StateEvolution, @(meas, y)InObs.LikelihoodFunction(InObs.Sigma, meas, y), @(Orbit)InObs.ObservationProcess(timestamp, Orbit, StateEvolution)};
 
-% Plot results 
-figure 
-view(3)
-plot3(meas(:,1),meas(:,2),meas(:,3));
-grid on; 
+% Define a radar topocentric observer located at Madrid
+RadarObs = TopocentricObserver('RADAR').probability_detection(0.98).AddFOV(deg2rad(120)).AddCovariance(eye(2,2)).AddInitialState(juliandate(datetime('now')), [deg2rad(40) deg2rad(-3)]);
 
+% Prepare the measurements
+[timestamp, meas_radar, StateEvolution] = RadarObs.Observe(Orbit_2, juliandate(datetime('now'))+1800/(24 * 3600));
+
+Measurements_radar = {[timestamp, meas_radar], StateEvolution, @(meas, y)RadarObs.LikelihoodFunction(RadarObs.Sigma, meas, y), @(Orbit)RadarObs.ObservationProcess(timestamp, Orbit, StateEvolution)};
+
+% Define a telescope topocentric observer located at Madrid
+TelescopeObs = TopocentricObserver('RADEC').probability_detection(0.98).AddFOV(deg2rad(120)).AddCovariance(eye(2,2)).AddInitialState(juliandate(datetime('now')), [deg2rad(40) deg2rad(-3)]);
+
+% Prepare the measurements
+[timestamp, meas_radec, StateEvolution] = TelescopeObs.Observe(Orbit_2, juliandate(datetime('now'))+1800/(24 * 3600));
+
+Measurements_telescope = {[timestamp, meas_radec], StateEvolution, @(meas, y)TelescopeObs.LikelihoodFunction(RadarObs.Sigma, meas, y), @(Orbit)TelescopeObs.ObservationProcess(timestamp, Orbit, StateEvolution)};

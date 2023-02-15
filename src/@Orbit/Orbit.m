@@ -171,7 +171,7 @@ classdef Orbit
         function [obj] = Propagate(obj)
             % Check time span limits 
             if (obj.PropagatedEpoch < obj.CurrentEpoch)
-                aux_tspan = 0:obj.TimeStep:obj.CurrentEpoch-obj.PropagatedEpoch;
+                aux_tspan = 0:obj.TimeStep:(obj.CurrentEpoch-obj.PropagatedEpoch) * 24 * 3600;
 
                 if (obj.Normalized)
                     aux_tspan = aux_tspan / obj.Tc;
@@ -184,7 +184,7 @@ classdef Orbit
                 obj.StateEvolution = [obj.StateEvolution; [obj.StateEvolution(end,1)+aux_tspan(2:end).' AuxEvolution(2:end,:)]];
                 obj.ElementSet = AuxEvolution(end,:);
 
-                obj.Tspan = [obj.Tspan obj.PropagatedEpoch:obj.TimeStep:obj.CurrentEpoch];
+                obj.Tspan = [obj.Tspan obj.PropagatedEpoch:obj.TimeStep / (24 * 3600):obj.CurrentEpoch];
     
                 % Update the last propagated epoch 
                 obj.PropagatedEpoch = obj.CurrentEpoch;
