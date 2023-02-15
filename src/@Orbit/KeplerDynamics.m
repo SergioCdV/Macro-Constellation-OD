@@ -12,10 +12,14 @@
 function [AuxEvolution] = KeplerDynamics(obj, tspan)
     % Switch the Keplerian propagation 
     switch (obj.ElementType)
-        case 'Cartesian'
+        case 'ECI'
             AuxElements = obj.ECI2COE(obj.ElementSet, true);
             AuxEvolution = COEK_dynamics(obj.mu, AuxElements, obj.PropagatedEpoch, tspan);
             AuxEvolution = obj.ECI2COE(AuxEvolution(:,1:obj.m), false);
+        case 'Polar'
+             AuxElements = obj.POL2COE(obj.ElementSet, true);
+            AuxEvolution = COEK_dynamics(obj.mu, AuxElements, obj.PropagatedEpoch, tspan);
+            AuxEvolution = obj.POL2COE(AuxEvolution(:,1:obj.m), false);  
         case 'COE'
             AuxEvolution = COEK_dynamics(obj.mu, obj.ElementSet, obj.PropagatedEpoch, tspan);
         case 'MOE'

@@ -68,7 +68,7 @@ classdef Orbit
 
             % Assignment
             switch (myElementType)
-                case 'Cartesian'
+                case 'ECI'
                     obj.ElementType = myElementType;
                 case 'COE'
                     obj.ElementType = myElementType;
@@ -82,7 +82,7 @@ classdef Orbit
 
             try 
                 switch (myElementType)
-                    case 'Cartesian'
+                    case 'ECI'
                         obj.ElementSet = myElementSet(1,1:obj.m);
                     case 'COE'
                         obj.ElementSet = myElementSet(1,1:obj.m);
@@ -195,7 +195,7 @@ classdef Orbit
         function [obj] = ChangeStateFormat(obj, myElementType)
             switch (myElementType)
                 case obj.ElementType
-                case 'Cartesian'
+                case 'ECI'
                     obj = State2Cartesian(obj);
                 case 'COE'
                     obj = State2COE(obj);
@@ -225,7 +225,7 @@ classdef Orbit
                 obj.Re = obj.Re/obj.Lc;
 
                 switch (obj.ElementType)
-                    case 'Cartesian'
+                    case 'ECI'
                         obj.ElementSet = obj.ElementSet./[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
                         obj.StateEvolution(:,2:end) = obj.StateEvolution(:,2:end)./[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
                     case 'COE'
@@ -243,7 +243,7 @@ classdef Orbit
                 obj.Normalized = true;
             elseif (obj.Normalized && ~direction)
                 switch (obj.ElementType)
-                    case 'Cartesian'
+                    case 'ECI'
                         obj.ElementSet = obj.ElementSet.*[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
                         obj.StateEvolution(:,2:obj.m+2) = obj.StateEvolution(:,2:obj.m+2)./[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
                     case 'COE'
@@ -308,7 +308,7 @@ classdef Orbit
     
                 % Change to Cartesian coordinates
                 switch (obj.ElementType)
-                    case 'Cartesian'
+                    case 'ECI'
                     otherwise
                     obj = obj.State2Cartesian();
                 end
@@ -368,7 +368,7 @@ classdef Orbit
         % Change the state evolution to the COE format
         function [obj] = State2COE(obj)
            switch (obj.ElementType)
-                case 'Cartesian'
+                case 'ECI'
                     obj.ElementSet = obj.ECI2COE(obj.ElementSet, true);
                     aux = obj.ECI2COE(obj.StateEvolution(:,2:end), true);
                     obj.StateEvolution = [obj.StateEvolution(:,1) aux];
@@ -389,10 +389,14 @@ classdef Orbit
         % Change the state evolution to the MOE format
         function [obj] = State2MOE(obj)
            switch (obj.ElementType)
-                case 'Cartesian'
+                case 'ECI'
                     obj.ElementSet = obj.ECI2MOE(obj.ElementSet, true);
                     aux = obj.ECI2MOE(obj.StateEvolution(:,2:end), true);
                     obj.StateEvolution = [obj.StateEvolution(:,1) aux];
+                case 'POL'
+                    obj.ElementSet = obj.ECI2POL(obj.ElementSet, false);
+                    obj.ElementSet = obj.ECI2MOE(obj.ElementSet, true);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2KS(obj.StateEvolution(:,2:end), true)];
                 case 'COE'
                     obj.ElementSet = obj.COE2MOE(obj.ElementSet, true);
                     aux = obj.COE2MOE(obj.StateEvolution(:,2:end), true);
@@ -415,7 +419,11 @@ classdef Orbit
            lastwarn('Only for unperturbed circular orbits.');
 
            switch (obj.ElementType)
-                case 'Cartesian'
+                case 'ECI'
+                    obj.ElementSet = obj.ECI2KS(obj.ElementSet, true);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2KS(obj.StateEvolution(:,2:end), true)];
+                case 'POL'
+                    obj.ElementSet = obj.ECI2POL(obj.ElementSet, false);
                     obj.ElementSet = obj.ECI2KS(obj.ElementSet, true);
                     obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2KS(obj.StateEvolution(:,2:end), true)];
                 case 'COE'
