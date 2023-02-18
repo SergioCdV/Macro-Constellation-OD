@@ -25,6 +25,10 @@ classdef Orbit
 
         StateEvolution = [];    % Evolution of the orbital element set
         Dynamics;               % Dynamical model to be used
+
+        % Gravitational parameters of the Sun and Moon
+        mus = 1.32712440018e20;
+        mul = 4.9048695e12;
     end
 
     % Private properties 
@@ -70,6 +74,8 @@ classdef Orbit
             switch (myElementType)
                 case 'ECI'
                     obj.ElementType = myElementType;
+                case 'POL'
+                    obj.ElementType = myElementType;
                 case 'COE'
                     obj.ElementType = myElementType;
                 case 'MOE'
@@ -84,6 +90,8 @@ classdef Orbit
                 switch (myElementType)
                     case 'ECI'
                         obj.ElementSet = myElementSet(1,1:obj.m);
+                    case 'POL'
+                        obj.ElementType = myElementType;
                     case 'COE'
                         obj.ElementSet = myElementSet(1,1:obj.m);
                         obj.ElementSet = [obj.ElementSet obj.ElementSet(1)*(1-obj.ElementSet(2)^2)];
@@ -197,6 +205,8 @@ classdef Orbit
                 case obj.ElementType
                 case 'ECI'
                     obj = State2Cartesian(obj);
+                case 'POL'
+                    obj = State2POL(obj);
                 case 'COE'
                     obj = State2COE(obj);
                 case 'MOE'
@@ -228,6 +238,9 @@ classdef Orbit
                     case 'ECI'
                         obj.ElementSet = obj.ElementSet./[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
                         obj.StateEvolution(:,2:end) = obj.StateEvolution(:,2:end)./[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
+                    case 'POL'
+                        obj.ElementSet = obj.ElementSet([1 3 4 6])./[obj.Lc*ones(1,2) obj.Lc/obj.Tc*ones(1,2)];
+                        obj.StateEvolution(:,2:end) = obj.StateEvolution(:,[1 3 4 6])./[obj.Lc*ones(1,2) obj.Lc/obj.Tc*ones(1,2)];                       
                     case 'COE'
                         obj.ElementSet([1 7]) = obj.ElementSet([1 7])/obj.Lc;
                         obj.StateEvolution(:,[2 obj.m+2]) = obj.StateEvolution(:,[2 obj.m+2])./obj.Lc;
@@ -244,8 +257,11 @@ classdef Orbit
             elseif (obj.Normalized && ~direction)
                 switch (obj.ElementType)
                     case 'ECI'
-                        obj.ElementSet = obj.ElementSet.*[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
-                        obj.StateEvolution(:,2:obj.m+2) = obj.StateEvolution(:,2:obj.m+2)./[obj.Lc*ones(1,3) obj.Lc/obj.T*ones(1,3)];
+                        obj.ElementSet = obj.ElementSet.*[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
+                        obj.StateEvolution(:,2:obj.m+1) = obj.StateEvolution(:,2:obj.m+1).*[obj.Lc*ones(1,3) obj.Lc/obj.Tc*ones(1,3)];
+                    case 'POL'
+                        obj.ElementSet = obj.ElementSet([1 3 4 6]).*[obj.Lc*ones(1,2) obj.Lc/obj.Tc*ones(1,2)];
+                        obj.StateEvolution(:,2:end) = obj.StateEvolution(:,[1 3 4 6]).*[obj.Lc*ones(1,2) obj.Lc/obj.Tc*ones(1,2)]; 
                     case 'COE'
                         obj.ElementSet([1 7]) = obj.ElementSet([1 7])*obj.Lc;
                         obj.StateEvolution(:,[2 obj.m+2]) = obj.StateEvolution(:,[2 obj.m+2])*obj.Lc;
@@ -354,6 +370,10 @@ classdef Orbit
                     obj.ElementSet = obj.ECI2COE(obj.ElementSet, false);
                     aux = obj.ECI2COE(obj.StateEvolution(:,2:end), false);
                     obj.StateEvolution = [obj.StateEvolution(:,1) aux];
+                case 'POL'
+                    obj.ElementSet = obj.ECI2POL(obj.ElementSet, false);
+                    aux = obj.ECI2POL(obj.StateEvolution(:,2:end), false);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) aux];    
                 case 'MOE'
                     obj.ElementSet = obj.ECI2MOE(obj.ElementSet, false);
                     obj.StateEvolution(:,2:end) = obj.ECI2MOE(obj.StateEvolution(:,2:end), false);
@@ -371,6 +391,12 @@ classdef Orbit
                 case 'ECI'
                     obj.ElementSet = obj.ECI2COE(obj.ElementSet, true);
                     aux = obj.ECI2COE(obj.StateEvolution(:,2:end), true);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) aux];
+                case 'POL'
+                    obj.ElementSet = obj.ECI2POL(obj.ElementSet, false);
+                    obj.ElementSet = obj.ECI2COE(obj.ElementSet, true);
+                    aux = obj.ECI2POL(obj.StateEvolution(:,2:end), false);
+                    aux = obj.ECI2COE(aux, true);
                     obj.StateEvolution = [obj.StateEvolution(:,1) aux];
                 case 'MOE'
                     obj.ElementSet = obj.COE2MOE(obj.ElementSet, false);
@@ -396,7 +422,9 @@ classdef Orbit
                 case 'POL'
                     obj.ElementSet = obj.ECI2POL(obj.ElementSet, false);
                     obj.ElementSet = obj.ECI2MOE(obj.ElementSet, true);
-                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2KS(obj.StateEvolution(:,2:end), true)];
+                    aux = obj.ECI2POL(obj.StateEvolution(:,2:end), false);
+                    aux = obj.ECI2MOE(aux, true);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) aux];
                 case 'COE'
                     obj.ElementSet = obj.COE2MOE(obj.ElementSet, true);
                     aux = obj.COE2MOE(obj.StateEvolution(:,2:end), true);
@@ -408,6 +436,34 @@ classdef Orbit
                     aux = obj.ECI2KS(obj.StateEvolution(:,2:end), false);
                     aux = obj.ECI2COE(aux, true);
                     obj.StateEvolution = [obj.StateEvolution(:,1) obj.COE2MOE(aux, true)];
+                otherwise
+                    error('Requested transformation is not currently supported.');
+            end
+        end
+
+        % Change the state evolution to the POL format
+        function [obj] = State2POL(obj)
+           switch (obj.ElementType)
+                case 'ECI'
+                    obj.ElementSet = obj.ECI2POL(obj.ElementSet, true);
+                    aux = obj.ECI2POL(obj.StateEvolution(:,2:end), true);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) aux];
+                case 'COE'
+                    obj.ElementSet = obj.ECI2COE(obj.ElementSet, false);
+                    obj.ElementSet = obj.ECI2POL(obj.ElementSet, true);
+                    aux = obj.ECI2COE(obj.StateEvolution(:,2:end), false);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2POL(aux, true)];
+                case 'MOE'
+                    obj.ElementSet = obj.ECI2MOE(obj.ElementSet, false);
+                    obj.ElementSet = obj.ECI2POL(obj.ElementSet, true);
+                    aux = obj.ECI2MOE(obj.StateEvolution(:,2:end), false);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2POL(aux, true)];
+                case 'KS'
+                    obj.ElementSet = obj.ECI2KS(obj.ElementSet, false);
+                    obj.ElementSet = obj.ECI2POL(obj.ElementSet, true);
+                    aux = obj.ECI2KS(obj.StateEvolution(:,2:end), false);
+                    aux = obj.ECI2POL(aux, true);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) aux];
                 otherwise
                     error('Requested transformation is not currently supported.');
             end
@@ -425,7 +481,9 @@ classdef Orbit
                 case 'POL'
                     obj.ElementSet = obj.ECI2POL(obj.ElementSet, false);
                     obj.ElementSet = obj.ECI2KS(obj.ElementSet, true);
-                    obj.StateEvolution = [obj.StateEvolution(:,1) obj.ECI2KS(obj.StateEvolution(:,2:end), true)];
+                    aux = obj.ECI2POL(obj.StateEvolution(:,2:end), false);
+                    aux = obj.ECI2KS(aux, true);
+                    obj.StateEvolution = [obj.StateEvolution(:,1) aux];
                 case 'COE'
                     obj.ElementSet = obj.ECI2COE(obj.ElementSet, false);
                     obj.ElementSet = obj.ECI2KS(obj.ElementSet, true);

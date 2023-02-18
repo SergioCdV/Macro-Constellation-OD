@@ -14,7 +14,7 @@ function [AuxEvolution] = APSDynamics(obj, tspan, model)
     switch (model)
         case 0
             % Switch the Keplerian propagation
-            AuxOrbit = obj.ChangeStateFormat('Cartesian');
+            AuxOrbit = obj.ChangeStateFormat('ECI');
         
             % Integration of the osculating problem
             [~, AuxEvolution] = ode45(@(t,s)APSO_dynamics(obj.mu, obj.J2, obj.Re, s, obj.PropagatedEpoch, t), tspan, AuxOrbit.ElementSet, obj.IntegrationOptions);
@@ -49,7 +49,9 @@ function [dS] = APSO_dynamics(mu, J2, Re, s, InitialEpoch, tspan)
 
    % Dynamics
    R = norm(r);
-   gamma = -mu*r/R^3.*[1-3/2*J2*(Re/R)^2*(5*(r(3)/R)^2-1); 1-3/2*J2*(Re/R)^2*(5*(r(3)/R)^2-1); 1-3/2*J2*(Re/R)^2*(5*(r(3)/R)^2-3)];
+   gamma = -mu*r/R^3.*[1-3/2*J2*(Re/R)^2*(5*(r(3)/R)^2-1); ...
+                       1-3/2*J2*(Re/R)^2*(5*(r(3)/R)^2-1); ...
+                       1-3/2*J2*(Re/R)^2*(5*(r(3)/R)^2-3)];
    dS = [v; gamma];
 end
 

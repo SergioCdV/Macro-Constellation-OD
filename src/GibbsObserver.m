@@ -62,7 +62,7 @@ classdef GibbsObserver
         % Observations
         function [timestamp, meas, StateEvolution] = Observe(obj, Orbit, Epoch)
             % Propagate the orbit 
-            AuxOrbit = Orbit.SetCurrentEpoch(Epoch).Propagate().ChangeStateFormat('Cartesian');
+            AuxOrbit = Orbit.SetCurrentEpoch(Epoch).Propagate().ChangeStateFormat('ECI');
 
             % Propagate the observer and take the measurements
             AuxOrbit = AuxOrbit.Normalize(false, 1);

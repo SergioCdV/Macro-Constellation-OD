@@ -26,29 +26,37 @@ EndEpoch = juliandate(datetime('tomorrow'));
 ElementType = 'COE'; 
 ElementSet = [r0 1e-3 0 deg2rad(90) deg2rad(0) deg2rad(0)]; 
 
-Orbit_1 = Orbit(mu, ElementType, ElementSet, InitialEpoch);
-% Orbit = Orbit.Normalize(true, r0);
-% Orbit = Orbit.Normalize(true, 2*r0);
+Orbit_1 = Orbit(mu, ElementType, ElementSet, InitialEpoch).Normalize(true, 2*r0);
 Orbit_1 = Orbit_1.SetFinalEpoch(EndEpoch); 
 
 % Transformation of elements 
 Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
 Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('Cartesian');
+Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
 Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('Cartesian');
+Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
 Orbit_1 = Orbit_1.ChangeStateFormat('KS');
 Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
 Orbit_1 = Orbit_1.ChangeStateFormat('COE');
 Orbit_1 = Orbit_1.ChangeStateFormat('KS');
 Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('Cartesian');
+Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
 Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
 Orbit_1 = Orbit_1.ChangeStateFormat('KS');
 Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
 Orbit_1 = Orbit_1.ChangeStateFormat('COE');
 Orbit_1 = Orbit_1.ChangeStateFormat('KS');
-Orbit_1 = Orbit_1.ChangeStateFormat('Cartesian');
+Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
+Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
+Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+Orbit_1 = Orbit_1.ChangeStateFormat('COE');
 
 % Orbit propagation 
 Orbit_1 = Orbit_1.AddPropagator('Keplerian', 0.5);
@@ -71,10 +79,12 @@ Orbit_2 = Orbit_2.DefineJ2Problem(J2, Re);
 Orbit_2 = Orbit_2.Normalize(true, r0);
 Orbit_2 = Orbit_2.SetFinalEpoch(EndEpoch); 
 Orbit_3 = Orbit_2;
+Orbit_4 = Orbit_3;
 
 % Orbit propagation 
 Orbit_2 = Orbit_2.AddPropagator('Mean J2', 0.5);
 Orbit_3 = Orbit_3.AddPropagator('Osculating J2', 0.5);
+Orbit_3 = Orbit_3.AddPropagator('High-precision', 0.5);
 
 Orbit_2 = Orbit_2.SetCurrentEpoch(EndEpoch);
 Orbit_2 = Orbit_2.Propagate();
@@ -83,9 +93,15 @@ Orbit_2.PlotTrajectory(figure(1), Orbit_2.InitialEpoch, Orbit_2.PropagatedEpoch)
 
 Orbit_3 = Orbit_3.SetCurrentEpoch(EndEpoch);
 Orbit_3 = Orbit_3.Propagate();
+
+Orbit_4 = Orbit_4.SetCurrentEpoch(EndEpoch);
+Orbit_4 = Orbit_4.Propagate();
+
 Orbit_3.set_graphics();
 hold on;
 Orbit_3.PlotTrajectory(figure(1), Orbit_3.InitialEpoch, Orbit_3.PropagatedEpoch);
+hold on;
+Orbit_4.PlotTrajectory(figure(1), Orbit_4.InitialEpoch, Orbit_4.PropagatedEpoch);
 
 %% Constellation definition
 % Constellation constructor
