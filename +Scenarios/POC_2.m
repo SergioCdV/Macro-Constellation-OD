@@ -165,25 +165,25 @@ for i = 1:size(Constellation_1.OrbitSet,1)
     [RadarTime_aux, meas_radar_aux, RadarState_aux] = RadarObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
 
     RadarTime = [RadarTime; RadarTime_aux];
-    meas_radar = [meas_radar; meas_radar_aux];
+    meas_radar = [meas_radar; [i*ones(size(meas_radar_aux,1),1) meas_radar_aux]];
     RadarState = [RadarState; RadarState_aux];
 
     [TelescopeTime_aux, meas_radec_aux, TelescopeState_aux] = TelescopeObs_1.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
 
     TelescopeTime_1 = [TelescopeTime_1; TelescopeTime_aux];
-    meas_radec_1 = [meas_radec_1; meas_radec_aux];
+    meas_radec_1 = [meas_radec_1; [i*ones(size(meas_radec_aux,1),1) meas_radec_aux]];
     TelescopeState_1 = [TelescopeState_1; TelescopeState_aux];
 
     [TelescopeTime_aux, meas_radec_aux, TelescopeState_aux] = TelescopeObs_2.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
 
     TelescopeTime_2 = [TelescopeTime_2; TelescopeTime_aux];
-    meas_radec_2 = [meas_radec_2; meas_radec_aux];
+    meas_radec_2 = [meas_radec_2; [i*ones(size(meas_radec_aux,1),1) meas_radec_aux]];
     TelescopeState_2 = [TelescopeState_2; TelescopeState_aux];
 
     [TelescopeTime_aux, meas_radec_aux, TelescopeState_aux] = TelescopeObs_3.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
 
     TelescopeTime_3 = [TelescopeTime_3; TelescopeTime_aux];
-    meas_radec_3 = [meas_radec_3; meas_radec_aux];
+    meas_radec_3 = [meas_radec_3; [i*ones(size(meas_radec_aux,1),1) meas_radec_aux]];
     TelescopeState_3 = [TelescopeState_3; TelescopeState_aux];
 end
 
@@ -236,6 +236,18 @@ Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 % Estimation
 
 %% Analysis
+% Expectance of the number of targets in time 
+N_error = N_hat - N;
+Analysis.ExpectanceTargets = [mean(N_error) std(N_error)];
+
+for i = 1:length(tspan)
+    % CPEP
+    Analysis.CPEP(i) = Filters.CPEP(N, N_hat, X, X_hat);
+
+    % Hausdorff
+    Analysis.HaussdorfDistance(i) = Filters.Hausdorff(X(:,i), X_hat(:,i));
+end
+
 
 %% Results
 figure

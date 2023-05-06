@@ -149,19 +149,19 @@ for i = 1:1
     [InTime_aux, meas_aux, InState_aux] = InObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);   
 
     InTime = [InTime; InTime_aux];
-    meas = [meas; meas_aux];
+    meas = [meas; [i*ones(size(meas_aux,1),1) meas_aux]];
     InState = [InState; InState_aux];
 
     [RadarTime_aux, meas_radar_aux, RadarState_aux] = RadarObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
 
     RadarTime = [RadarTime; RadarTime_aux];
-    meas_radar = [meas_radar; meas_radar_aux];
+    meas_radar = [meas_radar; [i*ones(size(meas_radar_aux,1),1) meas_radar_aux]];
     RadarState = [RadarState; RadarState_aux];
 
     [TelescopeTime_aux, meas_radec_aux, TelescopeState_aux] = TelescopeObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
 
     TelescopeTime = [TelescopeTime; TelescopeTime_aux];
-    meas_radec = [meas_radec; meas_radec_aux];
+    meas_radec = [meas_radec; [i*ones(size(meas_radec_aux,1),1) meas_radec_aux];
     TelescopeState = [TelescopeState; TelescopeState_aux];
 end
 
@@ -208,6 +208,17 @@ Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 % Estimation
 
 %% Analysis
+% Expectance of the number of targets in time 
+N_error = N_hat - N;
+Analysis.ExpectanceTargets = [mean(N_error) std(N_error)];
+
+for i = 1:length(tspan)
+    % CPEP
+    Analysis.CPEP(i) = Filters.CPEP(N, N_hat, X, X_hat);
+
+    % Hausdorff
+    Analysis.HaussdorfDistance(i) = Filters.Hausdorff(X(:,i), X_hat(:,i));
+end
 
 %% Results
 figure
