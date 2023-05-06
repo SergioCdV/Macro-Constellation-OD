@@ -141,7 +141,6 @@ function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
 
             for k = 1:j
                 for l = 1:J
-                    % State update with Joseph form for covariance update
                     switch (Estimator.Algorithm)
                         case 'EKF'
                             [m(k*J+l,i), sigma(k*J+l,i)] = Estimator.EKF_correction(m(l,i), sigma(l,i), z(:,l), meas(k,2:end).', H(:,l), K(:,1+dim*(l-1):dim*l));
@@ -161,7 +160,6 @@ function [f, X, N] = kinematic_estimator(obj, t, observations, Estimator)
                 end
 
                 eta = kappa+sum(w(i,1+k*J:(k+1)*J),2);
-                eta
                 if (eta ~= 0)
                     w(i,1+k*J:(k+1)*J) = w(i,1+k*J:(k+1)*J)./eta;
                 end

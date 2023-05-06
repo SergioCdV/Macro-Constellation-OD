@@ -2,60 +2,32 @@
 % Date: 06/02/2023
 % Author: Sergio Cuevas del Valle
 
-%% Class implementation of an GibbsObserver object
+%% Class implementation of an GibbsSensor object
 
-classdef GibbsObserver
-    properties
-        Type = 'Gibbs';         % Class of observer
-
-        State = [];             % State of the observer
-        Measurements = {};      % Measurements acquired by the observer
-
-        InstrumentParams;       % Instrument parameters
-        Sigma;                  % Covariance of the instrument
-
-        InitialEpoch;           % Initial epoch
-        PropagatedEpoch;        % Propgated epoch
-        CurrentEpoch;           % Current epoch
-
-        PD;                     % Probability of detection
-    end
-
-    % Private properties
-    properties (Access = private)
-        StateDim = 3;           % Dimension of the state vector
-        MeasDim = 3;            % Dimension of the measurement vector
-    end
+classdef GibbsSensor< Sensors.AbstractSensor
+    properties  
+    end 
 
     methods 
-        % Add probability of detection 
-        function [obj] = probability_detection(obj, myPD)
-            obj.PD = myPD;
+        % Constructor 
+        function [obj] = GibbsSensor(myInitialEpoch, myInitialState, mySigma, myPD)
+            myStateDim = 3;
+            myMeasDim = 3;
+            obj = obj@Sensors.AbstractSensor(myStateDim, myMeasDim, myInitialEpoch, myInitialState, mySigma, myPD);
         end
 
-        % Add instrument covariance 
-        function [obj] = AddCovariance(obj, mySigma)
-            try chol(mySigma);
-                if (size(mySigma,1) == 1)
-                    obj.Sigma = mySigma * eye(obj.StateDim);
-                else
-                    obj.Sigma = mySigma;
-                end
-            catch
-                error('Input covariance matrix is not positive definite.'); 
-            end
-        end
-
-        % Add an initial state 
-        function [obj] = AddInitialState(obj, myInitialEpoch, myInitialState)
-            if (myInitialEpoch >= 0)
-                obj.InitialEpoch = myInitialEpoch; 
-            end
-
-            if (size(myInitialState,2) == obj.StateDim)
-                obj.State = myInitialState;
+        % Configuration of the clutter model 
+        function [obj] = ConfigClutter(myPC, myNC)
+            if (myPC >= 0 && myPC <= 1)
+                obj.PC = myPC;
             else
-                error('No valid observer state has been addded.');
+                error('No valid detection probability has been input.'); 
+            end
+
+            if (myNC > 0)
+                obj.NC = myPC; 
+            else
+                error('The average number of false measurements is not valid.');
             end
         end
 
@@ -79,6 +51,35 @@ classdef GibbsObserver
                 timestamp = timestamp(index); 
                 meas = meas(index,:); 
                 StateEvolution = StateEvolution(index,:);
+
+                % Add some noise
+                for i = 1:size(meas,1)
+                    meas(i,:) = mvnrnd(meas(i,:), obj.Sigma, 1);
+                end
+
+                % Add clutter
+                index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
+                clutter = rand(length(index), 3); 
+                clutter = clutter./sqrt(dot(clutter,clutter,2));
+                clutter = clutter .* ( mean(sqrt(dot(meas(index,:),meas(index,:),2))) );
+                clutterTime = timestamp(index,:);
+                clutterState = StateEvolution(index,:);
+                
+                if (size(clutter,1) > round(1.5 * obj.NC))
+                    index = randi([0 size(clutter,1)], obj.NC, 1); 
+                    clutter = clutter(index,:);
+                    clutterTime = clutterTime(index,:);
+                    clutterState = clutterState(index,:);
+                end
+
+                % Final assembly
+                meas = [meas clutter(index,:)];
+                timestamp = [timestamp; clutterTime];
+                StateEvolution = [StateEvolution; clutterState];
+                [timestamp, index] = sort(timestamp);
+                meas = meas(index,:);
+                StateEvolution = StateEvolution(index,:);
+
             else
                 timestamp = []; 
                 meas = []; 
@@ -86,6 +87,14 @@ classdef GibbsObserver
             end
         end
 
+        % Likelihood function
+        function [q] = LikelihoodFunction(obj, Sigma, z, y)
+            res = y-z;
+            q = exp((0.5*res.'*P^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
+        end
+    end
+    
+    methods (Access = private)
         % Observation process 
         function [t, meas] = ObservationProcess(obj, Tspan, Orbit, StateEvolution)
             % Preallocaton
@@ -101,14 +110,6 @@ classdef GibbsObserver
             end
         end
 
-        % Gaussian likelihood function
-        function [q] = LikelihoodFunction(obj, Sigma, z, y)
-            res = y-z;
-            q = exp((0.5*res.'*P^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
-        end
-    end
-    
-    methods (Access = private)
         % Dynamics 
         function [Tspan, StateEvolution] = Dynamics(obj, Epoch, State, Tspan)
             % Check if an initial state has been given 

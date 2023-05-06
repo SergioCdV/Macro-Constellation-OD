@@ -20,12 +20,12 @@ T = 10;                 % Stopping simulation time
 tspan = 0:5e-1:2*pi*T; 
 
 % Initial conditions
-Nmax = 4;                  % Number of targets
+Nmax = 8;                  % Number of targets
 
 %% Generation of targets
 % Births 
 PS = 0.999;                                                 % Probability of surviving
-PB = 0.05;                                                  % Birth rate
+PB = 0.001;                                                  % Birth rate
 
 % Target generation and death
 N = Nmax.*ones(1,length(tspan));
@@ -100,7 +100,7 @@ s_meas = reshape(s_meas.',[size(s_meas,2)*size(s_meas,1) 1]);
 [time_meas, index] = sort(time_meas); 
 s_meas = s_meas(index,:);
 
-PD = 0.98;
+PD = 0.7;
 index = logical(randsrc(length(time_meas),1,[0, 1; 1-PD, PD]));
 time_meas = time_meas(index);
 s_meas = s_meas(index,:);
@@ -186,7 +186,7 @@ PHD = PHD.AssignLikelihood(@(y,z,P)likelihood_function(y,z,P));
 
 %% Estimation 
 % Estimation
-[f, X, N(2,:)] = PHD.kinematic_estimator(tspan, meas, UKF_estimator);
+[f, X, N(2,:)] = PHD.kinematic_estimator(tspan, meas, EKF_estimator);
 theta = PHD.Domain;
 
 % State estimation 

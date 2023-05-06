@@ -94,6 +94,7 @@ classdef EstimatorUKF
                     if (obj.InitFlag)
                         obj.Sigma = chol(Sigma);
                     end
+                    obj.Sigma = chol(Sigma);
                 otherwise
                     obj.Sigma = Sigma;
             end

@@ -3,20 +3,15 @@
 % Author: Sergio Cuevas del Valle
 
 %% Orbit test %% 
-% Script to test the functionalities of the orbit class
+% Script to test the functionalities of the fundamental problem classes
 
 close all; 
 clear;
 
-setup_path();
-
 %% Orbit definition 
 % Constants of the environment 
-r0 = 149597870700;                      % 1 AU [m]
-mu = 1.32712440042e+20;                 % Gavitational parameter of the Sun [m^3 s^−2] 
-
-r0 = 6900e3; 
-mu = 3.86e14;
+r0 = 6900e3;                  % 1 AU [m]
+mu = 3.86e14;                 % Gavitational parameter of the Sun [m^3 s^−2] 
 
 % Epochs
 InitialEpoch = juliandate(datetime('now'));
@@ -77,31 +72,24 @@ Orbit_2 = Orbit(mu, ElementType, ElementSet, InitialEpoch);
 
 Orbit_2 = Orbit_2.DefineJ2Problem(J2, Re);
 Orbit_2 = Orbit_2.Normalize(true, r0);
-Orbit_2 = Orbit_2.SetFinalEpoch(EndEpoch); 
+Orbit_2 = Orbit_2.SetCurrentEpoch(EndEpoch); 
 Orbit_3 = Orbit_2;
 Orbit_4 = Orbit_3;
 
 % Orbit propagation 
-Orbit_2 = Orbit_2.AddPropagator('Mean J2', 0.5);
-Orbit_3 = Orbit_3.AddPropagator('Osculating J2', 0.5);
-Orbit_3 = Orbit_3.AddPropagator('High-precision', 0.5);
+Orbit_2 = Orbit_2.AddPropagator('Mean J2', 60);
+Orbit_3 = Orbit_3.AddPropagator('Osculating J2', 60);
+Orbit_4 = Orbit_4.AddPropagator('High-precision', 60);
 
-Orbit_2 = Orbit_2.SetCurrentEpoch(EndEpoch);
 Orbit_2 = Orbit_2.Propagate();
-Orbit_2.set_graphics();
-Orbit_2.PlotTrajectory(figure(1), Orbit_2.InitialEpoch, Orbit_2.PropagatedEpoch);
-
-Orbit_3 = Orbit_3.SetCurrentEpoch(EndEpoch);
 Orbit_3 = Orbit_3.Propagate();
-
-Orbit_4 = Orbit_4.SetCurrentEpoch(EndEpoch);
 Orbit_4 = Orbit_4.Propagate();
 
-Orbit_3.set_graphics();
 hold on;
+Orbit_2.PlotTrajectory(figure(1), Orbit_2.InitialEpoch, Orbit_2.PropagatedEpoch);
 Orbit_3.PlotTrajectory(figure(1), Orbit_3.InitialEpoch, Orbit_3.PropagatedEpoch);
-hold on;
 Orbit_4.PlotTrajectory(figure(1), Orbit_4.InitialEpoch, Orbit_4.PropagatedEpoch);
+hold off
 
 %% Constellation definition
 % Constellation constructor
@@ -128,25 +116,42 @@ Constellation_test.OrbitSet{1,2}.PlotTrajectory(figure(1), Constellation_test.Or
 
 %% Observations 
 % Define an inertial observer
-InObs = GibbsObserver().probability_detection(0.98).AddCovariance(eye(2,2)).AddInitialState(0, [1 0 0]);
+InitialState = [0 1 0];
+InitialEpoch = juliandate(datetime('now'));
+Sigma = diag([1e3 1e3 1e3]);
+PD = 0.98;
+InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
 
 % Prepare the measurements
-[timestamp, meas, StateEvolution] = InObs.Observe(Orbit_2, juliandate(datetime('now')));
+FinalObserveEpoch = juliandate(datetime('now'))+1800/(24 * 3600);
+[timestamp, meas, StateEvolution] = InObs.Observe(Orbit_2, FinalObserveEpoch);
 
 Measurements = {[timestamp, meas], StateEvolution, @(meas, y)InObs.LikelihoodFunction(InObs.Sigma, meas, y), @(Orbit)InObs.ObservationProcess(timestamp, Orbit, StateEvolution)};
 
 % Define a radar topocentric observer located at Madrid
-RadarObs = TopocentricObserver('RADAR').probability_detection(0.98).AddFOV(deg2rad(120)).AddCovariance(eye(2,2)).AddInitialState(juliandate(datetime('now')), [deg2rad(40) deg2rad(-3)]);
+InitialState = [deg2rad(40) deg2rad(-3)];
+InitialEpoch = juliandate(datetime('now'));
+Sigma = eye(2,2);
+PD = 0.98;
+FOV = deg2rad(120);
+RadarObs = Sensors.RadarSensor(InitialEpoch, InitialState, Sigma, PD, FOV);
 
 % Prepare the measurements
-[timestamp, meas_radar, StateEvolution] = RadarObs.Observe(Orbit_2, juliandate(datetime('now'))+1800/(24 * 3600));
+FinalObserveEpoch = juliandate(datetime('now'))+1800/(24 * 3600);
+[timestamp, meas_radar, StateEvolution] = RadarObs.Observe(Orbit_2, FinalObserveEpoch);
 
 Measurements_radar = {[timestamp, meas_radar], StateEvolution, @(meas, y)RadarObs.LikelihoodFunction(RadarObs.Sigma, meas, y), @(Orbit)RadarObs.ObservationProcess(timestamp, Orbit, StateEvolution)};
 
 % Define a telescope topocentric observer located at Madrid
-TelescopeObs = TopocentricObserver('RADEC').probability_detection(0.98).AddFOV(deg2rad(120)).AddCovariance(eye(2,2)).AddInitialState(juliandate(datetime('now')), [deg2rad(40) deg2rad(-3)]);
+InitialState = [deg2rad(40) deg2rad(-3)];
+InitialEpoch = juliandate(datetime('now'));
+Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.00001) deg2rad(0.00001)]);
+PD = 0.98;
+FOV = deg2rad(120);
+TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD);
 
 % Prepare the measurements
-[timestamp, meas_radec, StateEvolution] = TelescopeObs.Observe(Orbit_2, juliandate(datetime('now'))+1800/(24 * 3600));
+FinalObserveEpoch = juliandate(datetime('now'))+1800/(24 * 3600);
+[timestamp, meas_radec, StateEvolution] = TelescopeObs.Observe(Orbit_2, FinalObserveEpoch);
 
 Measurements_telescope = {[timestamp, meas_radec], StateEvolution, @(meas, y)TelescopeObs.LikelihoodFunction(RadarObs.Sigma, meas, y), @(Orbit)TelescopeObs.ObservationProcess(timestamp, Orbit, StateEvolution)};

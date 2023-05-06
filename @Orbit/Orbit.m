@@ -109,6 +109,11 @@ classdef Orbit
             obj.StateEvolution(1,:) = [0, obj.ElementSet];
         end
 
+        % Change the orbit label
+        function [obj] = ChangeLabel(obj, myName)
+            obj.Name = myName;
+        end
+
         % Add final epoch 
         function [obj] = SetFinalEpoch(obj, myFinalEpoch)
             if (myFinalEpoch < obj.InitialEpoch)
@@ -118,10 +123,6 @@ classdef Orbit
             end
         end
 
-        % Change the orbit label
-        function [obj] = ChangeLabel(obj, myName)
-            obj.Name = myName;
-        end
 
         % Specify current epoch 
         function [obj] = SetCurrentEpoch(obj, myCurrentEpoch)
@@ -159,6 +160,11 @@ classdef Orbit
             obj.Dynamics = obj.AddModel(myModel);
         end
 
+        % Add integration tolerances
+        function [obj] = AddIntegrationTolerances(myIntegrationOptions)
+            obj.IntegrationOptions = myIntegrationOptions;
+        end
+
         % Define J2 problem 
         function [obj] = DefineJ2Problem(obj, myJ2, myRe)
             obj.J2 = myJ2; 
@@ -170,11 +176,6 @@ classdef Orbit
             end
         end
         
-        % Add integration tolerances
-        function [obj] = AddIntegrationTolerances(myIntegrationOptions)
-            obj.IntegrationOptions = myIntegrationOptions;
-        end
-
         % Propagate to current epoch 
         function [obj] = Propagate(obj)
             % Check time span limits 
@@ -281,23 +282,26 @@ classdef Orbit
                 obj.Normalized = false;
             end
         end
+    end
 
-        % Set graphics 
-        function set_graphics(obj)
-            % Set graphical properties
-            set(groot, 'defaultAxesTickLabelInterpreter', 'latex'); 
-            set(groot, 'defaultAxesFontSize', 11); 
-            set(groot, 'defaultAxesGridAlpha', 0.3); 
-            set(groot, 'defaultAxesLineWidth', 0.75);
-            set(groot, 'defaultAxesXMinorTick', 'on');
-            set(groot, 'defaultAxesYMinorTick', 'on');
-            set(groot, 'defaultFigureRenderer', 'painters');
-            set(groot, 'defaultLegendBox', 'off');
-            set(groot, 'defaultLegendInterpreter', 'latex');
-            set(groot, 'defaultLegendLocation', 'best');
-            set(groot, 'defaultLineLineWidth', 1); 
-            set(groot, 'defaultLineMarkerSize', 3);
-            set(groot, 'defaultTextInterpreter','latex');
+    % Set graphics 
+    methods (Static)
+            function set_graphics()
+                % Set graphical properties
+                set(groot, 'defaultAxesTickLabelInterpreter', 'latex'); 
+                set(groot, 'defaultAxesFontSize', 11); 
+                set(groot, 'defaultAxesGridAlpha', 0.3); 
+                set(groot, 'defaultAxesLineWidth', 0.75);
+                set(groot, 'defaultAxesXMinorTick', 'on');
+                set(groot, 'defaultAxesYMinorTick', 'on');
+                set(groot, 'defaultFigureRenderer', 'painters');
+                set(groot, 'defaultLegendBox', 'off');
+                set(groot, 'defaultLegendInterpreter', 'latex');
+                set(groot, 'defaultLegendLocation', 'best');
+                set(groot, 'defaultLineLineWidth', 1); 
+                set(groot, 'defaultLineMarkerSize', 3);
+                set(groot, 'defaultTextInterpreter','latex');
+            end
         end
 
         % Plot the state evolution 

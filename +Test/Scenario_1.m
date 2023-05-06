@@ -2,7 +2,9 @@
 % Date: 02/02/2023
 % Author: Sergio Cuevas del Valle
 
-%% Constellation orbit determination. Scenario I
+%% Constellation orbit determination. Scenario I %%
+% This script provides a 1 plane constellation of 5 spacecraft, generating
+% measurements from Madrid and Paris.
 
 close all 
 clear 
@@ -13,8 +15,8 @@ r0 = 6900e3;                % Characteristic distance of the Earth orbit
 mu = 3.86e14;               % Gravitional parameter of the Earth
 
 Nmax = 4;                   % Number of targets
-T = 800;                   % Number of orbital periods
-tspan = 0:5e-1:T;             % Observation time span
+T = 60 * 15;                % Number of orbital periods
+tspan = 0:5e-1:T;           % Observation time span
 
 % Target birth 
 PS = 0.9999;                % Probability of surviving
