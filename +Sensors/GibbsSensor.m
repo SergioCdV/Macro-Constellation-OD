@@ -111,11 +111,12 @@ classdef GibbsSensor< Sensors.AbstractSensor
         end
 
         % Dynamics 
-        function [Tspan, StateEvolution] = Dynamics(obj, Epoch, State, Tspan)
+        function [epoch, StateEvolution] = Dynamics(obj, Epoch, State, Tspan)
             % Check if an initial state has been given 
             if (~isempty(obj.State))
                 % Check the tspan 
                 index = Epoch + Tspan >= obj.InitialEpoch;
+                epoch = Epoch + Tspan(index) / (24 * 3600);
     
                 % Copy the state
                 StateEvolution = repmat(State, length(Tspan(index)), 1);

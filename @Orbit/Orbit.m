@@ -282,28 +282,7 @@ classdef Orbit
                 obj.Normalized = false;
             end
         end
-    end
-
-    % Set graphics 
-    methods (Static)
-            function set_graphics()
-                % Set graphical properties
-                set(groot, 'defaultAxesTickLabelInterpreter', 'latex'); 
-                set(groot, 'defaultAxesFontSize', 11); 
-                set(groot, 'defaultAxesGridAlpha', 0.3); 
-                set(groot, 'defaultAxesLineWidth', 0.75);
-                set(groot, 'defaultAxesXMinorTick', 'on');
-                set(groot, 'defaultAxesYMinorTick', 'on');
-                set(groot, 'defaultFigureRenderer', 'painters');
-                set(groot, 'defaultLegendBox', 'off');
-                set(groot, 'defaultLegendInterpreter', 'latex');
-                set(groot, 'defaultLegendLocation', 'best');
-                set(groot, 'defaultLineLineWidth', 1); 
-                set(groot, 'defaultLineMarkerSize', 3);
-                set(groot, 'defaultTextInterpreter','latex');
-            end
-        end
-
+        
         % Plot the state evolution 
         function PlotTrajectory(obj, figureObj, InitialEpoch, FinalEpoch)
             % Sanity check 
@@ -345,6 +324,26 @@ classdef Orbit
                 warning('No propagation is available');
             end
         end
+    end
+
+    % Set graphics 
+    methods (Static)
+        function set_graphics()
+            % Set graphical properties
+            set(groot, 'defaultAxesTickLabelInterpreter', 'latex'); 
+            set(groot, 'defaultAxesFontSize', 11); 
+            set(groot, 'defaultAxesGridAlpha', 0.3); 
+            set(groot, 'defaultAxesLineWidth', 0.75);
+            set(groot, 'defaultAxesXMinorTick', 'on');
+            set(groot, 'defaultAxesYMinorTick', 'on');
+            set(groot, 'defaultFigureRenderer', 'painters');
+            set(groot, 'defaultLegendBox', 'off');
+            set(groot, 'defaultLegendInterpreter', 'latex');
+            set(groot, 'defaultLegendLocation', 'best');
+            set(groot, 'defaultLineLineWidth', 1); 
+            set(groot, 'defaultLineMarkerSize', 3);
+            set(groot, 'defaultTextInterpreter','latex');
+        end        
     end
 
     % Private methods 

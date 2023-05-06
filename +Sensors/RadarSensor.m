@@ -68,7 +68,7 @@ classdef RadarSensor < Sensors.AbstractSensor
 
                 % Add clutter
                 index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
-                clutter = [normrnd(mean(meas(index,1)), 5e2, length(index), 1) normrnd(mean(meas(index,2)), 1e2, length(index), 1)];
+                clutter = [normrnd(500e3, 5e2, length(index), 1) normrnd(7e3, 1e2, length(index), 1)];
                 clutterTime = timestamp(index,:);
                 clutterState = StateEvolution(index,:);
                 

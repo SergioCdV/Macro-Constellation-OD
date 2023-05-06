@@ -15,7 +15,7 @@ r0 = 6900e3;                % Characteristic distance of the Earth orbit
 mu = 3.86e14;               % Gravitional parameter of the Earth
 Re = 6378e3;                % Reference Earth radius
 J2 = 1e-3;                  % Earth's J2 parameter
-Nmax = 1;                   % Number of targets
+Nmax = 12;                  % Number of targets
 
 % Constellation lifetime
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
@@ -25,11 +25,8 @@ Step = 600;                                         % Integration step in second
 tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
 
 % Target birth 
-PS = 0.9999;                % Probability of surviving
-PB = 0.00;                  % Birth rate
-PD = 0.98;                  % Probability of detecting a target
-Pc = 0.0;                   % Probability of false measurements
-Vc = 10;                    % Number of false measurements per orbit 
+PS = 1;                     % Probability of surviving
+PB = 0.00;                  % Birth rate 
 
 %% Target births and deaths 
 % Preallocation 
@@ -38,31 +35,34 @@ S = cell(Nmax,1);                   % Time span of each target
 
 % Original births
 for i = 1:Nmax
-    % Deaths of the original plane 
-    deaths = logical(randsrc(length(tspan),1,[0, 1; PS, 1-PS]));
+    % Deaths of the original set 
+    deaths = logical(randsrc(length(tspan), 1, [0, 1; PS, 1-PS]));
     td = find(deaths, 1, 'first'); 
       
     if (isempty(td))
         td = length(tspan);
     else
-        N(1,td:end) = N(1,td:end)-1;
-    end
-    S{i} = [0 tspan(td)];  
+        N(1,td:end) = max(0, N(1,td:end)-1);
+    end 
+    S{i} = [0 max(tspan(td), Step)];
 end
 
 GoOn = true;
 i = 1;
 while (GoOn)
     % Birth times  
-    births = logical(randsrc(1,length(tspan)-2,[0, 1; 1-PB, PB])) & (N(1:end-2) < Nmax);
+    births = logical(randsrc(1, length(tspan)-1, [0, 1; 1-PB, PB])) & (N(1:end-1) < Nmax);
     tb = find(births, 1, 'first');
 
     % Death times
     if (~isempty(tb))
-        tspan_d = logical(randsrc(1, length(tspan), [0, 1; PS, 1-PS])) & (tspan > tspan(tb+2));
+        tspan_d = logical(randsrc(1, length(tspan(tb:end)), [0, 1; PS, 1-PS]));
         td = find(tspan_d, 1, 'first'); 
         if (isempty(td))
             td = length(tspan);
+        else
+            td = max(td,2);
+            td = min(tb+td, length(tspan));
         end
 
         % Initial conditions
@@ -84,15 +84,18 @@ Constellation_1 = Constellation_1.ChangeTimeStep(Step);
 
 % Orbit definition
 ElementType = 'COE'; 
-ElementSet = [r0 1e-3 0 deg2rad(0) deg2rad(0)]; 
+Planes(1,:) = [r0 1e-3 deg2rad(0) deg2rad(30) deg2rad(270)]; 
+Planes(2,:) = [r0 1e-3 deg2rad(120) deg2rad(90) deg2rad(270)]; 
+Planes(3,:) = [r0 1e-3 deg2rad(240) deg2rad(150) deg2rad(270)]; 
 
-for i = 1:size(S,1)
-    % Generate a random anomaly 
-    ElementSet = [ElementSet(1:5) 2*pi*rand()];
+ElementSet = [Scenarios.sso_elements(6, repmat(Planes(1, [1 2 5]),  4, 1)); ...
+              Scenarios.sso_elements(10, repmat(Planes(1, [1 2 5]), 4, 1));
+              Scenarios.sso_elements(12, repmat(Planes(1, [1 2 5]), 4, 1))];
 
+for i = 1:size(ElementSet,1)
     % Add the orbit to the constellation
-    AuxOrbit = Orbit(mu, ElementType, ElementSet, InitialEpoch + S{i}(1));
-    AuxOrbit = AuxOrbit.SetFinalEpoch(EndEpoch + S{i}(2));
+    AuxOrbit = Orbit(mu, ElementType, ElementSet(i,:), InitialEpoch + S{i}(1)/86400);
+    AuxOrbit = AuxOrbit.SetFinalEpoch(InitialEpoch + S{i}(2)/86400);
     AuxOrbit = AuxOrbit.Normalize(true, r0); 
     AuxOrbit = AuxOrbit.ChangeStateFormat('COE');
     AuxOrbit = AuxOrbit.DefineJ2Problem(J2, Re);
@@ -101,6 +104,125 @@ for i = 1:size(S,1)
     Constellation_1 = Constellation_1.AddOrbit(AuxOrbit);
 end
 
+%% Sensor network 
+% Clutter
+Pc = 0.0;                   % Probability of false measurements
+Vc = 10;                    % Number of false measurements per sensor (surveillance region)
+
+% Define a radar topocentric observer located at Madrid
+InitialState = [deg2rad(40) deg2rad(-3)];
+InitialEpoch = juliandate(datetime('now'));
+Sigma = eye(2,2);
+PD = 0.98;
+FOV = deg2rad(120);
+RadarObs = Sensors.RadarSensor(InitialEpoch, InitialState, Sigma, PD, FOV);
+
+% Define a telescope topocentric observer located at Madrid
+InitialState = [deg2rad(40) deg2rad(-3)];
+InitialEpoch = juliandate(datetime('now'));
+Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.00001) deg2rad(0.00001)]);
+PD = 0.98;
+FOV = deg2rad(120);
+TelescopeObs_1 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD);
+
+% Define a telescope topocentric observer located at Madrid
+InitialState = [deg2rad(40) deg2rad(-3)];
+InitialEpoch = juliandate(datetime('now'));
+Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.00001) deg2rad(0.00001)]);
+PD = 0.98;
+FOV = deg2rad(120);
+TelescopeObs_2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD);
+
+% Define a telescope topocentric observer located at Madrid
+InitialState = [deg2rad(40) deg2rad(-3)];
+InitialEpoch = juliandate(datetime('now'));
+Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.00001) deg2rad(0.00001)]);
+PD = 0.98;
+FOV = deg2rad(120);
+TelescopeObs_3 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD);
+
+%% Observation process 
+% Prepare the measurements
+FinalObserveEpoch = EndEpoch;
+
+RadarTime = [];
+meas_radar = [];
+RadarState = [];
+
+TelescopeTime_1 = [];
+meas_radec_1 = [];
+TelescopeState_1 = [];
+
+TelescopeTime_2 = [];
+meas_radec_2 = [];
+TelescopeState_2 = [];
+
+TelescopeTime_3 = [];
+meas_radec_3 = [];
+TelescopeState_3 = [];
+
+for i = 1:size(Constellation_1.OrbitSet,1)
+    [RadarTime_aux, meas_radar_aux, RadarState_aux] = RadarObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
+
+    RadarTime = [RadarTime; RadarTime_aux];
+    meas_radar = [meas_radar; meas_radar_aux];
+    RadarState = [RadarState; RadarState_aux];
+
+    [TelescopeTime_aux, meas_radec_aux, TelescopeState_aux] = TelescopeObs_1.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
+
+    TelescopeTime_1 = [TelescopeTime_1; TelescopeTime_aux];
+    meas_radec_1 = [meas_radec_1; meas_radec_aux];
+    TelescopeState_1 = [TelescopeState_1; TelescopeState_aux];
+
+    [TelescopeTime_aux, meas_radec_aux, TelescopeState_aux] = TelescopeObs_2.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
+
+    TelescopeTime_2 = [TelescopeTime_2; TelescopeTime_aux];
+    meas_radec_2 = [meas_radec_2; meas_radec_aux];
+    TelescopeState_2 = [TelescopeState_2; TelescopeState_aux];
+
+    [TelescopeTime_aux, meas_radec_aux, TelescopeState_aux] = TelescopeObs_3.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
+
+    TelescopeTime_3 = [TelescopeTime_3; TelescopeTime_aux];
+    meas_radec_3 = [meas_radec_3; meas_radec_aux];
+    TelescopeState_3 = [TelescopeState_3; TelescopeState_aux];
+end
+
+ObservationSpan = [RadarTime; TelescopeTime_1; TelescopeTime_2; TelescopeTime_3];
+[ObservationSpan, index] = sort(ObservationSpan);
+
+Measurements = cell(length(ObservationSpan), 4);
+Measurements(:,1) = num2cell(ObservationSpan);
+
+for i = 1:length(index)
+    if (index(i) <= size(RadarTime,1))
+        Measurements(i,2) = { meas_radar(index(i),:) };
+        Measurements(i,3) = { RadarState(index(i),:) };
+        Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(RadarObs.Sigma, meas_radar(index(i),:), y) };
+
+    elseif (index(i) <= size(RadarTime,1) + size(TelescopeTime_1,1))
+        L = size(RadarTime,1);
+        Measurements(i,2) = { meas_radec_1(index(i)-L,:) };
+        Measurements(i,3) = { TelescopeState_1(index(i)-L,:) };
+        Measurements(i,4) = { @(y)TelescopObs_1.LikelihoodFunction(TelescopObs_1.Sigma, meas_radec_1(index(i)-L,:), y) };
+
+    elseif (index(i) <= size(RadarTime,1) + size(TelescopeTime_1,1) + size(TelescopeTime_2,1))
+        L = size(RadarTime,1) + size(TelescopeTime_1,1);
+        Measurements(i,2) = { meas_radec_2(index(i)-L,:) };
+        Measurements(i,3) = { TelescopeState_2(index(i)-L,:) };
+        Measurements(i,4) = { @(y)TelescopObs_2.LikelihoodFunction(TelescopObs_2.Sigma, meas_radec_2(index(i)-L,:), y) };
+
+    else
+        L = size(RadarTime,1) + size(TelescopeTime_1,1) + size(TelescopeTime_2,1);
+        Measurements(i,2) = { meas_radec_3(index(i)-L,:) };
+        Measurements(i,3) = { TelescopeState_2(index(i)-L,:) };
+        Measurements(i,4) = { @(y)TelescopeObs_3.LikelihoodFunction(TelescopeObs_3.Sigma, meas_radec(index(i)-L,:), y) };
+    end
+end
+
+%% Propagation 
+% Propagation 
+Constellation_1 = Constellation_1.Propagate(EndEpoch);
+
 % Set graphics
 AuxOrbit.set_graphics();
 
@@ -108,80 +230,76 @@ AuxOrbit.set_graphics();
 Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 [Constellation_1.Np, Constellation_1.n] = Constellation_1.NumberOfPlanes();
 
-% Propagation 
-Constellation_1 = Constellation_1.Propagate(EndEpoch);
-
-%% Observation process 
-% Define the orbit to observer 
-Orbit_2 = Constellation_1.OrbitSet{i,2}.ChangeStateFormat('COE').Normalize(false, r0);
-
-% Define an inertial observer
-InObs = GibbsObserver().probability_detection(0.98).AddCovariance(diag([100 10])).AddInitialState(InitialEpoch, [1 0 0]);
-
-% Prepare the measurements
-[timestamp, meas, StateEvolution] = InObs.Observe(Orbit_2, EndEpoch);
-Measurements = {[timestamp, meas], StateEvolution, @(meas, y)InObs.LikelihoodFunction(InObs.Sigma, meas, y), @(Orbit)InObs.ObservationProcess(timestamp, Orbit, StateEvolution)};
-
-% Define a radar and telescope topocentric observer located at Madrid
-RadarObs = TopocentricObserver('RADAR').probability_detection(0.98).AddFOV(deg2rad(120)).AddCovariance(diag([100 10])).AddInitialState(InitialEpoch, [deg2rad(40) deg2rad(-3)]);
-TelescopeObs = TopocentricObserver('RADEC').probability_detection(0.98).AddFOV(deg2rad(120)).AddCovariance( deg2rad(diag([5 5])) ).AddInitialState(InitialEpoch, [deg2rad(40) deg2rad(-3)]);
-
-% Prepare the measurements
-[timestamp, meas_radar, StateEvolution] = RadarObs.Observe(Orbit_2, EndEpoch);
-meas_radar = meas_radar + [normrnd(0,100,size(meas_radar,1),1) normrnd(0,10,size(meas_radar,1),1)];
-
-% Clutter generation 
-index = logical(randsrc(size(meas_radar,1), 1, [0, 1; 1-Pc, Pc]));
-clutter = [normrnd(mean(meas_radar(:,1)), deg2rad(100), size(meas_radar, 1), 1) normrnd(mean(meas_radar(:,2)), deg2rad(10), size(meas_radar, 1), 1)]; 
-clutter = [meas_radar(index,1) clutter(index,:)];
-timestamp = [timestamp; timestamp(index,:)];
-StateEvolution = [StateEvolution; StateEvolution(index,:)];
-
-if (size(clutter,1) > Vc)
-    index = randi([0 size(clutter,1)], Vc, 1); 
-    clutter = clutter(index,:);
-end
-
-% Complete measurement set 
-meas_radar = [meas_radar; clutter];
-[~, index] = sort(meas_radar(:,1)); 
-meas_radar = meas_radar(index,:);
-StateEvolution = StateEvolution(index,:);
-timestamp = timestamp(index);
-
-Measurements_radar = {[timestamp, meas_radar], StateEvolution, @(meas, y)RadarObs.LikelihoodFunction(RadarObs.Sigma, meas, y), @(Orbit)RadarObs.ObservationProcess(timestamp, Orbit, StateEvolution)};
-
-[timestamp, meas_radec, StateEvolution] = TelescopeObs.Observe(Orbit_2, EndEpoch);
-meas_radec(:,1:2) = meas_radec(:,1:2) + [normrnd(0,deg2rad(5),size(meas_radec,1),1) normrnd(0,deg2rad(5),size(meas_radec,1),1)];
-
-% Clutter generation 
-index = logical(randsrc(size(meas_radec,1), 1, [0, 1; 1-Pc, Pc]));
-clutter = normrnd(0, deg2rad(1), size(meas_radec, 1), 2);
-clutter = [meas_radec(index,1) clutter(index,:)];
-timestamp = [timestamp; timestamp(index,:)];
-StateEvolution = [StateEvolution; StateEvolution(index,:)];
-
-if (size(clutter,1) > Vc)
-    index = randi([0 size(clutter,1)], Vc, 1); 
-    clutter = clutter(index,:);
-end
-
-% Complete measurement set 
-meas_radec = [meas_radec; clutter];
-[~, index] = sort(meas_radec(:,1)); 
-meas_radec = meas_radec(index,:);
-StateEvolution = StateEvolution(index,:);
-timestamp = timestamp(index);
-
-Measurements_telescope = {[timestamp, meas_radec], StateEvolution, @(meas, y)TelescopeObs.LikelihoodFunction(RadarObs.Sigma, meas, y), @(Orbit)TelescopeObs.ObservationProcess(timestamp, Orbit, StateEvolution)};
-
 %% Estimation 
 % Estimator configuration
 
 % Estimation
 
-%% Results
+%% Analysis
 
+%% Results
+figure
+hold on
+plot(tspan, Constellation_1.N)
+%scatter(tspan, ); 
+hold off
+legend('$N$',' $\hat{N}$');
+xlabel('Epoch $t$')
+ylabel('N. SC')
+grid on;
+
+figure
+hold on
+plot(tspan, Constellation_1.Np)
+%scatter(tspan, ); 
+hold off
+legend('$N_p$',' $\hat{N}_p$');
+xlabel('Epoch $t$')
+ylabel('N. planes')
+grid on;
+
+figure
+hold on
+plot(tspan, Constellation_1.n(:,1))
+%scatter(tspan, ); 
+legend('$n_{i,p}$',' $\hat{n}_{i,p}$', 'AutoUpdate', 'off');
+if (size(Constellation_1.n,2) > 1)
+    plot(tspan, Constellation_1.n(:,2:end))
+    %scatter(tspan, )
+end
+hold off
+xlabel('Epoch $t$')
+ylabel('N. SC')
+grid on;
+%%
+% Constellation plot 
+figure(10)
+hold on
+
+Earth().plot();
+
+Constellation_1.OrbitSet{1,2}.Normalize(false,r0).PlotTrajectory(figure(10), InitialEpoch, EndEpoch);
+Constellation_1.OrbitSet{5,2}.Normalize(false,r0).PlotTrajectory(figure(10), InitialEpoch, EndEpoch);
+Constellation_1.OrbitSet{9,2}.Normalize(false,r0).PlotTrajectory(figure(10), InitialEpoch, EndEpoch);
+
+for i = 1:size(Constellation_1.OrbitSet,1)
+    Raux = Constellation_1.OrbitSet{i,2}.ChangeStateFormat('ECI').Normalize(false,r0).StateEvolution(end,1:4);
+    if (Raux(1) >= tspan(end))
+        Raux = Constellation_1.OrbitSet{i,2}.ChangeStateFormat('ECI').Normalize(false,r0).StateEvolution(end,2:4);
+        scatter3(Raux(1), Raux(2), Raux(3), 50, 'filled', 'r', 'LineWidth', 2);
+    end
+end
+hold off
+xlabel('$X$')
+ylabel('$Y$')
+zlabel('$Z$')
+grid on;
+
+% Anomaly plot 
+
+% Distribution on the sphere (attitude planes)
+
+% Distribution on the momenta space
 
 %% Auxiliary functions
 % Kinematic proposal 

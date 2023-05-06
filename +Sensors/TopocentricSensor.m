@@ -68,7 +68,7 @@ classdef TopocentricSensor < Sensors.AbstractSensor
 
                 % Add clutter
                 index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
-                clutter = [normrnd(mean(meas(index,1)), deg2rad(20), length(index), 1) normrnd(mean(meas(index,2)), deg2rad(20), length(index), 1) zeros(length(index),2)];
+                clutter = [normrnd(0, deg2rad(20), length(index), 1) normrnd(0, deg2rad(20), length(index), 1) zeros(length(index),2)];
                 clutterTime = timestamp(index,:);
                 clutterState = StateEvolution(index,:);
                 
