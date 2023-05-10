@@ -7,9 +7,12 @@ classdef (Abstract) BayesFilter
         % Constructor 
         function [obj] = BayesFilter()
         end
+
+        % Initialization 
+        [obj] = initialization(obj);
         
         % Bayesian recursion
-        [prior_m] = propagation_step(prior);
-        [posterior] = correction_step(measurements, prior_m);
+        [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior);
+        [Posterior] = CorrectionStep(obj, Measurements, PropPrior);
     end
 end

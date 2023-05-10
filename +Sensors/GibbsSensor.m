@@ -87,14 +87,6 @@ classdef GibbsSensor< Sensors.AbstractSensor
             end
         end
 
-        % Likelihood function
-        function [q] = LikelihoodFunction(obj, Sigma, z, y)
-            res = y-z;
-            q = exp((0.5*res.'*P^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
-        end
-    end
-    
-    methods (Access = private)
         % Observation process 
         function [t, meas] = ObservationProcess(obj, Tspan, Orbit, StateEvolution)
             % Preallocaton
@@ -110,6 +102,14 @@ classdef GibbsSensor< Sensors.AbstractSensor
             end
         end
 
+        % Likelihood function
+        function [q] = LikelihoodFunction(obj, Sigma, z, y)
+            res = y-z;
+            q = exp((-0.5*res.'*Sigma^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
+        end
+    end
+    
+    methods (Access = private)
         % Dynamics 
         function [epoch, StateEvolution] = Dynamics(obj, Epoch, State, Tspan)
             % Check if an initial state has been given 

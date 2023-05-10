@@ -117,14 +117,6 @@ classdef TopocentricSensor < Sensors.AbstractSensor
             meas(1,4) = (vslant(3,1)-rate*sin(meas(1,3)))/sqrt(slant(1,1)^2+slant(2,1)^2);
         end
 
-        % Gaussian likelihood function
-        function [q] = LikelihoodFunction(obj, Sigma, z, y)
-            res = y-z;
-            q = exp((0.5*res.'*P^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
-        end
-    end
-    
-    methods (Access = private)
         % Observation process 
         function [t, meas] = ObservationProcess(obj, Tspan, Orbit, StateEvolution)
             % Preallocation
@@ -140,6 +132,14 @@ classdef TopocentricSensor < Sensors.AbstractSensor
             end
         end
 
+        % Gaussian likelihood function
+        function [q] = LikelihoodFunction(obj, Sigma, z, y)
+            res = y-z;
+            q = exp((-0.5*res.'*Sigma^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
+        end
+    end
+    
+    methods (Access = private)
         % Dynamics 
         function [epoch, StateEvolution] = Dynamics(obj, Epoch, State, Tspan)
         % Check if an initial state has been given 

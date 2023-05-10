@@ -8,9 +8,9 @@ classdef IOD_filter < Filters.BayesFilter
         % Tangent grid properties
         L; 
 
-        % Modes
-        N; 
-        modes;
+        % State estimation
+        N = 10; 
+        X;
 
         % Markov probabilities
         PD = 1; 
@@ -19,7 +19,7 @@ classdef IOD_filter < Filters.BayesFilter
 
     methods
         % Constructor 
-        function [obj] = IOD_filter(myM, myL, myPD, myPS)
+        function [obj] = IOD_filter(myM, myL, myN, myPD, myPS)
             % Contruct the filter sample space dimensions
             if (exist('myL', 'var'))
                 obj.L = myL;
@@ -31,6 +31,14 @@ classdef IOD_filter < Filters.BayesFilter
                 % Construct the grid 
                 obj.Grid = obj.UniformSphere(myM);
             end
+
+            if (exist('myN', 'var'))
+                obj.N = myN;
+            end
+
+%             if (exist('myNs', 'var'))
+%                 obj.Ns = 10;
+%             end
 
             if (exist('myPD', 'var'))
                 if (myPD >= 0 && myPD <= 1)
@@ -49,9 +57,13 @@ classdef IOD_filter < Filters.BayesFilter
             end
         end
         
+        % Initialization 
+        [particles, weights] = Initialization(obj)
+
         % Bayesian recursion
-        [prior_m] = propagation_step(prior);
-        [posterior] = correction_step(measurements, prior_m);
+        [f, X, N] = BayesRecursion(obj, tspan, measurements);
+        [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior);
+        [Posterior] = CorrectionStep(obj, Likelihood, ObservationModel, PropPrior);
     end
 
     methods 

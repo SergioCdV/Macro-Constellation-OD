@@ -1,6 +1,6 @@
 
 
 function [l] = log_map(x, v)
-    alpha = acos(v.' * x);
-    l = (x - cos(alpha) * v)  * alpha / sin(alpha);
+    cos_alpha = v.' * x;
+    l = (x - cos_alpha * v)  * acos(cos_alpha) / sqrt(1-cos_alpha^2);
 end

@@ -19,9 +19,9 @@ Nmax = 4;                   % Number of targets
 
 % Constellation lifetime
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
-T = 2;                                              % Number of days 
+T = 1;                                              % Number of days 
 EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
-Step = 600;                                         % Integration step in seconds
+Step = 60;                                          % Integration step in seconds
 tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
 
 % Target birth 
@@ -161,33 +161,39 @@ for i = 1:1
     [TelescopeTime_aux, meas_radec_aux, TelescopeState_aux] = TelescopeObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
 
     TelescopeTime = [TelescopeTime; TelescopeTime_aux];
-    meas_radec = [meas_radec; [i*ones(size(meas_radec_aux,1),1) meas_radec_aux];
+    meas_radec = [meas_radec; [i*ones(size(meas_radec_aux,1),1) meas_radec_aux]];
     TelescopeState = [TelescopeState; TelescopeState_aux];
 end
 
 ObservationSpan = [InTime; RadarTime; TelescopeTime];
 [ObservationSpan, index] = sort(ObservationSpan);
 
-Measurements = cell(length(ObservationSpan), 4);
+Measurements = cell(length(ObservationSpan), 5);
 Measurements(:,1) = num2cell(ObservationSpan);
 
 for i = 1:length(index)
     if (index(i) <= size(InTime,1))
+        Sigma = diag([1e4 1e4 1e4]);
         Measurements(i,2) = { meas(index(i),:) };
         Measurements(i,3) = { InState(index(i),:) };
-        Measurements(i,4) = { @(y)InObs.LikelihoodFunction(InObs.Sigma, meas(index(i),:), y) };
+        Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).', y) };
+        Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)), y, InState(index(i),:)) };
 
     elseif (index(i) <= size(InTime,1) + size(RadarTime,1))
         L = size(InTime,1);
+        Sigma = diag([1e4 1e3]);
         Measurements(i,2) = { meas_radar(index(i)-L,:) };
         Measurements(i,3) = { RadarState(index(i)-L,:) };
-        Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(RadarObs.Sigma, meas_radar(index(i)-L,:), y) };
+        Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(Sigma, meas_radar(index(i)-L,2:end).', y) };
+        Measurements(i,5) = { @(y)RadarObs.ObservationProcess(InTime(index(i)-L), y, RadarState(index(i)-L,:)) };
 
     else
+        Sigma = diag([deg2rad(10) deg2rad(10) deg2rad(2) deg2rad(2)]);
         L = size(InTime,1) + size(RadarTime,1);
         Measurements(i,2) = { meas_radec(index(i)-L,:) };
         Measurements(i,3) = { TelescopeState(index(i)-L,:) };
-        Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(TelescopeObs.Sigma, meas_radec(index(i)-L,:), y) };
+        Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, meas_radec(index(i)-L,2:end).', y) };
+        Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(InTime(index(i)-L), y, TelescopeState(index(i)-L,:)) };
     end
 end
 
@@ -202,10 +208,14 @@ AuxOrbit.set_graphics();
 Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 [Constellation_1.Np, Constellation_1.n] = Constellation_1.NumberOfPlanes();
 
-%% Estimation 
+%% Estimation: IOD
 % Estimator configuration
+IOD_filter = Filters.IOD_filter(100, 5, 20, PD, 1);
 
 % Estimation
+tic
+[f, x, n] = IOD_filter.BayesRecursion(ObservationSpan, Measurements);
+running_time = toc;
 
 %% Analysis
 % Expectance of the number of targets in time 
