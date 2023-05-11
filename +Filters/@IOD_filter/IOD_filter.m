@@ -63,7 +63,7 @@ classdef IOD_filter < Filters.BayesFilter
         % Bayesian recursion
         [f, X, N] = BayesRecursion(obj, tspan, measurements);
         [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior);
-        [Posterior] = CorrectionStep(obj, Likelihood, ObservationModel, PropPrior);
+        [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices);
     end
 
     methods 

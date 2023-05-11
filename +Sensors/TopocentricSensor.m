@@ -6,12 +6,13 @@
 
 classdef TopocentricSensor < Sensors.AbstractSensor
     properties
+        type = 'FULL';          % Full attributable vector
         FOV = deg2rad(90);      % Field of view of the sensor
     end
 
     methods 
         % Constructor 
-        function [obj] = TopocentricSensor(myInitialEpoch, myInitialState, mySigma, myPD, myFOV)
+        function [obj] = TopocentricSensor(myInitialEpoch, myInitialState, mySigma, myPD, myFOV, myType)
             myMeasDim = 4; 
             myStateDim = 2;
             obj = obj@Sensors.AbstractSensor(myStateDim, myMeasDim, myInitialEpoch, myInitialState, mySigma, myPD);
@@ -21,6 +22,15 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                     obj.FOV = myFOV;
                 else
                     error('FOV cannot be greater than 180 deg.');
+                end
+            end
+
+            if (exist('myType', 'var'))
+                obj.type = myType;
+                switch (obj.type)
+                    case 'RADEC'
+                        obj.Sigma = obj.Sigma(1,1);
+                    otherwise
                 end
             end
         end
@@ -109,12 +119,18 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                 cos_alpha = vslant(1,1)/sqrt(slant(1,1)^2+slant(2,1)^2);
             end
  
-            meas(1,1) = atan2(sin_alpha, cos_alpha);   % Topoocentric right ascension
-            meas(1,3) = asin(slant(3,1)/radar(1,1));   % Topocentric declination
-
-            % Angle velocities
-            meas(1,2) = (vslant(2,1)*slant(1,1)-vslant(1,1)*slant(2,1))/(slant(1,1)^2+slant(2,1)^2);
-            meas(1,4) = (vslant(3,1)-rate*sin(meas(1,3)))/sqrt(slant(1,1)^2+slant(2,1)^2);
+            switch (obj.type)
+                case 'RADEC'
+                    meas(1,1) = atan2(sin_alpha, cos_alpha);   % Topoocentric right ascension
+                    meas(1,2) = asin(slant(3,1)/radar(1,1));   % Topocentric declination
+                otherwise
+                    meas(1,1) = atan2(sin_alpha, cos_alpha);   % Topoocentric right ascension
+                    meas(1,3) = asin(slant(3,1)/radar(1,1));   % Topocentric declination
+        
+                    % Angle velocities
+                    meas(1,2) = (vslant(2,1)*slant(1,1)-vslant(1,1)*slant(2,1))/(slant(1,1)^2+slant(2,1)^2);
+                    meas(1,4) = (vslant(3,1)-rate*sin(meas(1,3)))/sqrt(slant(1,1)^2+slant(2,1)^2);
+            end
         end
 
         % Observation process 
@@ -134,8 +150,18 @@ classdef TopocentricSensor < Sensors.AbstractSensor
 
         % Gaussian likelihood function
         function [q] = LikelihoodFunction(obj, Sigma, z, y)
-            res = y-z;
-            q = exp((-0.5*res.'*Sigma^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
+            switch (obj.type)
+                case 'RADEC'
+                    % Unit vector measurements
+                    x = [cos(y(2,1)) * sin(y(1,1)); sin(y(2,1)) * sin(y(1,1)); cos(y(1,1))];
+                    z = [cos(z(2,1)) * sin(z(1,1)); sin(z(2,1)) * sin(z(1,1)); cos(z(1,1))];
+
+                    % Von-Mises distribution
+                    q = Sigam * exp(Sigma * x.' * z) / (2* pi * (exp(Sigma)-exp(-Sigma)));
+                otherwise
+                    res = y-z;
+                    q = exp((-0.5*res.'*Sigma^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
+            end
         end
     end
     

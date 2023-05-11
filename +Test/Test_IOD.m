@@ -16,7 +16,6 @@ for i = 1:size(Measurements,1)
     Measurements{i,2} = @(x)(dot(x,x));
 end
 
-Measurements = [];
 
 %% Create the filter 
 IOD_filter = Filters.IOD_filter(10, 10, 5, .98, 1);

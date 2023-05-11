@@ -1,17 +1,22 @@
 
-function [Posterior] = CorrectionStep(obj, Likelihood, ObservationModel, PropPrior)
+function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
     % Extract elements 
     particles = PropPrior(1:end-1,:);
     weights = PropPrior(end,:);
     
     % Detection terms 
-    psi = zeros(size(Likelihood,1),size(weights,2));
+    psi = zeros(length(indices),size(weights,2));
     G = psi;
-    for i = 1:size(Likelihood,1)
+    for i = 1:length(indices)
+        % Extract the observation model and likelihood functions 
+        ObservationModel = Measurements{indices(i),5};
+        Likelihood = Measurements{indices(i),4};
+
         for j = 1:size(weights,2)
             % Compute the particle state 
             State = ParticleState(particles(:,j));
             l = zeros(1,size(State,2));
+
             for k = 1:size(State,2)
                 % Evaluate the likelihood
                 [~, y] = feval(ObservationModel, State(:,k).');
@@ -24,6 +29,9 @@ function [Posterior] = CorrectionStep(obj, Likelihood, ObservationModel, PropPri
             psi(i,j) = obj.PD * max(l);
         end
         G(i,:) = psi(i,:) / sum( psi(i,:) .* weights );
+
+        pos = isnan(G(i,:));
+        G(i,pos) = zeros(1,length(G(i,pos)));
     end
 
     % Update the weights with the likelihood function 
@@ -33,10 +41,6 @@ function [Posterior] = CorrectionStep(obj, Likelihood, ObservationModel, PropPri
 
         % Detection term
         Kdet = sum(G,1);
-        index = isnan(Kdet);
-        if (any(index))
-            Kdet(index) = zeros(1,length(index));
-        end
 
         % Update
         K = Kmis + Kdet; 

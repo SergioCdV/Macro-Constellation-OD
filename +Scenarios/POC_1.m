@@ -210,7 +210,7 @@ Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 
 %% Estimation: IOD
 % Estimator configuration
-IOD_filter = Filters.IOD_filter(100, 5, 20, PD, 1);
+IOD_filter = Filters.IOD_filter(100, 5, 5, PD, 1);
 
 % Estimation
 tic

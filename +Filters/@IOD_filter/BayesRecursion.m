@@ -49,9 +49,43 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
         
         % Perform the correction step if new measurements are available 
         if (measurement_flag)
-            for j = 1:new_measurements
+%             new_measurements = 6; 
+%             Measurements{meas_index + 0,1} = 1;
+%             Measurements{meas_index + 1,1} = 2;
+%             Measurements{meas_index + 2,1} = 1;
+%             Measurements{meas_index + 3,1} = 1;
+%             Measurements{meas_index + 4,1} = 2;
+%             Measurements{meas_index + 5,1} = 3;
+
+            % Group the measurement per their epoch
+            group = zeros(1,new_measurements);
+
+            index = 0:new_measurements-1;
+            j = 1;
+            while (~isempty(index) && (j <= new_measurements))
+                cur_pos = index(1);
+                res_indices = index(2:end);
+                for k = 1:length(res_indices)
+                    if (Measurements{meas_index + cur_pos,1} == Measurements{meas_index + res_indices(k),1})
+                        group(res_indices(k) + 1) = j;
+                        group(cur_pos + 1) = j;
+                        index = index(group(index + 1) ~= j);
+                    end
+                end
+
+                if (group(cur_pos + 1) == 0)
+                    group(cur_pos + 1) = j;
+                    index = index(group(index + 1) ~= j);
+                end
+                j = j+1;
+            end
+
+            index = 0:new_measurements-1;
+
+            for j = 0:max(group)-1
                 % Propagation step and weight proposal using the kinematic prior
-                prop_epoch = Measurements{meas_index + j,1};
+                indices = index(group == j+1);
+                prop_epoch = Measurements{meas_index + indices(1),1};
                 if (last_epoch ~= prop_epoch)
                     [PropPrior] = obj.PropagationStep(last_epoch, prop_epoch, Prior);
                     PropPrior(end,:) = PropPrior(end,:) * obj.PS;
@@ -64,7 +98,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
                 % [particles] = obj.TransportGrid(particles, X{i-1}(), obj.X);
     
                 % Correction step 
-                [Posterior] = obj.CorrectionStep(Measurements{meas_index + j,4}, Measurements{meas_index + j,5}, PropPrior);
+                [Posterior] = obj.CorrectionStep(Measurements, PropPrior, meas_index+indices);
 
                 % Extraction
                 particles = Posterior(1:end-1,:);
