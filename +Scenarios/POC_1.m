@@ -8,6 +8,7 @@
 
 close all 
 clear 
+rng(1);
 
 %% General user defined input
 % Constants 
@@ -173,7 +174,7 @@ Measurements(:,1) = num2cell(ObservationSpan);
 
 for i = 1:length(index)
     if (index(i) <= size(InTime,1))
-        Sigma = diag([1e5 1e5 1e5]);
+        Sigma = diag([5e4 5e4 5e4]);
         Measurements(i,2) = { meas(index(i),:) };
         Measurements(i,3) = { InState(index(i),:) };
         Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).', y) };
@@ -181,19 +182,19 @@ for i = 1:length(index)
 
     elseif (index(i) <= size(InTime,1) + size(RadarTime,1))
         L = size(InTime,1);
-        Sigma = diag([1e5 5e2]);
+        Sigma = diag([5e4 5e2]);
         Measurements(i,2) = { meas_radar(index(i)-L,:) };
         Measurements(i,3) = { RadarState(index(i)-L,:) };
         Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(Sigma, meas_radar(index(i)-L,2:end).', y) };
-        Measurements(i,5) = { @(y)RadarObs.ObservationProcess(InTime(index(i)-L), y, RadarState(index(i)-L,:)) };
+        Measurements(i,5) = { @(y)RadarObs.ObservationProcess(RadarTime(index(i)-L), y, RadarState(index(i)-L,:)) };
 
     else
-        Sigma = diag([deg2rad(10) deg2rad(10) deg2rad(1) deg2rad(1)]);
+        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)]);
         L = size(InTime,1) + size(RadarTime,1);
         Measurements(i,2) = { meas_radec(index(i)-L,:) };
         Measurements(i,3) = { TelescopeState(index(i)-L,:) };
         Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, meas_radec(index(i)-L,2:end).', y) };
-        Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(InTime(index(i)-L), y, TelescopeState(index(i)-L,:)) };
+        Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(TelescopeTime(index(i)-L), y, TelescopeState(index(i)-L,:)) };
     end
 end
 

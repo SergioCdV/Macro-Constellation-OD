@@ -6,7 +6,7 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
     
     % Detection terms 
     L = size(particles,2);
-    psi = zeros(1, (length(indices)+1) * L);
+    psi = zeros((length(indices)+1), L);
 
     for i = 1:length(indices)
         % Extract the observation model and likelihood functions 
@@ -27,20 +27,21 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
                     l(k) = feval(Likelihood, y.');
                 end
             end
-            psi(1, i * L + j) = obj.PD * max(l) * weights(1,j);
+            psi(i+1,j) = obj.PD * max(l);
         end
-        psi(1, i*L:(i+1)*L) = psi(1,i*L:(i+1)*L) / sum( psi(1,i*L:(i+1)*L) );
+
+        psi(i+1,:) = psi(i+1,:) / sum( psi(i+1,:) .* weights(1,:),2 );
+
+        % Check for NaN 
+        pos = isnan(psi(i+1,:)); 
+        psi(i+1,pos) = zeros(1,sum(pos));
     end
 
-    % Check for NaN 
-    pos = isnan(psi); 
-    psi(1,pos) = zeros(1,sum(pos));
-
     % Update the weights with the non-detected particles 
-    psi(1,1:L) = (1-obj.PD) * weights;
+    psi(1,:) = (1-obj.PD);
     
     % Assemble the posterior 
-    Posterior = [repmat(particles, 1, length(indices)+1); psi];
+    Posterior = [particles; sum(psi,1).*weights];
 end
 
 %% Auxiliary functions 
@@ -68,16 +69,18 @@ function [State] = ParticleState(particle)
     r = a*(1-e^2)./(1+e*cos(nu)) .* [cos(nu); sin(nu); zeros(1,length(nu))];
     v = (mu/sqrt(mu * a * (1-e^2))) * [-sin(nu); e + cos(nu); zeros(1,length(nu))];
 
+    Q = QuaternionAlgebra.right_isoclinic( QuaternionAlgebra.quaternion_inverse(qp) );
+
     for i = 1:length(nu)
         % Compute the mean Brouwer elements from the particle set: Delaunay to mean Brouwer
     
         % Compute the osculating classical orbital elements from the mean Brouwer ones
     
         % Compute the ECI osculating coordinates from the mean Brouwer ones
-        aux = QuaternionAlgebra.right_isoclinic( QuaternionAlgebra.quaternion_inverse(qp) ) * (QuaternionAlgebra.right_isoclinic( [r(:,i); 0] ) * qp);
-        State(1:3,i) = aux(1:3); 
-        aux = QuaternionAlgebra.right_isoclinic( QuaternionAlgebra.quaternion_inverse(qp) ) * (QuaternionAlgebra.right_isoclinic( [v(:,i); 0] ) * qp);
-        State(4:6,i) = aux(1:3); 
+        aux(:,1) = QuaternionAlgebra.right_isoclinic( [r(:,i); 0] ) * qp;
+        aux(:,2) = QuaternionAlgebra.right_isoclinic( [v(:,i); 0] ) * qp;
+        aux = Q * aux; 
+        State(:,i) = [aux(1:3,1); aux(1:3,2)];
     end
 
     State = real(State);

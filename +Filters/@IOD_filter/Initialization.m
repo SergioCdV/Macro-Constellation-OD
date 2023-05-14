@@ -24,8 +24,10 @@ function [particles, weights] = Initialization(obj)
 
         mu = [1.08; 0.001; cos(deg2rad(50))];
         particles(5:7,:) = repmat(mu, 1, M);
+        particles(6,:) = particles(5,:) .* sqrt(1-particles(6,:).^2); 
+        particles(7,:) = particles(6,:) .* particles(7,:);
 
         % Uniform generation of the weights 
-        weights = repmat(1/size(particles,2), 1, size(particles,2));
+        weights = repmat(obj.N/size(particles,2), 1, size(particles,2));
     end
 end

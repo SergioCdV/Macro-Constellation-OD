@@ -24,10 +24,10 @@ function [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior)
             eta = G/L;                              % Eccentricity function
 
             % Compute the angular velocity 
-            Omega = zeros(3,1);                 % Angular velocity
+            Omega = zeros(3,1);                     % Angular velocity
 
             % RAAN motion
-            Omega(1) = 3/2*epsilon/(L^7*eta^2) * (H/G);                        
+            Omega(1) = 3/2*epsilon/(L^7*eta^4) * (H/G);                        
 
             % Body frame rotation
             Omega = QuaternionAlgebra.right_isoclinic([Omega; 0]) * QuaternionAlgebra.quaternion_inverse(particles(1:4,i)); 
@@ -35,7 +35,7 @@ function [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior)
             omega = Omega(1:3,1);
 
             % Perigee motion
-            omega(3) = omega(3) +  3/4*epsilon/(L^7*eta^3) * (1 - 5*(H/G)^2);            
+            omega(3) = omega(3) +  3/4*epsilon/(L^7*eta^4) * (1 - 5*(H/G)^2);            
 
             % Propgate the quaternions only using the Lie-Euler method
             omega = step/2 * omega; 

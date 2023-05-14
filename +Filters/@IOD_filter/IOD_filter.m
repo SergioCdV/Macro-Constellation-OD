@@ -10,6 +10,7 @@ classdef IOD_filter < Filters.BayesFilter
 
         % Resampling
         Jmax = 3e3; 
+        RevThresh = 1e-4; 
         PruneThresh = 1e-5;
         MergeThresh = deg2rad(3);
         ResamplingMethod = 'Systematic';
@@ -75,7 +76,7 @@ classdef IOD_filter < Filters.BayesFilter
     methods 
         % Sampling methods for Gaussians
         [samples] = AffineSampling(obj, m, mu, Sigma);
-        [samples] = GibbsSampling(obj, m, mu, Sigma);
+        [samples] = GibbsSampling(obj, m, mu, Sigma, a); 
 
         % Sampling methods for the sphere
         [samples] = UniformQuat(obj, m); 

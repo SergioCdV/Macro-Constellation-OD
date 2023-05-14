@@ -15,7 +15,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 
     fprintf('Initialization... \n');
     fprintf('------------------------------\n');
-    fprintf('Running the filter\n');
+    fprintf('Running the filter: \n');
 
     % State and weight initialization
     [particles, weights] = obj.Initialization();   
@@ -24,7 +24,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     Prior = [particles; weights];
 
     % Main loop
-    for i = 1:length(tspan)
+    for i = 1:100%length(tspan)
         tic 
 
         % Check for new measurements to process
@@ -54,7 +54,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
         end
 
         % Perform the correction step if new measurements are available 
-        if (false)
+        if (measurement_flag)
             % Group the measurement per their epoch
             group = zeros(1,new_measurements);
 
@@ -97,7 +97,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 
                 % Birth particles
                 born_particles = obj.Birth();
-                Prior = [born_particles Prior];
+                PropPrior(:,size(particles,2)+1:size(particles,2)+size(born_particles,2)) = born_particles;
     
                 % Correction step 
                 [Posterior] = obj.CorrectionStep(Measurements, PropPrior, meas_index+indices);
@@ -128,45 +128,58 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
         % Estimation on the number of targets (number of planes in the constellation)
         T = sum(weights);
         obj.N = round(T);
+        N{i} = obj.N;
 
-        % State estimation
-        if (obj.N)
+        % Check for resampling 
+        Neff = 1/sum(weights.^2);
+
+        if (Neff < (2/3) * size(particles,2 || size(particles,2) > obj.Jmax))        
+            % Resampling 
+%             if (size(particles,2) > obj.Jmax)
+%                 % Pruning 
+%                 % [particles, weights] = Pruning(obj, particles, weights);
+% 
+%                 % State estimation
+% %             if (obj.N)
+% %                 obj.X = obj.StateEstimation(particles, weights, obj.N);
+% %                 X{i} = obj.X;
+% %             end
+% 
+%             else
+                % State estimation
+                if (obj.N)
+                    obj.X = obj.StateEstimation(particles, weights, obj.N);
+                    X{i} = obj.X;
+                end
+
+                % Resampling
+                J = max(obj.N,1) * (1 + obj.L * obj.M);
+                [particles, weights] = obj.Resampling(particles, weights/T, J);
+                weights = weights * T;    
+%             end   
+
+        elseif (obj.N)
+            % State estimation
             obj.X = obj.StateEstimation(particles, weights, obj.N);
             X{i} = obj.X;
-            N{i} = obj.N;
-
+    
             % Double-covering of the sphere
             % obj.X = [obj.X [-obj.X(1:4,:); obj.X(5:end,:)]];
 
-            % Check for resampling 
-            Neff = 1/sum(weights.^2);
-    
-            if (Neff < round(2/3*size(particles,2)) || size(particles,2) > obj.Jmax)
-                % Pruning 
-                % [particles, weights] = Pruning(obj, particles, weights);
-    
-                % Resampling 
-                [particles, weights] = obj.Resampling( particles, weights/T, min(obj.Jmax, obj.N * (obj.L * obj.M + 1)) );
-                weights = weights * T;
-                    
-            else
-                M = (obj.L * obj.M + 1);
-                particles = zeros(7, M * size(obj.X,2) ) ;
-                for j = 1:size(obj.X,2)
-                    particles(1:4, 1+M*(j-1):M*j) = obj.UniformTangentQuat(obj.L, obj.M, obj.X(1:4,j));
-                    particles(5:7, 1+M*(j-1):M*j) = obj.AffineSampling(M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]));
-                end
-    
-                % New weights
-                weights = repmat(1/size(particles,2), 1, size(particles,2));
+            M = (obj.L * obj.M + 1);
+            particles = zeros(7, M * size(obj.X,2) ) ;
+            for j = 1:size(obj.X,2)
+                particles(1:4, 1+M*(j-1):M*j) = obj.UniformTangentQuat(obj.L, obj.M, obj.X(1:4,j));
+                actions = obj.GibbsSampling(2 * M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), [1 7; 0.9 6.9; -7 7]);
+                particles(5:7, 1+M*(j-1):M*j) = actions(:,M+1:end);
             end
 
-            % New prior 
-            Prior = [particles; weights];
-        else
-            % New prior 
-            Prior = [particles; weights];
+            % New weights
+            weights = repmat(T/size(particles,2), 1, size(particles,2));
         end
+
+        % New prior 
+        Prior = [particles; weights];
 
         fprintf('Iteration running time: %.4f s\n', toc);
 
