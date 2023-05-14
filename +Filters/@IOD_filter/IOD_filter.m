@@ -1,6 +1,9 @@
 classdef IOD_filter < Filters.BayesFilter 
 
     properties
+        % Search limits 
+        search_limit = [1 7; 0.9 6.9; -6.9 6.9]; 
+
         % Grid properties
         M; 
         Grid;

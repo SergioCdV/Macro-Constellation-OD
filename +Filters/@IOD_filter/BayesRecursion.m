@@ -170,7 +170,8 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             particles = zeros(7, M * size(obj.X,2) ) ;
             for j = 1:size(obj.X,2)
                 particles(1:4, 1+M*(j-1):M*j) = obj.UniformTangentQuat(obj.L, obj.M, obj.X(1:4,j));
-                actions = obj.GibbsSampling(2 * M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), [1 7; 0.9 6.9; -7 7]);
+                actions = obj.GibbsSampling(2 * M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), obj.search_limit);
+                max(max(actions))
                 particles(5:7, 1+M*(j-1):M*j) = actions(:,M+1:end);
             end
 

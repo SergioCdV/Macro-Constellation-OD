@@ -38,7 +38,12 @@ function [X] = StateEstimation(obj, samples, weights, N)
         for j = 1:size(rec_samples,2)
             sigma = sigma + (rec_samples(:,j)-a(:,i)) * (rec_samples(:,j)-a(:,i)).';
         end
-        sigma = sigma/(sum(ID)-1) + 1e-6 * eye(3);
+
+        if (sum(ID) > 1)
+            sigma = sigma/(sum(ID)-1) + 1e-6 * eye(3);
+        else
+            sigma = 1e-6 * eye(3);
+        end
         Sigma(:,i) = reshape(sigma, [], 1);
     end
 

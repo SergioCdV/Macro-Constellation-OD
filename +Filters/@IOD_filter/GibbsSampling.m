@@ -33,10 +33,12 @@ function [samples] = GibbsSampling(obj, m, mu, Sigma, a)
             varCond = Sigma(i,i) - Sigma(i, nIx) * Sigma(i,i)^(-1) * Sigma(nIx,i);
 
             % Drawing 
+            u = rand();
             l = (a(i,1:2) - muCond)/varCond;
-            CDF = (1/2) * ( erf(l(2)) - erf(l(1)) );
-            samples(i,t) = normrnd(muCond, varCond) / CDF;
-
+            Phi = (1/2) * (1 + erf(l(1)/sqrt(2)));
+            CDF = (1/2) * (1 + erf(l(2)/sqrt(2)) ) - Phi;
+            samples(i,t) = muCond + varCond * sqrt(2) * erfinv(2*(u * CDF + Phi)-1);
+            
             % Update the state 
             T(i) = T(i) + 1;
         end
