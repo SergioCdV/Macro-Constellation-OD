@@ -8,6 +8,12 @@ classdef IOD_filter < Filters.BayesFilter
         % Tangent grid properties
         L; 
 
+        % Resampling
+        Jmax = 3e3; 
+        PruneThresh = 1e-5;
+        MergeThresh = deg2rad(3);
+        ResamplingMethod = 'Systematic';
+
         % State estimation
         N = 10; 
         X;
@@ -76,12 +82,18 @@ classdef IOD_filter < Filters.BayesFilter
         [samples] = UniformSphere(obj, m);
 
         % Grid
+        [born_particles] = Birth(obj);
         [samples] = UniformTangentQuat(obj, L, m, mode);
         [grid] = TransportGrid(samples, mode, post_mode);
 
         % Clustering and state estimation
+        [q] = SteepestQuat(obj, q0, w, dq);
         [c, Sigma, index] = QuatClustering(obj, samples, N); 
         [c, Sigma] = ActionClustering(obj, samples, N);
+
+        % Resampling
+        [particles, weights] = Pruning(obj, particles, weights);
+        [particles, weights] = Resampling(obj, particles, weights, N);
     end
 
 

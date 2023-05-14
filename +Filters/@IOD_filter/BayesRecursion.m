@@ -1,7 +1,8 @@
 
 
 function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
-    % Constants 
+    % Repeatibility 
+    rng(1); 
 
     % Preallocation 
     X = cell(1,length(tspan));
@@ -12,12 +13,20 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     last_epoch = tspan(1);                  % Initial epoch
     meas_index = 1;                         % Measurement index
 
+    fprintf('Initialization... \n');
+    fprintf('------------------------------\n');
+    fprintf('Running the filter\n');
+
     % State and weight initialization
-    [particles, weights] = obj.Initialization();    
-    tic
+    [particles, weights] = obj.Initialization();   
+
+    % Assemble the prior 
+    Prior = [particles; weights];
 
     % Main loop
     for i = 1:length(tspan)
+        tic 
+
         % Check for new measurements to process
         new_measurements = 0;
 
@@ -44,19 +53,8 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             measurement_flag = false;
         end
 
-        % Assemble the prior 
-        Prior = [particles; weights];
-        
         % Perform the correction step if new measurements are available 
-        if (measurement_flag)
-%             new_measurements = 6; 
-%             Measurements{meas_index + 0,1} = 1;
-%             Measurements{meas_index + 1,1} = 2;
-%             Measurements{meas_index + 2,1} = 1;
-%             Measurements{meas_index + 3,1} = 1;
-%             Measurements{meas_index + 4,1} = 2;
-%             Measurements{meas_index + 5,1} = 3;
-
+        if (false)
             % Group the measurement per their epoch
             group = zeros(1,new_measurements);
 
@@ -96,14 +94,13 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 
                 % Transport the grid
                 % [particles] = obj.TransportGrid(particles, X{i-1}(), obj.X);
+
+                % Birth particles
+                born_particles = obj.Birth();
+                Prior = [born_particles Prior];
     
                 % Correction step 
                 [Posterior] = obj.CorrectionStep(Measurements, PropPrior, meas_index+indices);
-
-                % Extraction
-                particles = Posterior(1:end-1,:);
-                weights = Posterior(end,:);
-                weights = weights / sum(weights);
             end
 
             % Sanity check on the number of processed measurements 
@@ -114,10 +111,6 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             if (last_epoch ~= prop_epoch)
                 % Particle propagation
                 [Posterior] = obj.PropagationStep(last_epoch, prop_epoch, Prior);
-                
-                % Extraction
-                particles = Posterior(1:end-1,:);
-                weights = Posterior(end,:);
             else
                 Posterior = Prior;
             end
@@ -129,52 +122,55 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 
         % New pdf 
         f{i} = Posterior;
-        toc
+        particles = Posterior(1:end-1,:);
+        weights = Posterior(end,:);
 
         % Estimation on the number of targets (number of planes in the constellation)
-        obj.N = max(1, round( sum(weights) ));
-        N{i} = obj.N;
+        T = sum(weights);
+        obj.N = round(T);
 
         % State estimation
-        obj.X = obj.StateEstimation(particles, weights, obj.N);
-        X{i} = obj.X;
+        if (obj.N)
+            obj.X = obj.StateEstimation(particles, weights, obj.N);
+            X{i} = obj.X;
+            N{i} = obj.N;
 
-        % Posterior representation 
-        f{i} = [particles; weights];
+            % Double-covering of the sphere
+            % obj.X = [obj.X [-obj.X(1:4,:); obj.X(5:end,:)]];
 
-        % Check for resampling 
-        Neff = 1/sum(weights.^2);
-
-        if (Neff < round(2/3*size(particles,2)) || Neff > 1e5)
-            M = (obj.L * obj.M + 1);
-            particles = zeros(7, M * size(obj.X,2) ) ;
-            for j = 1:size(obj.X,2)
-                particles(1:4, 1+M*(j-1):M*j) = obj.UniformTangentQuat(obj.L, obj.M, obj.X(1:4,j));
-                particles(5:7, 1+M*(j-1):M*j) = obj.AffineSampling(M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]));
+            % Check for resampling 
+            Neff = 1/sum(weights.^2);
+    
+            if (Neff < round(2/3*size(particles,2)) || size(particles,2) > obj.Jmax)
+                % Pruning 
+                % [particles, weights] = Pruning(obj, particles, weights);
+    
+                % Resampling 
+                [particles, weights] = obj.Resampling( particles, weights/T, min(obj.Jmax, obj.N * (obj.L * obj.M + 1)) );
+                weights = weights * T;
+                    
+            else
+                M = (obj.L * obj.M + 1);
+                particles = zeros(7, M * size(obj.X,2) ) ;
+                for j = 1:size(obj.X,2)
+                    particles(1:4, 1+M*(j-1):M*j) = obj.UniformTangentQuat(obj.L, obj.M, obj.X(1:4,j));
+                    particles(5:7, 1+M*(j-1):M*j) = obj.AffineSampling(M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]));
+                end
+    
+                % New weights
+                weights = repmat(1/size(particles,2), 1, size(particles,2));
             end
 
-            % Physical constraint on the Delaunay action
-            particles(5,:) = ones(1,size(particles,2)) .* (particles(5,:) <= 0) + particles(5,:) .* (particles(5,:) > 0);
-
-            % Physical constraint on the eccentricity
-            particles(6,:) = repmat(0.01, 1, size(particles,2)) .* (particles(2,:) < 0) + particles(2,:) .* (particles(1,:) >= 0);
-        
-            % Correlation
-%             for j = 1:size(particles,2)
-%                 STM = [1 0 0; ...
-%                       sqrt(1-particles(6,j).^2) -particles(5,j)*particles(6,j)/(sqrt(1-particles(6,j).^2)) 0; ...
-%                       sqrt(1-particles(6,j).^2) * particles(7,i) -particles(5,j)*particles(6,j)* particles(7,j)/(sqrt(1-particles(6,j).^2)) particles(5,j) .* sqrt(1-particles(6,j).^2)];
-%                 
-%                 particles(6,j) = particles(5,j) .* sqrt(1-particles(6,j).^2);
-%                 particles(7,j) = particles(6,j) .* particles(7,j);
-%                 particles(5:7,j) = particles(6:7,j) / det(STM);
-%             end
-
-            particles(6,:) = particles(5,:) .* sqrt(1-particles(6,:).^2);
-            particles(7,:) = particles(6,:) .* particles(7,:);
-
-            % New weights
-            weights = repmat(1/size(particles,2), 1, size(particles,2));
+            % New prior 
+            Prior = [particles; weights];
+        else
+            % New prior 
+            Prior = [particles; weights];
         end
+
+        fprintf('Iteration running time: %.4f s\n', toc);
+
     end
+    fprintf('------------------------------\n');
+    fprintf('Recursion finished.\n');
 end

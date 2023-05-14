@@ -5,14 +5,15 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
     weights = PropPrior(end,:);
     
     % Detection terms 
-    psi = zeros(length(indices),size(weights,2));
-    G = psi;
+    L = size(particles,2);
+    psi = zeros(1, (length(indices)+1) * L);
+
     for i = 1:length(indices)
         % Extract the observation model and likelihood functions 
         ObservationModel = Measurements{indices(i),5};
         Likelihood = Measurements{indices(i),4};
 
-        for j = 1:size(weights,2)
+        for j = 1:L
             % Compute the particle state 
             State = ParticleState(particles(:,j));
             l = zeros(1,size(State,2));
@@ -26,29 +27,20 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
                     l(k) = feval(Likelihood, y.');
                 end
             end
-            psi(i,j) = obj.PD * max(l);
+            psi(1, i * L + j) = obj.PD * max(l) * weights(1,j);
         end
-        G(i,:) = psi(i,:) / sum( psi(i,:) .* weights );
-
-        pos = isnan(G(i,:));
-        G(i,pos) = zeros(1,length(G(i,pos)));
+        psi(1, i*L:(i+1)*L) = psi(1,i*L:(i+1)*L) / sum( psi(1,i*L:(i+1)*L) );
     end
 
-    % Update the weights with the likelihood function 
-    for i = 1:size(weights,2)
-        % Misdetection term 
-        Kmis = 1-obj.PD;   
+    % Check for NaN 
+    pos = isnan(psi); 
+    psi(1,pos) = zeros(1,sum(pos));
 
-        % Detection term
-        Kdet = sum(G,1);
-
-        % Update
-        K = Kmis + Kdet; 
-        weights(i) = K(i) * weights(i);
-    end
-
+    % Update the weights with the non-detected particles 
+    psi(1,1:L) = (1-obj.PD) * weights;
+    
     % Assemble the posterior 
-    Posterior = [particles; weights];
+    Posterior = [repmat(particles, 1, length(indices)+1); psi];
 end
 
 %% Auxiliary functions 
