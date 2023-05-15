@@ -98,7 +98,7 @@ for i = 1:size(S,1)
     AuxOrbit = AuxOrbit.Normalize(true, r0); 
     AuxOrbit = AuxOrbit.ChangeStateFormat('COE');
     AuxOrbit = AuxOrbit.DefineJ2Problem(J2, Re);
-    AuxOrbit = AuxOrbit.AddPropagator('Osculating J2', Step);
+    AuxOrbit = AuxOrbit.AddPropagator('Keplerian', Step);
 
     Constellation_1 = Constellation_1.AddOrbit(AuxOrbit);
 end
@@ -170,24 +170,26 @@ end
 ObservationSpan = [InTime; RadarTime; TelescopeTime];
 [ObservationSpan, index] = sort(ObservationSpan);
 
-Measurements = cell(length(ObservationSpan), 5);
+Measurements = cell(length(ObservationSpan), 6);
 Measurements(:,1) = num2cell(ObservationSpan);
 
 for i = 1:length(index)
     if (index(i) <= size(InTime,1))
-        Sigma = diag([1e4 1e4 1e4].^2/Re^2);
+        Sigma = diag([5e4 5e4 5e4].^2/Re^2);
         Measurements(i,2) = { meas(index(i),:) };
         Measurements(i,3) = { InState(index(i),:) };
         Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).'/Re, y) };
         Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)), y, InState(index(i),:)) };
+        Measurements(i,6) = {'INERTIAL'};
 
     elseif (index(i) <= size(InTime,1) + size(RadarTime,1))
         L = size(InTime,1);
-        Sigma = diag([1e4 1e2].^2./[Re Re/Tc].^2);
+        Sigma = diag([5e4 5e2].^2./[Re Re/Tc].^2);
         Measurements(i,2) = { meas_radar(index(i)-L,:) };
         Measurements(i,3) = { RadarState(index(i)-L,:) };
         Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(Sigma, meas_radar(index(i)-L,2:end).'./[Re; Re/Tc], y) };
         Measurements(i,5) = { @(y)RadarObs.ObservationProcess(RadarTime(index(i)-L), y, RadarState(index(i)-L,:)) };
+        Measurements(i,6) = {'RADAR'};
 
     else
         Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)].^2);
@@ -196,6 +198,7 @@ for i = 1:length(index)
         Measurements(i,3) = { TelescopeState(index(i)-L,:) };
         Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, meas_radec(index(i)-L,2:end).', y) };
         Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(TelescopeTime(index(i)-L), y, TelescopeState(index(i)-L,:)) };
+        Measurements(i,6) = {'Telescope'};
     end
 end
 
@@ -211,7 +214,6 @@ Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 [Constellation_1.Np, Constellation_1.n] = Constellation_1.NumberOfPlanes();
 
 %% True state
-Re = 6378e3;
 D(5) = sqrt(ElementSet(1)/Re); 
 D(6) = sqrt((1-ElementSet(2)^2))* D(5);
 D(7) = D(6) * cos(ElementSet(4));
@@ -222,7 +224,7 @@ D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
 
 %% Estimation: IOD
 % Estimator configuration
-IOD_filter = Filters.IOD_filter(30, 30, 5, PD, 1);
+IOD_filter = Filters.IOD_filter(5, 5, 5, PD, 1);
 
 % Estimation
 tic

@@ -30,7 +30,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     Prior = [particles; weights];
 
     % Main loop
-    for i = 1:100%length(tspan)
+    for i = 1:length(tspan)
         tic 
 
         % Check for new measurements to process
@@ -154,7 +154,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             [particles, weights] = obj.Resampling(particles, weights/T, J);
             weights = weights * T;     
 
-        elseif (obj.N)            
+        elseif (0)            
             M = (obj.L * obj.M + 1);
             old_particles = particles;
             particles = zeros(7, M * size(obj.X,2) ) ;

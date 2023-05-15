@@ -15,10 +15,11 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
         % Extract the observation model and likelihood functions 
         ObservationModel = Measurements{indices(i),5};
         Likelihood = Measurements{indices(i),4};
+        SensorModality = Measurements{indices(i),6};
 
         for j = 1:L
             % Compute the particle state 
-            State = ParticleState(particles(:,j), nu);
+            State = ParticleState(obj, particles(:,j), nu);
             l = zeros(1,size(State,2));
 
             for k = 1:size(State,2)
@@ -27,6 +28,14 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
                 if (isempty(y))
                     l(k) = 0;
                 else
+                    % Dimensionalizing 
+                    switch (SensorModality)
+                        case 'RADAR'
+                            y = y ./ [obj.Re obj.Re/obj.Tc];
+                        case 'INERTIAL'
+                            y = y / obj.Re;
+                    end
+
                     l(k) = feval(Likelihood, y.');
                 end
             end
@@ -48,29 +57,21 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
 end
 
 %% Auxiliary functions 
-function [State] = ParticleState(particle, nu)
-    % Constants 
-    mu = 3.986e14;  % Earth's gravitational parameter
-    Re = 6378e3;    % Reference radius of the Earth
-
-    mu = 1; 
-    Re = 1; 
-
+function [State] = ParticleState(obj, particle, nu)
     % Delaunay elements of the particle 
     qp = particle(1:4);
     L = particle(5);
     G = particle(6);
 
     % Solve for the missing Keplerian constants 
-    a = Re * L^2;
     e = sqrt(1-(G/L)^2);
 
     % Preallocation 
     State = zeros(6,length(nu));
 
     % Compute the radial and velocity distance in the perifocal frame
-    r = a*(1-e^2)./(1+e*cos(nu)) .* [cos(nu); sin(nu); zeros(1,length(nu))];
-    v = (mu/sqrt(mu * a * (1-e^2))) * [-sin(nu); e + cos(nu); zeros(1,length(nu))];
+    r = G./(1+e*cos(nu)) .* [cos(nu); sin(nu); zeros(1,length(nu))];
+    v = [-sin(nu); e + cos(nu); zeros(1,length(nu))] / G;
 
     Q = QuaternionAlgebra.right_isoclinic( QuaternionAlgebra.quaternion_inverse(qp) );
 
@@ -87,4 +88,6 @@ function [State] = ParticleState(particle, nu)
     end
 
     State = real(State);
+    State(1:3,:) = obj.Re * State(1:3,:);
+    State(4:6,:) = obj.Re/obj.Tc * State(4:6,:);
 end

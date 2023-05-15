@@ -1,6 +1,12 @@
 classdef IOD_filter < Filters.BayesFilter 
 
     properties
+        % Gravitational problem 
+        mu = 3.986e14;                  % Earth's gravitational parameter
+        Re = 6378e3;                    % Reference radius of the Earth
+        epsilon = -1.08263e-3;          % J2
+        Tc;                             % Characteristic time 
+
         % Search limits 
         search_limit = [1 7; 0.9 6.9; -6.9 6.9]; 
 
@@ -71,6 +77,8 @@ classdef IOD_filter < Filters.BayesFilter
                     error('No valid survival probability has been input.'); 
                 end
             end
+
+            obj.Tc = sqrt(obj.Re^3/obj.mu);     
         end
         
         % Initialization 
