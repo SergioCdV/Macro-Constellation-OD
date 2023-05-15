@@ -13,8 +13,9 @@ rng(1);
 %% General user defined input
 % Constants 
 r0 = 6900e3;                % Characteristic distance of the Earth orbit    
-mu = 3.86e14;               % Gravitional parameter of the Earth
+mu = 3.986e14;              % Gravitional parameter of the Earth
 Re = 6378e3;                % Reference Earth radius
+Tc = sqrt(Re^2/mu);         % Characteristic time
 J2 = 1e-3;                  % Earth's J2 parameter
 Nmax = 4;                   % Number of targets
 
@@ -85,7 +86,7 @@ Constellation_1 = Constellation_1.ChangeTimeStep(Step);
 
 % Orbit definition
 ElementType = 'COE'; 
-ElementSet = [r0 1e-3 deg2rad(20) deg2rad(50) deg2rad(0)]; 
+ElementSet = [r0 1e-3 deg2rad(0) deg2rad(45) deg2rad(0)]; 
 
 for i = 1:size(S,1)
     % Generate a random anomaly 
@@ -115,7 +116,7 @@ Vc = 10;                    % Number of false measurements per sensor (surveilla
 InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
 
 % Define a radar topocentric observer located at Madrid
-InitialState = [deg2rad(40) deg2rad(-3)];
+InitialState = [deg2rad(0) deg2rad(-30)];
 InitialEpoch = juliandate(datetime('now'));
 Sigma = eye(2,2);
 PD = 0.98;
@@ -174,22 +175,22 @@ Measurements(:,1) = num2cell(ObservationSpan);
 
 for i = 1:length(index)
     if (index(i) <= size(InTime,1))
-        Sigma = diag([5e4 5e4 5e4]);
+        Sigma = diag([1e4 1e4 1e4].^2/Re^2);
         Measurements(i,2) = { meas(index(i),:) };
         Measurements(i,3) = { InState(index(i),:) };
-        Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).', y) };
+        Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).'/Re, y) };
         Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)), y, InState(index(i),:)) };
 
     elseif (index(i) <= size(InTime,1) + size(RadarTime,1))
         L = size(InTime,1);
-        Sigma = diag([5e4 5e2]);
+        Sigma = diag([1e4 1e2].^2./[Re Re/Tc].^2);
         Measurements(i,2) = { meas_radar(index(i)-L,:) };
         Measurements(i,3) = { RadarState(index(i)-L,:) };
-        Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(Sigma, meas_radar(index(i)-L,2:end).', y) };
+        Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(Sigma, meas_radar(index(i)-L,2:end).'./[Re; Re/Tc], y) };
         Measurements(i,5) = { @(y)RadarObs.ObservationProcess(RadarTime(index(i)-L), y, RadarState(index(i)-L,:)) };
 
     else
-        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)]);
+        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)].^2);
         L = size(InTime,1) + size(RadarTime,1);
         Measurements(i,2) = { meas_radec(index(i)-L,:) };
         Measurements(i,3) = { TelescopeState(index(i)-L,:) };
@@ -214,14 +215,14 @@ Re = 6378e3;
 D(5) = sqrt(ElementSet(1)/Re); 
 D(6) = sqrt((1-ElementSet(2)^2))* D(5);
 D(7) = D(6) * cos(ElementSet(4));
-D(1) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
-D(2) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
-D(3) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
-D(4) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2);
+D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2);
+D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
+D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
+D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
 
 %% Estimation: IOD
 % Estimator configuration
-IOD_filter = Filters.IOD_filter(10, 10, 5, PD, 1);
+IOD_filter = Filters.IOD_filter(30, 30, 5, PD, 1);
 
 % Estimation
 tic

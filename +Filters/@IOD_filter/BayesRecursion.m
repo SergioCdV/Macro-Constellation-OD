@@ -9,6 +9,12 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     N = cell(1,length(tspan)); 
     f = cell(1,length(tspan));
 
+    % Quadrature precomputation 
+    CC_quad = Numerics.CollocationMesh.ChebyshevGrid(1e2);
+    [obj.dt(1,:), obj.dt(2,:)] = CC_quad.Domain(0, 2*pi, CC_quad.tau);
+    obj.W = CC_quad.W;
+    obj.nu = CC_quad.tau;
+
     % Bayesian recursion initialization
     last_epoch = tspan(1);                  % Initial epoch
     meas_index = 1;                         % Measurement index
@@ -18,7 +24,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     fprintf('Running the filter: \n');
 
     % State and weight initialization
-    [particles, weights] = obj.Initialization();   
+    [particles, weights] = obj.Initialization();  
 
     % Assemble the prior 
     Prior = [particles; weights];
@@ -130,49 +136,36 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
         obj.N = round(T);
         N{i} = obj.N;
 
+        % State estimation
+        if (obj.N)
+            obj.X = obj.StateEstimation(particles, weights, obj.N);
+            X{i} = obj.X;
+
+            % Double-covering of the sphere
+            % obj.X = [obj.X [-obj.X(1:4,:); obj.X(5:end,:)]];
+        end
+
         % Check for resampling 
         Neff = 1/sum(weights.^2);
 
-        if (Neff < (2/3) * size(particles,2 || size(particles,2) > obj.Jmax))        
-            % Resampling 
-%             if (size(particles,2) > obj.Jmax)
-%                 % Pruning 
-%                 % [particles, weights] = Pruning(obj, particles, weights);
-% 
-%                 % State estimation
-% %             if (obj.N)
-% %                 obj.X = obj.StateEstimation(particles, weights, obj.N);
-% %                 X{i} = obj.X;
-% %             end
-% 
-%             else
-                % State estimation
-                if (obj.N)
-                    obj.X = obj.StateEstimation(particles, weights, obj.N);
-                    X{i} = obj.X;
-                end
+        if (Neff < (2/3) * size(particles,2) || size(particles,2) > obj.Jmax)        
+            % Resampling
+            J = max(obj.N,1) * (1 + obj.L * obj.M);
+            [particles, weights] = obj.Resampling(particles, weights/T, J);
+            weights = weights * T;     
 
-                % Resampling
-                J = max(obj.N,1) * (1 + obj.L * obj.M);
-                [particles, weights] = obj.Resampling(particles, weights/T, J);
-                weights = weights * T;    
-%             end   
-
-        elseif (obj.N)
-            % State estimation
-            obj.X = obj.StateEstimation(particles, weights, obj.N);
-            X{i} = obj.X;
-    
-            % Double-covering of the sphere
-            % obj.X = [obj.X [-obj.X(1:4,:); obj.X(5:end,:)]];
-
+        elseif (obj.N)            
             M = (obj.L * obj.M + 1);
+            old_particles = particles;
             particles = zeros(7, M * size(obj.X,2) ) ;
             for j = 1:size(obj.X,2)
                 particles(1:4, 1+M*(j-1):M*j) = obj.UniformTangentQuat(obj.L, obj.M, obj.X(1:4,j));
-                actions = obj.GibbsSampling(2 * M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), obj.search_limit);
-                max(max(actions))
-                particles(5:7, 1+M*(j-1):M*j) = actions(:,M+1:end);
+                particles(5:7, 1+M*(j-1):M*j) = obj.Resampling(old_particles(5:7,:), weights/T, M);
+
+                % Gaussian sampling
+                % actions = obj.GibbsSampling(2 * M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), obj.search_limit);
+                % particles(5:7, 1+M*(j-1):M*j) = actions(:,M+1:end);
+                % actions = mvnrnd(obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), M).';
             end
 
             % New weights

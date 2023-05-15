@@ -8,6 +8,9 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
     L = size(particles,2);
     psi = zeros((length(indices)+1), L);
 
+    % Integration domain 
+    nu = obj.dt(1,:);
+
     for i = 1:length(indices)
         % Extract the observation model and likelihood functions 
         ObservationModel = Measurements{indices(i),5};
@@ -15,7 +18,7 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
 
         for j = 1:L
             % Compute the particle state 
-            State = ParticleState(particles(:,j));
+            State = ParticleState(particles(:,j), nu);
             l = zeros(1,size(State,2));
 
             for k = 1:size(State,2)
@@ -27,7 +30,7 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
                     l(k) = feval(Likelihood, y.');
                 end
             end
-            psi(i+1,j) = obj.PD * max(l);
+            psi(i+1,j) = obj.PD * obj.quadrature(l);
         end
 
         psi(i+1,:) = psi(i+1,:) / sum( psi(i+1,:) .* weights(1,:),2 );
@@ -45,18 +48,18 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
 end
 
 %% Auxiliary functions 
-function [State] = ParticleState(particle)
+function [State] = ParticleState(particle, nu)
     % Constants 
     mu = 3.986e14;  % Earth's gravitational parameter
     Re = 6378e3;    % Reference radius of the Earth
+
+    mu = 1; 
+    Re = 1; 
 
     % Delaunay elements of the particle 
     qp = particle(1:4);
     L = particle(5);
     G = particle(6);
-
-    % True anomaly space
-    nu = linspace(0,2*pi,1e2);
 
     % Solve for the missing Keplerian constants 
     a = Re * L^2;

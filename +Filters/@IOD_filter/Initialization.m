@@ -22,10 +22,12 @@ function [particles, weights] = Initialization(obj)
         particles(6,:) = L .* sqrt(1-e.^2); 
         particles(7,:) = particles(6,:) .* cos_i; 
 
-        mu = [1.08; 0.001; cos(deg2rad(50))];
+        mu = [1.04; 0.001; cos(deg2rad(45))];
         particles(5:7,:) = repmat(mu, 1, M);
         particles(6,:) = particles(5,:) .* sqrt(1-particles(6,:).^2); 
         particles(7,:) = particles(6,:) .* particles(7,:);
+
+        particles(1:4,:) = repmat([0.3827 0 0 0.9239].', 1, M);
 
         % Uniform generation of the weights 
         weights = repmat(obj.N/size(particles,2), 1, size(particles,2));

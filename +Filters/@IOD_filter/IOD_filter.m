@@ -12,7 +12,7 @@ classdef IOD_filter < Filters.BayesFilter
         L; 
 
         % Resampling
-        Jmax = 3e3; 
+        Jmax = 1e4; 
         RevThresh = 1e-4; 
         PruneThresh = 1e-5;
         MergeThresh = deg2rad(3);
@@ -25,6 +25,12 @@ classdef IOD_filter < Filters.BayesFilter
         % Markov probabilities
         PD = 1; 
         PS = 1;
+    end
+
+    properties (Access = private)
+        W; 
+        nu; 
+        dt;
     end
 
     methods
@@ -98,6 +104,10 @@ classdef IOD_filter < Filters.BayesFilter
         % Resampling
         [particles, weights] = Pruning(obj, particles, weights);
         [particles, weights] = Resampling(obj, particles, weights, N);
+    end
+
+    methods (Access = private)
+        [Y] = quadrature(obj, x);
     end
 
 
