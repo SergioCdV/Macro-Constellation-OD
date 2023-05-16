@@ -8,9 +8,6 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
     L = size(particles,2);
     psi = zeros((length(indices)+1), L);
 
-    % Integration domain 
-    nu = obj.dt(1,:);
-
     for i = 1:length(indices)
         % Extract the observation model and likelihood functions 
         ObservationModel = Measurements{indices(i),5};
@@ -19,7 +16,7 @@ function [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices)
 
         for j = 1:L
             % Compute the particle state 
-            State = ParticleState(obj, particles(:,j), nu);
+            State = ParticleState(obj, particles(:,j), obj.nu);
             l = zeros(1,size(State,2));
 
             for k = 1:size(State,2)

@@ -8,6 +8,7 @@ function [samples] = UniformTangentQuat(obj, L, M, mode)
         L = obj.L;
     end
 
+    % Distribution on the r-sphere S^3
     if (~exist('M', 'var'))
         M = obj.M;
         beta = [obj.grid; zeros(1,M)];
@@ -15,17 +16,15 @@ function [samples] = UniformTangentQuat(obj, L, M, mode)
         beta = [obj.UniformSphere(M); zeros(1,M)];    
     end
 
-    % Distribution on the r-sphere S^3
-    One = [0,0,0,1].'; 
-
     % Main computation
     for i = 1:L
-        samples(:,1 + M * (i-1):M*i) = (i*pi/(2*L)) * beta;
+        tangent(:,1 + M * (i-1):M*i) = (i*pi/(2*L)) * beta;
     end
 
     for i = 1:size(samples,2)-1
-        samples(:,i) = QuaternionAlgebra.left_isoclinic(mode) * QuaternionAlgebra.exp_map(samples(:,i), One);
+        samples(:,i) = QuaternionAlgebra.right_isoclinic(mode) * QuaternionAlgebra.exp_map(tangent(:,i), [0;0;0;1]);
     end
 
     samples(:,end) = mode;
+    samples = samples ./ sqrt(dot(samples(1:4,:), samples(1:4,:),1));
 end

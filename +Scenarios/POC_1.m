@@ -224,7 +224,7 @@ D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
 
 %% Estimation: IOD
 % Estimator configuration
-IOD_filter = Filters.IOD_filter(5, 5, 5, PD, 1);
+IOD_filter = Filters.IOD_filter(10, 10, 5, PD, 1);
 
 % Estimation
 tic

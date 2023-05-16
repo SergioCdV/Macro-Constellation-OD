@@ -1,5 +1,11 @@
 
 
 function [e] = exp_map(x, v)
-    e = cos(norm(x)) * v + x * sin(norm(x)) / norm(x);
+    n = norm(x); 
+
+    if (n)
+        e = x / n * sin(n) + cos(n) * v;
+    else
+        e = [0;0;0;1];
+    end
 end
