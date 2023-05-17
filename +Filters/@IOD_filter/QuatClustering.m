@@ -10,10 +10,10 @@ function [c, Sigma, index] = QuatClustering(obj, samples, weights)
 %     Sigma = [];
 
     % Perform density-based clustering 
-    epsilon = 0.01;
-    minpts = max(1, round( 0.1 * size(samples,2) ));
+    epsilon = 0.05;
+    minpts = max(3, size(samples,1)+1);
 
-    D = pdist(samples, "cosine");
+    D = squareform( pdist(samples.', "cosine") );
 
     if (size(D,1))
         index = dbscan(D, epsilon, minpts, "Distance", "precomputed");

@@ -22,7 +22,8 @@ function [samples] = UniformTangentQuat(obj, L, M, mode)
     end
 
     for i = 1:size(samples,2)-1
-        samples(:,i) = QuaternionAlgebra.right_isoclinic(mode) * QuaternionAlgebra.exp_map(tangent(:,i), [0;0;0;1]);
+        % samples(:,i) =  QuaternionAlgebra.right_isoclinic(mode) * QuaternionAlgebra.exp_map(tangent(:,i), ones);
+        samples(:,i) =  QuaternionAlgebra.exp_map(tangent(:,i), mode);
     end
 
     samples(:,end) = mode;

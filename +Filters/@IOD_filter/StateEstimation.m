@@ -40,7 +40,7 @@ function [X] = StateEstimation(obj, samples, weights, T)
     if (any(index < 0))
         ID = index == -1;
         
-        for i = pos+1:max(index)+sum(ID)
+        for i = pos+1:pos+sum(ID)
             % Quaternion estimation
             X(1:4,i) = obj.SteepestQuat(c(:,i), pruned_weights(1,ID), pruned_samples(1:4,ID));
     
@@ -59,5 +59,5 @@ function [X] = StateEstimation(obj, samples, weights, T)
         end
     end
 
-
+X(1:4,:)
 end

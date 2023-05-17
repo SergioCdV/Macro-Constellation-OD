@@ -10,11 +10,12 @@ function [q] = SteepestQuat(obj, q0, w, dq)
     while (GoOn && iter < maxIter)
         % Compute the update term 
         dQ = zeros(4,1);
+        Q = QuaternionAlgebra.right_isoclinic(q);
         for i = 1:size(dq,2)
-            dQ = dQ + w(i) * QuaternionAlgebra.log_map(dq(:,i),q);
+            dQ = dQ + w(i) * Q * QuaternionAlgebra.log_map(dq(:,i), [0;0;0;1]);
         end
 
-        qn = QuaternionAlgebra.exp_map(dQ,q);
+        qn = Q * QuaternionAlgebra.exp_map(dQ, [0;0;0;1]);
         res = q.' * qn;
         q = qn;
 
