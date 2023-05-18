@@ -6,7 +6,7 @@
 % This script provides the function implementing the class UKF
 % implementation, inlcuding UKF additive and UKF square 
 
-classdef EstimatorUKF
+classdef UKF < Filters.BayesFilter
     % Properties
     properties
         % UKF hyperparameters
@@ -45,7 +45,7 @@ classdef EstimatorUKF
     % Initialization methods
     methods 
         % Constructor 
-        function [obj] = EstimatorUKF(Algorithm, beta, alpha, k)
+        function [obj] = UKF(Algorithm, beta, alpha, k)
             % Default initialization
             obj.Algorithm = Algorithm; 
             obj.beta = beta; 
@@ -114,17 +114,14 @@ classdef EstimatorUKF
             obj.W = [obj.lambda/obj.c*ones(2,1) 0.5/obj.c*ones(2,2*obj.L)]; 
             obj.W(2,1) = obj.W(2,1)+1-obj.alpha^2+obj.beta;
         end
-    end
 
-    % Internal methods
-    methods 
         % UKF estimation 
         function [obj] = estimate(obj, time_step, measurement)
             % Prediction step 
-            [state, sigma, y, Y, sig] = UKF_prediction(obj, time_step);
+            [sig, state, sigma] = obj.PropagationStep(time_step);
 
             % Correction step 
-            [state, sigma, ~] = UKF_correction(obj, state, sigma, y, sig, Y, measurement); 
+            [state, sigma, ~, y] = obj.CorrectionStep(sig, state, sigma, measurement); 
 
             % Clock update 
             obj.Clock = obj.Clock + time_step;
@@ -136,116 +133,41 @@ classdef EstimatorUKF
         end
 
         % UKF prediction 
-        function [State, Sigma, Measurements, sigma, y] = UKF_prediction(obj, time_step)
-            % Generate sigma points 
-            sigma = sigma_points(obj, obj.State, obj.Sigma);
-
-            % Propagation of sigma points 
-            sigma = obj.StateModel(time_step, sigma);
-    
-            % State and covariance prediction 
-            switch (obj.Algorithm)
-                case 'UKF-A'
-                    [State, Sigma] = UKFA_prediction(obj, sigma);
-                case 'UKF-S'
-                    [State, Sigma] = UKFS_prediction(obj, sigma);
-            end
-            
-            % Measurement prediction 
-            y = obj.ObservationModel(sigma);
-            Measurements = measurements_prediction(obj, y);
-        end
+        [sigma, State, Sigma] = PropagationStep(obj, time_step);
         
         % UKF correction 
-        function [State, Sigma, Pmeas] = UKF_correction(obj, State, Sigma, y, sigma, Y, z)
-            % State and covariance prediction 
-            switch (obj.Algorithm)
-                case 'UKF-A'
-                    [State, Sigma, Pmeas] = UKFA_correction(obj, State, Sigma, y, sigma, Y, z);
-                case 'UKF-S'
-                    [State, Sigma, Sy] = UKFS_correction(obj, State, Sigma, y, sigma, Y, z);
-                    Pmeas = Sy*Sy.';
-            end
-        end
-    end
+        [State, Sigma, Pmeas, Y] = CorrectionStep(obj, sigma, State, Sigma, z);
 
-    % Private methods 
-    methods (Access = private)
         % Sigma points generation
         function [sigma] = sigma_points(obj, State, Sigma)
             switch (obj.Algorithm)
                 case 'UKF-S'
                     A = obj.sqc*Sigma.';
                 otherwise
-                    A = obj.sqc*sqrt(Sigma).';
+                    A = obj.sqc*chol(Sigma + 1e-20 * eye(size(Sigma,1))).';
             end
-            sigma = [State obj.State+A obj.State-A];
+            sigma = [State State+A State-A];
         end
+    end
 
+    % Private methods 
+    methods (Access = private)
         % Measurements reconstruction
         function [Y] = measurements_prediction(obj, y)
             Y = sum(obj.W(1,:).*y,2);
         end
 
         % General UKF prediction 
-        function [X, P] = UKFA_prediction(obj, sigma)
-            % State prediction
-            X = sum(obj.W(1,:).*sigma,2);
-        
-            % Covariance prediction
-            P = (sigma-X)*diag(obj.W(2,:))*(sigma-X).'+obj.Q;
-        end
+        [X, P] = UKFA_prediction(obj, sigma)
 
         % UKF-A correction
-        function [State, Sigma, Pyy] = UKFA_correction(obj, State, Sigma, y, sigma, Y, z)
-            % Covariances matrices
-            Pyy = (Y-y)*diag(obj.W(2,:))*(Y-y).'+obj.R;        
-            Pxy = (sigma-State)*diag(obj.W(2,:))*(Y-y).';
-            
-            % Kalman gain
-            K = Pxy*(Pyy^(-1));
-        
-            % Update
-            State = State+K*(z-y);
-            Sigma = Sigma-K*Pyy*K.';
-        end
+        [State, Sigma, Pyy] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);
 
         % UKF-S prediction
-        function [X, P] = UKFS_prediction(obj, sigma)
-            % State prediction
-            X = sum(obj.W(1,:).*sigma,2);
-
-            % Covariance prediction
-            [~, S] = qr([sqrt(obj.W(2,2:end)).*(sigma(:,2:end)-X) obj.Q].',0);
-
-            if (obj.W(2,1) < 0)
-                P = cholupdate(S, sqrt(abs(obj.W(2,1)))*(sigma(:,1)-X), '-');
-            else
-                P = cholupdate(S, sqrt(abs(obj.W(2,1)))*(sigma(:,1)-X), '+');
-            end
-        end
+        [X, P] = UKFS_prediction(obj, sigma);
         
         % UKF-S correction
-        function [State, Sigma, Sy] = UKFS_correction(obj, State, Sigma, y, sigma, Y, z)
-            % Covariance computation
-            Sy = [sqrt(obj.W(2,2:end)).*(Y(:,2:end)-y) obj.R];
-            [~, Sy] = qr(Sy.', 0);
-
-            if (obj.W(2,1) < 0)
-                Sy = cholupdate(Sy, sqrt(abs(obj.W(2,1)))*(Y(:,1)-y), '-');
-            else
-                Sy = cholupdate(Sy, sqrt(abs(obj.W(2,1)))*(Y(:,1)-y), '+');
-            end
-
-            Pxy = (sigma-State)*diag(obj.W(2,:))*(Y-y).';
-
-            % Kalman update
-            K = Pxy/Sy/Sy.';
+        [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z);
         
-            % Update
-            State = State+K*(z-y);
-            U = K*Sy.';
-            Sigma = cholupdate(Sigma, U(:,1), "-");  
-        end
     end
 end

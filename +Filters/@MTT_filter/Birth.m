@@ -1,23 +1,23 @@
 function [born_particles] = Birth(obj)
     % Constants 
-    M = obj.M * obj.L + 1;
+    M = obj.M;
+
+    % Preallocation 
+    born_particles = zeros(8 + 8^2 + 1, size(obj.planes,2) * M);
 
     % Uniform orbital planes birth
-    born_particles(1:4,:) = obj.UniformQuat(M); 
+    mu = linspace(0, 2*pi, M); 
 
-    % Uniform orbital actions birth
-    Lmin = 1; 
-    Lmax = 7;
-    L =  Lmin * ones(1, M) + (Lmax-Lmin) .* rand(1,M);
-    emin = 0; 
-    emax = 0.1; 
-    e = emin * ones(1, M) + (emax-emin) .* rand(1,M);
-    cos_i = repmat(-1, 1, M) + 2 .* rand(1,M);
-    
-    born_particles(5,:) = L; 
-    born_particles(6,:) = L .* sqrt(1-e.^2); 
-    born_particles(7,:) = born_particles(6,:) .* cos_i; 
+    for i = 1:size(obj.planes,2)
+        sigma = zeros(8);
+        sigma(1:end-1,1:end-1) = reshape(obj.planes(8:end,i), [7 7]);
+        sigma(end,end) = deg2rad( 10 )^2;
+        sigma = reshape(sigma, [], 1);
+
+        % Particles as wrapped Gaussian kernels 
+        born_particles(1:end-1,1+M*(i-1):M*i) = [repmat(obj.planes(1:7,i), 1, M); mu; repmat(sigma, 1, M)];
+    end
 
     % Associated weights 
-    born_particles(8,:) = repmat(1e-5/M, 1, M);
+    born_particles(end,:) = repmat(1/M, 1, M);
 end

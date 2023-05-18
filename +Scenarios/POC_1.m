@@ -180,7 +180,8 @@ for i = 1:length(index)
         Measurements(i,3) = { InState(index(i),:) };
         Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).'/Re, y) };
         Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)), y, InState(index(i),:)) };
-        Measurements(i,6) = {'INERTIAL'};
+        Measurements(i,6) = {reshape(Sigma, [], 1)};
+        Measurements(i,7) = {'INERTIAL'};
 
     elseif (index(i) <= size(InTime,1) + size(RadarTime,1))
         L = size(InTime,1);
@@ -189,7 +190,8 @@ for i = 1:length(index)
         Measurements(i,3) = { RadarState(index(i)-L,:) };
         Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(Sigma, meas_radar(index(i)-L,2:end).'./[Re; Re/Tc], y) };
         Measurements(i,5) = { @(y)RadarObs.ObservationProcess(RadarTime(index(i)-L), y, RadarState(index(i)-L,:)) };
-        Measurements(i,6) = {'RADAR'};
+        Measurements(i,6) = {reshape(Sigma, [], 1)};
+        Measurements(i,7) = {'RADAR'};
 
     else
         Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)].^2);
@@ -198,7 +200,8 @@ for i = 1:length(index)
         Measurements(i,3) = { TelescopeState(index(i)-L,:) };
         Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, meas_radec(index(i)-L,2:end).', y) };
         Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(TelescopeTime(index(i)-L), y, TelescopeState(index(i)-L,:)) };
-        Measurements(i,6) = {'Telescope'};
+        Measurements(i,6) = {reshape(Sigma, [], 1)};
+        Measurements(i,7) = {'Telescope'};
     end
 end
 
@@ -221,6 +224,19 @@ D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2);
 D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
 D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
 D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
+D = D.';
+
+D = [D; zeros(49,1)];
+
+%% Estimation: tracking 
+% Estimator configuration
+MTT = Filters.MTT_filter(1, 1e3, PD, PS, D);
+
+% Estimation
+% Measurements = [];
+tic
+[f, x, N_hat] = MTT.BayesRecursion(ObservationSpan, Measurements);
+running_time = toc;
 
 %% Estimation: IOD
 % Estimator configuration

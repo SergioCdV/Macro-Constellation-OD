@@ -7,16 +7,23 @@ function [particles, weights] = Pruning(obj, particles, weights)
         while (any(Set))
             l = l+1; 
             [~, index] = sort(weights(Set));
-            max = mod(particles(1,Set), 2*pi);
-            P = particles(2,Set);
+            max = mod(particles(8,Set), 2*pi);
+            P = particles(end,Set);
             Mergeable = (max-max(index(end))).^2./P <= obj.MergeThresh;
             aux = weights(Set);
-            w = sum(aux(Mergeable));
+            w(l) = sum(aux(Mergeable));
 
-            particles(1,l) = dot(aux(Mergeable),max(Mergeable))/w(l);
-            particles(2,l) = dot(aux(Mergeable),(P(Mergeable)+(particles(1,l)-max(Mergeable)).^2))/w(l);
+            particles(:,l) = particles(:,index(end));
+            particles(8,l) = dot(aux(Mergeable),max(Mergeable))/w(l);
+            particles(end,l) = dot(aux(Mergeable),(P(Mergeable)+(particles(1,l)-max(Mergeable)).^2))/w(l);
             
-            Set = Set(~Mergeable);
+            q = 1;
+            for k = 1:length(Set)
+                if (Set(k))
+                    Set(k) = ~Mergeable(q);
+                    q = q+1;
+                end
+            end
         end
     end
 
@@ -25,7 +32,7 @@ function [particles, weights] = Pruning(obj, particles, weights)
         [~,index] = sort(weights); 
         index = index(end-obj.Jmax+1:end);
         weights = weights(:,index);
-        particles(1,:) = particles(1,index);
-        particles(2,:) = particles(2,index);
+        particles = particles(:,index);
+        particles = particles(:,index);
     end
 end

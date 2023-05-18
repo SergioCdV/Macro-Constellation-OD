@@ -5,12 +5,9 @@
 %% Class implementation of several EKF Estimators 
 % This script provides the function implementing the class EKF
 
-classdef EstimatorEKF
+classdef EKF < Filters.BayesFilter
     % Properties
     properties
-        Algorithm = 'EKF'   % EKF version in use
-        InitFlag = true;
-
         % State variables
         Clock = 0
         State 
@@ -66,12 +63,12 @@ classdef EstimatorEKF
     % Internal methods
     methods 
         % UKF estimation 
-        function [obj] = estimate(obj, time_step, z)
+        function [obj] = BayesStep(obj, time_step, z)
             % Prediction step 
-            [state, sigma, y, H, K] = EKF_prediction(obj, time_step);
+            [state, sigma, y, H, K] = PropagationStep(obj, time_step);
 
             % Correction step 
-            [state, sigma] = EKF_correction(obj, state, sigma, y, z, H, K); 
+            [state, sigma] = CorrectionStep(obj, state, sigma, y, z, H, K); 
 
             % Clock update 
             obj.Clock = obj.Clock + time_step;
@@ -82,26 +79,12 @@ classdef EstimatorEKF
             obj.Measurements = y;
         end
 
-        % UKF prediction 
-        function [State, Sigma, y, H, P, K] = EKF_prediction(obj, time_step)
-            % Propagation of sigma points 
-            [State, Sigma] = obj.StateModel(obj.Q, time_step, obj.State, obj.Sigma);
-                
-            % Measurement prediction 
-            [y, H] = obj.ObservationModel(State);
-
-            % Kalman gain 
-            P = (obj.R+H*Sigma*H.');
-            K = Sigma*H.'*P^(-1);
-        end
+        % EKF prediction 
+        [State, Sigma, y, H, P, K] = PropagationStep(obj, time_step);
         
         % EKF correction
-        function [State, Sigma] = EKF_correction(obj, State, Sigma, y, z, H, K)                    
-            % Update
-            State = State+K*(z-y);
-            Sigma = (eye(obj.StateDim)-K*H)*Sigma*(eye(obj.StateDim)-K*H).'+K*obj.R*K.';
-        end
+        [State, Sigma] = CorrectionStep(obj, State, Sigma, y, z, H, K) ;
+
     end
 end
 
-%% Auxiliary functions

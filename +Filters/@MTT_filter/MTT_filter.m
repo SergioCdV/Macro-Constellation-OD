@@ -8,26 +8,31 @@ classdef MTT_filter < Filters.BayesFilter
         Tc;                             % Characteristic time 
 
         % Grid properties
+        M;
         nu;
 
         % Resampling
-        Jmax = 1e4;  
+        Jmax = 1e3;  
         PruneThresh = 1e-5;
         MergeThresh = deg2rad(3);
         ResamplingMethod = 'Systematic';
 
         % State estimation
+        planes;
         N = 1; 
         X;
 
         % Markov probabilities
         PD = 1; 
         PS = 1;
+
+        % Kalman Filter 
+        KF_type = 'UKF-A';
     end
 
     methods
         % Constructor 
-        function [obj] = MTT_filter(myN, myM, myPD, myPS)
+        function [obj] = MTT_filter(myN, myM, myPD, myPS, myPlanes)
             % Contruct the filter sample space dimensions
             if (exist('myM', 'var'))
                 obj.M = myM;
@@ -53,7 +58,9 @@ classdef MTT_filter < Filters.BayesFilter
                 end
             end
 
-            obj.Tc = sqrt(obj.Re^3/obj.mu);     
+            obj.Tc = sqrt(obj.Re^3/obj.mu);  
+
+            obj.planes = myPlanes;
         end
         
         % Initialization 
@@ -61,8 +68,8 @@ classdef MTT_filter < Filters.BayesFilter
 
         % Bayesian recursion
         [f, X, N] = BayesRecursion(obj, tspan, measurements);
-        [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior);
-        [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices);
+        [PropPrior, sigma] = PropagationStep(obj, last_epoch, new_epoch, Estimator, Prior);
+        [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, PropPrior);
     end
 
     methods 
