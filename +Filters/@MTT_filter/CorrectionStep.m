@@ -103,12 +103,19 @@ function [State] = ParticleState(obj, particle)
 
     % Compute the ECI osculating coordinates from the long-period ones
     % Do = Astrodynamics.Brouwer_solution(obj.epsilon, D);
-    Do = D;
+%     Do = D;
+% 
+%     % Preallocation 
+%     State = zeros(6,size(D,2)); 
+%     for i = 1:size(D,2)
+%         State(:,i) = Astrodynamics.Delaunay2ECI(Do);
+%         State(1:3,i) = obj.Re * State(1:3,i);
+%         State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);
+%     end
 
-    % Preallocation 
     State = zeros(6,size(D,2)); 
     for i = 1:size(D,2)
-        State(:,i) = Astrodynamics.Delaunay2ECI(Do);
+        State(:,i) = Astrodynamics.Lara_solution(obj.epsilon, D);
         State(1:3,i) = obj.Re * State(1:3,i);
         State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);
     end

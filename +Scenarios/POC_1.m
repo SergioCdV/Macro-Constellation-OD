@@ -246,9 +246,9 @@ Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 L = sqrt(ElementSet(1)/Re);
 G = L * sqrt((1-ElementSet(2)^2));
 H = G * cos(ElementSet(4));
-D = [0 ElementSet(3) ElementSet(4) L G H]; 
+D = [0 ElementSet(3) ElementSet(4) L G H].'; 
 
-D = Astrodynamics.Brouwer_solution(J2, D);
+% D = Astrodynamics.Brouwer_solution(J2, D);
 D(5:7) = D(4:6);
 D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2);
 D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);

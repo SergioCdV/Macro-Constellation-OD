@@ -1,4 +1,4 @@
-function [theta] = KeplerSolver(e, M)
+function [theta, E] = KeplerSolver(e, M)
     % Laguerre-Conway's method
     maxIter = 10;
     iter = 1;
