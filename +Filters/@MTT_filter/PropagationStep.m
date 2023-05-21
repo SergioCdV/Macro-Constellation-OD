@@ -12,7 +12,7 @@ function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch,
     % Reduce the dimensionality dynamics 
     REstimator = Estimator;
     REstimator.StateDim = 4; 
-    REstimator.Q = REstimator.Q([pos-3:pos], [pos-3:pos]);
+    REstimator.Q = REstimator.Q(pos-3:pos, pos-3:pos);
 
     % Perform the propagation through the KF step
     REstimator = REstimator.Init().AssignStateProcess(pos, @(M, step)dynamics(obj.epsilon, M, step));
@@ -20,10 +20,10 @@ function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch,
     for i = 1:size(particles,2)
         % KF step 
         Sigma = reshape(particles(pos+1:end,i), [pos pos]); 
-        sigma = Sigma([pos-3:pos], [pos-3:pos]);
+        sigma = Sigma(pos-3:pos, pos-3:pos);
         REstimator = REstimator.InitConditions(particles(pos-3:pos,i), sigma);
         [points, m, sigma] = REstimator.PropagationStep(step);
-        Sigma([pos-3:pos], [pos-3:pos]) = reshape(sigma, [pos/2 pos/2]);
+        Sigma(pos-3:pos, pos-3:pos) = reshape(sigma, [pos/2 pos/2]);
         particles(pos-3:pos,i) = m;
         particles(pos+1:pos+pos^2,i) = reshape(Sigma, [], 1);
         aux = [repmat(particles(1:pos-4,i), 1, size(points,2)); points];

@@ -4,12 +4,13 @@ function [theta] = KeplerSolver(e, M)
     iter = 1;
     GoOn = true;
     k = 5; 
+    tol = 1e-5;
 
     % Warm start
     u = M + e;
     E = M*(1-sin(u)) + u*sin(M)/(1+sin(M)-sin(u));
 
-    while (iter < maxIter && ~GoOn)
+    while (iter < maxIter && GoOn)
         fn = E -e * sin(E) - M;
         dfn = 1 - e * cos(E);
         ddfn = e * sin(E);

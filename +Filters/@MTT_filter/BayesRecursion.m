@@ -11,8 +11,9 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     time = zeros(1,length(tspan));
 
     % Preallocate the estimator 
-    Q = zeros(8);
-    Q(end,end) = 1e-3;
+    pos = 8;
+    Q = zeros(pos);
+    Q(end,end) = 0e-3;
     switch (obj.KF_type)
         case 'EKF'
             AnomalyEstimator = Filters.EKF();
@@ -25,9 +26,6 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             AnomalyEstimator.StateDim = 8;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
     end
-
-    % Quadrature precomputation 
-    obj.nu = linspace(0,2*pi,1e2);          % Anomaly space
 
     % Bayesian recursion initialization
     last_epoch = tspan(1);                  % Initial epoch
@@ -75,7 +73,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 
         % Perform the correction step if new measurements are available 
         if (measurement_flag)
-            % Group the measurement per their epoch
+            % Group the measurement by their epoch
             group = zeros(1,new_measurements);
 
             index = 0:new_measurements-1;
@@ -105,51 +103,73 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
                 % Propagation step and weight proposal using the kinematic prior
                 indices = index(group == j+1);
                 prop_epoch = Measurements{meas_index + indices(1),1};
+
+                [Prior(1:pos-1,:)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:pos-1,:));
                 [PropPrior, sigma_points] = obj.PropagationStep(last_epoch, prop_epoch, AnomalyEstimator, Prior);
                 PropPrior = [PropPrior(1:end-1,:); sigma_points; PropPrior(end,:)];
-                PropPrior(end,:) = PropPrior(end,:) * obj.PS;
-                last_epoch = prop_epoch;
+                PropPrior(end,:) =  obj.PS * PropPrior(end,:);
 
                 % Birth particles
                 born_particles = obj.Birth();
                 [born_particles, bsigma_points] = obj.PropagationStep(last_epoch, last_epoch, AnomalyEstimator, born_particles);
                 born_particles = [born_particles(1:end-1,:); bsigma_points; born_particles(end,:)];
+
                 PropPrior = [PropPrior born_particles];
     
                 % Correction step 
                 [Posterior] = obj.CorrectionStep(meas_index+indices, Measurements, AnomalyEstimator, PropPrior);
+                Prior = Posterior;
+                last_epoch = prop_epoch;
             end
+
+            % Final posterior
+            particles = Posterior(1:end-1,:);
+            weights = Posterior(end,:);
+
+            % Averaging of the perifocal frame (state estimation ML)
+            beta = sum(weights / sum(weights) .* particles(pos-3:pos-1,:),2);
+            [q, ~] = QuaternionAlgebra.AverageQuat(weights / sum(weights), particles(1:4,:));
+            obj.planes(1:pos-1,:) = [q; beta];
+            particles(1:pos-1,:) = repmat(obj.planes(1:pos-1,:), 1, size(particles,2));
+
+            % Estimation on the number of targets per plane
+            T = sum(weights(1:end-size(born_particles,2)+1),2);
+            obj.N = obj.PS * obj.N + sum(born_particles(end,:));
+            obj.N = round( T + (1-obj.PD) * obj.N );
 
             % Sanity check on the number of processed measurements 
             meas_index = meas_index + new_measurements;
+
         else
             % Propagate to the new epoch the clustered states
             prop_epoch = tspan(i);
             if (last_epoch ~= prop_epoch)
+                % Plane propagation 
+                [Prior(1:pos-1,1)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:pos-1,1));
+                Prior(1:pos-1,2:end) = repmat(Prior(1:pos-1,1), 1, size(Prior,2)-1);
+
                 % Particle propagation
                 [Posterior] = obj.PropagationStep(last_epoch, prop_epoch, AnomalyEstimator, Prior);
             else
                 Posterior = Prior;
             end
+
+            particles = Posterior(1:end-1,:);
+            weights = Posterior(end,:);
+
             last_epoch = prop_epoch;
         end
 
-        % Kalman update for the orbital plane states
-        if (measurement_flag)
-        
-        end
-
         % New pdf 
-        f{i} = Posterior;
-        particles = Posterior(1:end-1,:);
-        weights = Posterior(end,:);
-
-        % Estimation on the number of targets per plane
-        T = sum(weights);
-        obj.N = round(T);
+        f{i} = zeros(1,length(obj.nu));
+        for j = 1:size(Posterior,2)
+            f{i} = f{i} + weights(j) * obj.wrapped_normal(1e-4, obj.nu.', particles(8,j), particles(end,j)).';
+        end
         
-        [particles, weights] = obj.Pruning(particles, weights);            % Prunning
+        % Pruning of the weights
+        [particles, weights] = obj.Pruning(particles, weights);            
 
+        % Estimation on the anomaly space
         obj.X = obj.StateEstimation(particles, weights, obj.N);
         X{i} = obj.X;
         N{i} = obj.N;
@@ -159,8 +179,8 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 
         time(i) = toc;
         fprintf('Iteration running time: %.4f s\n', time(i));
-
     end
+
     fprintf('------------------------------\n');
     fprintf('Bayes filter recursion finished.\n');
     fprintf('Total running time: %.4f s\n', sum(time));

@@ -33,6 +33,5 @@ function [particles, weights] = Pruning(obj, particles, weights)
         index = index(end-obj.Jmax+1:end);
         weights = weights(:,index);
         particles = particles(:,index);
-        particles = particles(:,index);
     end
 end

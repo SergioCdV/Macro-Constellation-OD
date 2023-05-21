@@ -6,6 +6,6 @@ function [e] = exp_map(x, v)
     if (n)
         e = x / n * sin(n) + cos(n) * v;
     else
-        e = [0;0;0;1];
+        e = v;
     end
 end

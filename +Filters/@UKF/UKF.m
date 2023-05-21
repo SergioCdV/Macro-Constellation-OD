@@ -144,7 +144,8 @@ classdef UKF < Filters.BayesFilter
                 case 'UKF-S'
                     A = obj.sqc*Sigma.';
                 otherwise
-                    A = obj.sqc*chol(Sigma + 1e-20 * eye(size(Sigma,1))).';
+                    S = chol(Sigma).'; 
+                    A = obj.sqc*S;
             end
             sigma = [State State+A State-A];
         end

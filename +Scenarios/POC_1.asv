@@ -243,17 +243,19 @@ Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 [Constellation_1.Np, Constellation_1.n] = Constellation_1.NumberOfPlanes();
 
 %% True plane state
-L = sqrt(ElementSet(1)/Re);
-G = L * sqrt((1-ElementSet(2)^2));
-H = G * cos(ElementSet(4));
-D = [0 ElementSet(3) ElementSet(4) L G H]; 
+D = [0 ElementSet(3) ElementSet(4) sqrt(ElementSet(1)/Re) sqrt((1-ElementSet(2)^2))* D(5) ]; 
 
-D = Astrodynamics.Brouwer_solution(J2, D);
-D(5:7) = D(4:6);
+D = Astrodynamics.Brouwer_solution(-J2, D);
+
+D(5) = sqrt(ElementSet(1)/Re); 
+D(6) = sqrt((1-ElementSet(2)^2))* D(5);
+D(7) = D(6) * cos(ElementSet(4));
 D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2);
 D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
 D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
 D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
+D = D.';
+
 D = [D; reshape(1e-7*eye(7), [], 1)];
 
 %% Estimation: IOD
@@ -280,7 +282,7 @@ N_hat = cell2mat(N_hat);
 
 %% Analysis
 % Expectance of the number of targets in time 
-N_error = N_hat - Constellation_1.Np;
+N_error = N_hat - Constellation_1.n;
 Analysis.ExpectanceTargets = [mean(N_error) std(N_error)];
 
 % for i = 1:length(tspan)
@@ -306,7 +308,7 @@ grid on;
 
 figure
 hold on
-plot(tspan, repmat(Constellation_1.Np, 1, length(tspan)))
+plot(tspan, repmat(Constellation_1.n, 1, length(tspan)))
 scatter(tspan, N_hat); 
 hold off
 legend('$N_p$',' $\hat{N}_p$');
