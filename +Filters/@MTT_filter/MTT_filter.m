@@ -67,7 +67,7 @@ classdef MTT_filter < Filters.BayesFilter
         [particles, weights] = Initialization(obj)
 
         % Bayesian recursion
-        [f, X, N] = BayesRecursion(obj, tspan, measurements);
+        [f, X, N, Prior] = BayesRecursion(obj, tspan, measurements);
         [PropPrior, sigma] = PropagationStep(obj, last_epoch, new_epoch, Estimator, Prior);
         [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, PropPrior);
         [Prior] = PlanePropagation(obj, last_epoch, prop_epoch, planes);

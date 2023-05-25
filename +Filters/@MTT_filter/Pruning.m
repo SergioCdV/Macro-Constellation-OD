@@ -7,7 +7,7 @@ function [particles, weights] = Pruning(obj, particles, weights)
         while (any(Set))
             l = l+1; 
             [~, index] = sort(weights(Set));
-            max = mod(particles(8,Set), 2*pi);
+            max = particles(8,Set);
             P = particles(end,Set);
             Mergeable = (max-max(index(end))).^2./P <= obj.MergeThresh;
             aux = weights(Set);

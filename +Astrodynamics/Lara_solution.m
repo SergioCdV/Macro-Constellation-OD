@@ -1,10 +1,11 @@
 
 function [S] = Lara_solution(epsilon, D)
     % Delaunay to Lara variables 
+    epsilon = epsilon/4;
     L = Astrodynamics.Delaunay2Lara(D, true);
 
     % Mean to long-period transformation
-    Ll = Mean2Long(epsilon, L);
+    Ll = Mean2Long(-epsilon, L);
 
     % Long-period to osculating transformation
     Lo = Long2Osc(epsilon, Ll);
@@ -27,7 +28,7 @@ function [Do] = Mean2Long(epsilon, L)
     p = Theta^2;
     k = -1+p/r;
     sigma = p*R/Theta;
-    epsilon = -epsilon/4;
+    epsilon = epsilon/p^2;
 
     % Transformation
     psi_l = psi;                                                     % no J3
@@ -39,6 +40,7 @@ function [Do] = Mean2Long(epsilon, L)
 
     % Output
     Do = [psi_l, chi_l, xi_l, r_l, R_l, Theta_l].';
+    Do = [psi, chi, xi, r, R, Theta].';
 end
 
 % Long-period to osculating transformation (Brouwer)
@@ -50,8 +52,9 @@ function [Lo] = Long2Osc(epsilon, L)
     R = L(5);           
     Theta = L(6);     
 
+    p = Theta^2;
     c = sqrt(1-xi^2-chi^2);
-    epsilon = epsilon/4;
+    epsilon = epsilon/p^2; 
 
     % Transformation
     psi_o = psi - epsilon * (1+7*c)/(1+c) * chi * xi;

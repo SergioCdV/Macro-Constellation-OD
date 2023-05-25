@@ -31,9 +31,6 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
             Sigma = reshape( particles(pos+1:pos^2+pos,j), [pos pos]);
             [mu, S, ~, y] = REstimator.CorrectionStep(sigma_points, particles(1:pos,j), Sigma, Z);
 
-            if (any(isnan(S)))
-                a = 1;
-            end
             particles(1:pos,index) = mu;
             particles(pos+1:pos+pos^2,index) = reshape(S, [], 1);
 
@@ -99,13 +96,12 @@ function [State] = ParticleState(obj, particle)
     omega = 2 * plus - Omega;
 
     % Assemble the set
-    D = [M Omega omega L G H].';     
+    D = [M omega Omega L G H].';    
+    
+%     State = [zeros(1,5) D(1)].';
 
-    % Compute the ECI osculating coordinates from the long-period ones
-    % Do = Astrodynamics.Brouwer_solution(obj.epsilon, D);
-%     Do = D;
-% 
-%     % Preallocation 
+    % Preallocation 
+%     Do = Astrodynamics.Brouwer_solution(obj.epsilon, D);
 %     State = zeros(6,size(D,2)); 
 %     for i = 1:size(D,2)
 %         State(:,i) = Astrodynamics.Delaunay2ECI(Do);

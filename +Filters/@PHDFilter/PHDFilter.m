@@ -202,7 +202,7 @@ classdef PHDFilter
          function [X] = state_estimation(obj, J, N, w, m)
             aux = [];
             for l = 1:J
-                if (w(l) > 0.5)
+                if (w(l) > 0.1)
                     aux = [aux; m(l)];
                 end
             end

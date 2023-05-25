@@ -1,6 +1,6 @@
 
 
-function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
+function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
     % Repeatibility 
     rng(1); 
 
@@ -13,16 +13,16 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     % Preallocate the estimator 
     pos = 8;
     Q = zeros(pos);
-    Q(end,end) = 0e-3;
+    Q(end,end) = 1e-3;
     switch (obj.KF_type)
         case 'EKF'
             AnomalyEstimator = Filters.EKF();
         case 'UKF-A'
-            AnomalyEstimator = Filters.UKF('UKF-A', 2, 1E-2, 0);
+            AnomalyEstimator = Filters.UKF('UKF-A', 2, 5E-2, 0);
             AnomalyEstimator.StateDim = 8;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
         case 'UKF-S'
-            AnomalyEstimator = Filters.UKF('UKF-S', 2, 1E-2, 0);
+            AnomalyEstimator = Filters.UKF('UKF-S', 2, 5E-2, 0);
             AnomalyEstimator.StateDim = 8;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
     end
@@ -42,7 +42,8 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     Prior = [particles; weights];
 
     % Main loop
-    for i = 1:length(tspan)
+    i  = 1;
+    while (i <= length(tspan))
         tic 
 
         % Check for new measurements to process
@@ -133,12 +134,14 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             particles(1:pos-1,:) = repmat(obj.planes(1:pos-1,:), 1, size(particles,2));
 
             % Estimation on the number of targets per plane
-            T = sum(weights(1:end-size(born_particles,2)+1),2);
-            obj.N = obj.PS * obj.N + sum(born_particles(end,:));
-            obj.N = round( T + (1-obj.PD) * obj.N );
+            T = sum(weights,2);
+            obj.N = round( T + (1-obj.PD) * obj.PS * obj.N );
 
             % Sanity check on the number of processed measurements 
             meas_index = meas_index + new_measurements;
+
+            % Pruning of the weights and merging of the particles
+            [particles, weights] = obj.Pruning(particles, weights); 
 
         else
             % Propagate to the new epoch the clustered states
@@ -160,25 +163,34 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             last_epoch = prop_epoch;
         end
 
+        future = i + max(1,new_measurements);
+
         % New pdf 
-        f{i} = zeros(1,length(obj.nu));
-        for j = 1:size(Posterior,2)
-            f{i} = f{i} + weights(j) * obj.wrapped_normal(1e-4, obj.nu.', particles(8,j), particles(end,j)).';
+        aux = zeros(length(obj.nu),size(particles,2));
+        for j = 1:size(particles,2)
+            aux(:,j) = obj.wrapped_normal(1e-7, obj.nu.', mod(particles(pos,j),2*pi), particles(end,j));
         end
-        
-        % Pruning of the weights
-        [particles, weights] = obj.Pruning(particles, weights);            
+        f{i} = sum(weights .* aux,2);
 
         % Estimation on the anomaly space
         obj.X = obj.StateEstimation(particles, weights, obj.N);
         X{i} = obj.X;
         N{i} = obj.N;
 
+        for j = 1:new_measurements-1
+            f{i+j} = f{i};
+            X{i+j} = obj.X;
+            N{i+j} = obj.N;
+        end
+
         % New prior 
         Prior = [particles; weights];
 
         time(i) = toc;
         fprintf('Iteration running time: %.4f s\n', time(i));
+
+        % Update the timer 
+        i = future;
     end
 
     fprintf('------------------------------\n');

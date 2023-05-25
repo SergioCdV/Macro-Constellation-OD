@@ -3,15 +3,15 @@
 function [s] = Delaunay2ECI(D)
     % Delaunay set to the Cartesian state transformation
     M = D(1);           % Mean anomaly
-    Omega = D(2);       % RAAN
-    omega = D(3);       % AoP
+    Omega = D(3);       % RAAN
+    omega = D(2);       % AoP
     L = D(4);           % Delaunay action
     G = D(5);           % Angular momentum
     H = D(end);         % Polar angular momentum
 
     % Keplerian functions
     e = real(sqrt(1-(G/L)^2));
-    cos_i = (1-(H/G)^2); 
+    cos_i = H/G; 
 
     % Perifocal quaternion
     qp(1,1) = sin(acos(cos_i)/2) * cos((Omega-omega)/2);
@@ -23,7 +23,7 @@ function [s] = Delaunay2ECI(D)
     nu = Astrodynamics.KeplerSolver(e,M);
 
     % Compute the radial and velocity distance in the perifocal frame
-    R = G./(1+e*cos(nu));
+    R = G^2./(1+e*cos(nu));
     r = R .* [cos(nu); sin(nu); zeros(1,length(nu))];
     v = [-sin(nu); e + cos(nu); zeros(1,length(nu))] / G;
 

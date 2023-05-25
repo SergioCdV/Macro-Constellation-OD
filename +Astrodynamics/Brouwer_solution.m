@@ -41,11 +41,11 @@ function [Do] = Long2Osc(epsilon, D)
     % Keplerian functions
     a = L^2;
     e = real(sqrt(1-(G/L)^2));
-    cos_i = (1-(H/G)^2); 
+    cos_i = H/G; 
 
     % Solve for the true anomaly and the radial magnitude
     nu = Astrodynamics.KeplerSolver(e,M);
-    R = G./(1+e*cos(nu));
+    R = G^2./(1+e*cos(nu));
   
     % Transformation
     Lo = L - epsilon/(4*L^3) * ((3*(H/G)^2-1) * ((a/R)^3-(L/G)^3) + 3 * cos_i * (a/R)^3 * cos(2*nu+2*omega)); 

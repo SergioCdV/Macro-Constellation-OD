@@ -1,6 +1,5 @@
 function [X] = StateEstimation(obj, samples, weights, N)
-    % Configuration 
-    rng(1); 
+    % Configuration  
     pos = 8;
 
     % Extract the relevant particles through resampling
@@ -12,9 +11,10 @@ function [X] = StateEstimation(obj, samples, weights, N)
 
     if (N)
         X = zeros(pos + pos^2, N);
-        [index, c] = kmeans(mod(pruned_samples(pos,:).', 2*pi), N);
-        X(pos,:) = c.'; 
-    
+        v = [cos(pruned_samples(pos,:).') sin(pruned_samples(pos,:).')];
+        [index, c] = kmeans(v, N, 'Distance','cosine');
+        X(pos,:) = atan2(c(:,2), c(:,1)).'; 
+
         for i = 1:max(index)
             ID = index == i;
     
@@ -30,7 +30,7 @@ function [X] = StateEstimation(obj, samples, weights, N)
             end
             X(end,i) = reshape(sigma, [], 1);
         end
-        X([1:pos pos+1:end],:) = repmat(pruned_samples([1:pos pos+1:end],1), 1, N);
+        X([1:pos-1 pos+1:end-1],:) = repmat(pruned_samples([1:pos-1 pos+1:end-1],1), 1, N);
     else
         X = [];
     end

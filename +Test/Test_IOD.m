@@ -9,12 +9,11 @@ close all
 clear 
 
 %% Test input 
-tspan = linspace(0,1,1e2);
-Measurements = num2cell(tspan).';
-
-for i = 1:size(Measurements,1)
-    Measurements{i,2} = @(x)(dot(x,x));
-end
+r0 = 6900e3;                % Characteristic distance of the Earth orbit  
+mu = 3.986e14;              % Gravitional parameter of the Earth
+Re = 6378e3;                % Reference Earth radius
+Tc = sqrt(Re^2/mu);         % Characteristic time
+J2 = 1.08263e-3;            % Earth's J2 parameter
 
 %% Some orbital dynamics tests 
 X = [1;0;0]; 
@@ -38,8 +37,47 @@ R = R3*R2*R1;
 
 x2 = R*X;
 
+%% Lara solution test
+InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
+T = 0.5;                                            % Number of days 
+EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
+Step = 600;                                         % Integration step in seconds
+tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
 
-%% Create the filter 
+ElementType = 'COE'; 
+ElementSet = [r0 1e-3 deg2rad(0) deg2rad(45) deg2rad(0) 2*pi*rand()];
+
+% Add the orbit to the constellation
+AuxOrbit = Orbit(mu, ElementType, ElementSet, InitialEpoch);
+AuxOrbit = AuxOrbit.SetCurrentEpoch(EndEpoch); 
+AuxOrbit = AuxOrbit.SetFinalEpoch(EndEpoch);
+AuxOrbit = AuxOrbit.Normalize(true, Re); 
+AuxOrbit = AuxOrbit.ChangeStateFormat('COE');
+AuxOrbit = AuxOrbit.DefineJ2Problem(J2, Re);
+AuxOrbit = AuxOrbit.AddPropagator('Osculating J2', Step/86400);
+
+AuxOrbit = AuxOrbit.Propagate();
+hold on;
+AuxOrbit.PlotTrajectory(figure(1), AuxOrbit.InitialEpoch, AuxOrbit.PropagatedEpoch);
+%%
+L = sqrt(ElementSet(1)/Re);
+G = L * sqrt(1-ElementSet(2)^2);
+H = G * cos(ElementSet(4));
+D = [ElementSet(end) ElementSet(5) ElementSet(3) L G H] + [tspan.'/L^3 zeros(length(tspan),5)];
+
+for i = 1:length(tspan)
+    s(i,:) = Astrodynamics.Lara_solution(-J2,D(i,:));
+end
+scatter3(s(:,1),s(:,2),s(:,3));
+
+%% Filter test
+tspan = linspace(0,1,1e2);
+Measurements = num2cell(tspan).';
+
+for i = 1:size(Measurements,1)
+    Measurements{i,2} = @(x)(dot(x,x));
+end
+
 IOD_filter = Filters.IOD_filter(10, 10, 5, .98, 1);
 
 %% Run the filter

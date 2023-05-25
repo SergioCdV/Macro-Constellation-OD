@@ -58,11 +58,11 @@ classdef TopocentricSensor < Sensors.AbstractSensor
             % Propagate the observer and take the measurements
             AuxOrbit = AuxOrbit.Normalize(false, 1);
             Tspan = AuxOrbit.StateEvolution(:,1);
-            [Tspan, StateEvolution] = obj.Dynamics(AuxOrbit.InitialEpoch, obj.State, Tspan); 
+            [Tspan, StateEvolution, index] = obj.Dynamics(AuxOrbit.InitialEpoch, obj.State, Tspan); 
 
             if (~isempty(StateEvolution))
                 % Restrict the orbit state evolution   
-                AuxOrbitEvolution = AuxOrbit.StateEvolution(Epoch + Tspan / (24 * 3600) >= obj.InitialEpoch,2:end);
+                AuxOrbitEvolution = AuxOrbit.StateEvolution(index,2:end);
                 [timestamp, meas] = obj.ObservationProcess(Tspan, AuxOrbitEvolution, StateEvolution);
     
                 % Apply the probability of detection
@@ -141,7 +141,9 @@ classdef TopocentricSensor < Sensors.AbstractSensor
 
             % Observation
             for i = 1:length(Tspan)
-                if (dot(Orbit(i,1:3)/norm(Orbit(i,1:3)), StateEvolution(i,1:3)/norm(StateEvolution(i,1:3))) < cos(obj.FOV/2))
+                uo = Orbit(i,1:3)/norm(Orbit(i,1:3));
+                us = StateEvolution(i,1:3)/norm(StateEvolution(i,1:3));
+                if (abs(dot(uo,us)) > cos(obj.FOV/2))
                     meas = [meas; obj.TopocentricObservation(StateEvolution(i,1:3), StateEvolution(i,4:6), Orbit(i,1:3), Orbit(i,4:6))];
                     t = [t; Tspan(i)];
                 end
@@ -167,21 +169,22 @@ classdef TopocentricSensor < Sensors.AbstractSensor
     
     methods (Access = private)
         % Dynamics 
-        function [epoch, StateEvolution] = Dynamics(obj, Epoch, State, Tspan)
+        function [epoch, StateEvolution, index] = Dynamics(obj, Epoch, State, Tspan)
         % Check if an initial state has been given 
             if (~isempty(obj.State))
                 % Constants 
-                Re = 6378e3;        % Surface altitude over the ECI frame 
-    
-                % ECEF frame state
-                r_ecef = Re * [cos(State(1,1)) * cos(State(1,2)) cos(State(1,1)) * sin(State(1,2)) sin(State(1,1))];
+                Re = 6378e3;            % Surface altitude over the ECI frame 
+                omega = 2*pi/86400;     % Earth's rotation rate
+   
+                % r_ecef = Re * [cos(State(1,1)) * cos(State(1,2)) cos(State(1,1)) * sin(State(1,2)) sin(State(1,1))];
        
                 % Synchronization 
                 index = Epoch + Tspan / (24 * 3600) >= obj.InitialEpoch;
-                epoch = Epoch + Tspan(index) / (24 * 3600);
+                t = Tspan(index);
+                epoch = Epoch + t / (24 * 3600);
 
-                r_ecef = repmat(r_ecef, length(epoch), 1);
-                v_ecef = zeros(length(epoch),3); 
+                % ECEF frame state
+                v_ecef = zeros(1,3); 
                 StateEvolution = zeros(length(epoch),6);
                 
                 utc = datetime(epoch, 'Format','yyyy MM dd HH mm ss.SSS', 'ConvertFrom', 'juliandate');
@@ -189,7 +192,9 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                 utc = [year(utc) month(utc) day(utc) hour(utc) minute(utc) second(utc)];
 
                 for i = 1:length(epoch)
-                    [StateEvolution(i,1:3), StateEvolution(i,4:6)] = ecef2eci(utc(i,:), r_ecef(i,:), v_ecef(i,:));
+                    x = [State(1,1), State(1,2) + omega * t(i), 0];
+                    r_ecef = lla2ecef(x);
+                    [StateEvolution(i,1:3), StateEvolution(i,4:6)] = ecef2eci(utc(i,:), r_ecef, v_ecef);
                 end
             else
                 error('No obsever state has been given.');

@@ -2,20 +2,20 @@
 function [s] = Delaunay2Lara(x, direction)
     if (direction)
         M = x(1);           % Mean anomaly
-        Omega = x(2);       % RAAN
-        omega = x(3);       % AoP
+        Omega = x(3);       % RAAN
+        omega = x(2);       % AoP
         L = x(4);           % Delaunay action
         G = x(5);           % Angular momentum
         H = x(end);         % Polar angular momentum
 
         e = real(sqrt(1-(G/L)^2));
-        cos_i = (1-(H/G)^2);
+        cos_i = H/G;
 
         % Solve for the true anomaly
         [nu, E] = Astrodynamics.KeplerSolver(e,M);
     
         % Compute the radial and velocity distance in the perifocal frame
-        R = G./(1+e*cos(nu));
+        R = G^2./(1+e*cos(nu));
 
         theta = nu + omega;
         s(1,1) = Omega + theta;

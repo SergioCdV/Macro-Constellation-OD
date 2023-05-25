@@ -39,8 +39,8 @@ classdef GibbsSensor< Sensors.AbstractSensor
             % Propagate the observer and take the measurements
             AuxOrbit = AuxOrbit.Normalize(false, 1);
             Tspan = AuxOrbit.StateEvolution(:,1);
-            AuxOrbitEvolution = AuxOrbit.StateEvolution(:,2:end);
-            [Tspan, StateEvolution] = obj.Dynamics(AuxOrbit.InitialEpoch, obj.State, Tspan); 
+            [Tspan, StateEvolution, index] = obj.Dynamics(AuxOrbit.InitialEpoch, obj.State, Tspan); 
+            AuxOrbitEvolution = AuxOrbit.StateEvolution(index,2:end);
 
             if (~isempty(StateEvolution))
                 % Restrict the orbit state evolution                    
@@ -95,7 +95,7 @@ classdef GibbsSensor< Sensors.AbstractSensor
 
             % Observation
             for i = 1:length(Tspan)
-                if (dot(Orbit(i,1:3), StateEvolution(i,:)) > 0)
+                if (1)%dot(Orbit(i,1:3), StateEvolution(i,:)) > 0)
                     meas = [meas; Orbit(i,1:3)];
                     t = [t; Tspan(i)];
                 end
@@ -111,7 +111,7 @@ classdef GibbsSensor< Sensors.AbstractSensor
     
     methods (Access = private)
         % Dynamics 
-        function [epoch, StateEvolution] = Dynamics(obj, Epoch, State, Tspan)
+        function [epoch, StateEvolution, index] = Dynamics(obj, Epoch, State, Tspan)
             % Check if an initial state has been given 
             if (~isempty(obj.State))
                 % Check the tspan 

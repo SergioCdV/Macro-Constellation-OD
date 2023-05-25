@@ -1,28 +1,19 @@
 %% Constellation macro-orbit determination 
-% Date: 15/02/2023
+% Date: 06/02/2023
 % Author: Sergio Cuevas del Valle
 
-%% Class implementation of an RadarSensor object
+%% Class implementation of an AnomalySensor object
 
-classdef RadarSensor < Sensors.AbstractSensor
-    properties
-        FOV = deg2rad(90);      % Field of view of the sensor
-    end
+classdef AnomalySensor< Sensors.AbstractSensor
+    properties  
+    end 
 
     methods 
         % Constructor 
-        function [obj] = RadarSensor(myInitialEpoch, myInitialState, mySigma, myPD, myFOV)
-            myMeasDim = 2; 
-            myStateDim = 2;
+        function [obj] = AnomalySensor(myInitialEpoch, myInitialState, mySigma, myPD)
+            myStateDim = 1;
+            myMeasDim = 1;
             obj = obj@Sensors.AbstractSensor(myStateDim, myMeasDim, myInitialEpoch, myInitialState, mySigma, myPD);
-
-            if (exist('myFOV', 'var'))
-                if (myFOV <= pi)
-                    obj.FOV = myFOV;
-                else
-                    error('FOV cannot be greater than 180 deg.');
-                end
-            end
         end
 
         % Configuration of the clutter model 
@@ -43,16 +34,16 @@ classdef RadarSensor < Sensors.AbstractSensor
         % Observations
         function [timestamp, meas, StateEvolution] = Observe(obj, Orbit, Epoch)
             % Propagate the orbit 
-            AuxOrbit = Orbit.SetCurrentEpoch(Epoch).Propagate().ChangeStateFormat('ECI');
+            AuxOrbit = Orbit.SetCurrentEpoch(Epoch).Propagate().ChangeStateFormat('COE');
 
             % Propagate the observer and take the measurements
             AuxOrbit = AuxOrbit.Normalize(false, 1);
             Tspan = AuxOrbit.StateEvolution(:,1);
             [Tspan, StateEvolution, index] = obj.Dynamics(AuxOrbit.InitialEpoch, obj.State, Tspan); 
+            AuxOrbitEvolution = AuxOrbit.StateEvolution(index,2:end);
 
             if (~isempty(StateEvolution))
-                % Restrict the orbit state evolution   
-                AuxOrbitEvolution = AuxOrbit.StateEvolution(index,2:end);
+                % Restrict the orbit state evolution                    
                 [timestamp, meas] = obj.ObservationProcess(Tspan, AuxOrbitEvolution, StateEvolution);
     
                 % Apply the probability of detection
@@ -61,14 +52,16 @@ classdef RadarSensor < Sensors.AbstractSensor
                 meas = meas(index,:); 
                 StateEvolution = StateEvolution(index,:);
 
-                % Add noise
+                % Add some noise
                 for i = 1:size(meas,1)
                     meas(i,:) = mvnrnd(meas(i,:), obj.Sigma, 1);
                 end
 
                 % Add clutter
                 index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
-                clutter = [normrnd(500e3, 5e2, length(index), 1) normrnd(7e3, 1e2, length(index), 1)];
+                clutter = rand(length(index), 3); 
+                clutter = clutter./sqrt(dot(clutter,clutter,2));
+                clutter = clutter .* ( mean(sqrt(dot(meas(index,:),meas(index,:),2))) );
                 clutterTime = timestamp(index,:);
                 clutterState = StateEvolution(index,:);
                 
@@ -86,6 +79,7 @@ classdef RadarSensor < Sensors.AbstractSensor
                 [timestamp, index] = sort(timestamp);
                 meas = meas(index,:);
                 StateEvolution = StateEvolution(index,:);
+
             else
                 timestamp = []; 
                 meas = []; 
@@ -93,36 +87,24 @@ classdef RadarSensor < Sensors.AbstractSensor
             end
         end
 
-        % Topocentric observation
-        function [meas] = TopocentricObservation(obj, Robs, Vobs, rsat, vsat)
-            slant = (rsat-Robs).';                 % Slant vector
-            vslant = (vsat-Vobs).';                % Slant rate vector 
-            radar = norm(slant);                   % Radar slant measurement
-            rate = dot(vslant, slant)/radar;       % Range rate measurement
-            meas(1,1) = radar;                     % Radar slant measurement
-            meas(1,2) = rate;                      % Range rate measurement
-        end
-
         % Observation process 
         function [t, meas] = ObservationProcess(obj, Tspan, Orbit, StateEvolution)
-            % Preallocation
+            % Preallocaton
             meas = []; 
             t = []; 
 
             % Observation
             for i = 1:length(Tspan)
-                uo = Orbit(i,1:3)/norm(Orbit(i,1:3));
-                us = StateEvolution(i,1:3)/norm(StateEvolution(i,1:3));
-                if (1)%abs(dot(uo,us)) > cos(obj.FOV/2))
-                    meas = [meas; obj.TopocentricObservation(StateEvolution(i,1:3), StateEvolution(i,4:6), Orbit(i,1:3), Orbit(i,4:6))];
+                if (1)%dot(Orbit(i,1:3), StateEvolution(i,:)) > 0)
+                    meas = [meas; Orbit(i,6)];
                     t = [t; Tspan(i)];
                 end
             end
         end
 
-        % Gaussian likelihood function
+        % Likelihood function
         function [q] = LikelihoodFunction(obj, Sigma, z, y)
-            res = y-z;
+            res = mod(y,2*pi)-mod(z,2*pi);
             q = exp((-0.5*res.'*Sigma^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
         end
     end
@@ -130,31 +112,15 @@ classdef RadarSensor < Sensors.AbstractSensor
     methods (Access = private)
         % Dynamics 
         function [epoch, StateEvolution, index] = Dynamics(obj, Epoch, State, Tspan)
-        % Check if an initial state has been given 
+            % Check if an initial state has been given 
             if (~isempty(obj.State))
-                Re = 6378e3;            % Surface altitude over the ECI frame 
-                omega = 2*pi/86400;     % Earth's rotation rate
-   
-                % r_ecef = Re * [cos(State(1,1)) * cos(State(1,2)) cos(State(1,1)) * sin(State(1,2)) sin(State(1,1))];
-       
-                % Synchronization 
-                index = Epoch + Tspan / (24 * 3600) >= obj.InitialEpoch;
-                t = Tspan(index);
-                epoch = Epoch + t / (24 * 3600);
-
-                % ECEF frame state
-                v_ecef = zeros(1,3); 
-                StateEvolution = zeros(length(epoch),6);
-                
-                utc = datetime(epoch, 'Format','yyyy MM dd HH mm ss.SSS', 'ConvertFrom', 'juliandate');
-                utc.TimeZone = 'Z';
-                utc = [year(utc) month(utc) day(utc) hour(utc) minute(utc) second(utc)];
-
-                for i = 1:length(epoch)
-                    x = [State(1,1), State(1,2) + omega * t(i), 0];
-                    r_ecef = lla2ecef(x);
-                    [StateEvolution(i,1:3), StateEvolution(i,4:6)] = ecef2eci(utc(i,:), r_ecef, v_ecef);
-                end
+                % Check the tspan 
+                index = Epoch + Tspan >= obj.InitialEpoch;
+                epoch = Epoch + Tspan(index) / (24 * 3600);
+    
+                % Copy the state
+                StateEvolution = repmat(State, length(Tspan(index)), 1);
+                Tspan = Tspan(index);
             else
                 error('No obsever state has been given.');
             end
