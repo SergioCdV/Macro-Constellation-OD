@@ -131,8 +131,7 @@ classdef Orbit
             elseif (myCurrentEpoch <= obj.FinalEpoch)
                 obj.CurrentEpoch = myCurrentEpoch;
             elseif (myCurrentEpoch > obj.FinalEpoch)
-                obj.FinalEpoch = myCurrentEpoch;
-                obj.CurrentEpoch = myCurrentEpoch;
+                obj.CurrentEpoch = obj.FinalEpoch;
             end
         end
 
@@ -182,19 +181,37 @@ classdef Orbit
             if (obj.PropagatedEpoch < obj.CurrentEpoch)
                 aux_tspan = 0:obj.TimeStep:(obj.CurrentEpoch-obj.PropagatedEpoch) * 24 * 3600;
 
-                if (obj.Normalized)
-                    aux_tspan = aux_tspan / obj.Tc;
+                if (~isempty(aux_tspan))  
+                    if (obj.Normalized)
+                        aux_tspan = aux_tspan / obj.Tc;
+                    end
+
+                    % Perform the propagation 
+                    AuxEvolution = obj.Dynamics(aux_tspan); 
+
+                    % Update states
+                    obj.StateEvolution = [obj.StateEvolution; [obj.StateEvolution(end,1)+aux_tspan(2:end).' AuxEvolution(2:end,:)]];
+                    obj.ElementSet = AuxEvolution(end,:);
+
+                    obj.Tspan = [obj.Tspan obj.PropagatedEpoch:obj.TimeStep / (24 * 3600):obj.CurrentEpoch];
+   
+                else
+                    aux_tspan = linspace(0, (obj.CurrentEpoch-obj.PropagatedEpoch) * 24 * 3600, 1e2);
+
+                    if (obj.Normalized)
+                        aux_tspan = aux_tspan / obj.Tc;
+                    end
+
+                    % Perform the propagation 
+                    AuxEvolution = obj.Dynamics(aux_tspan); 
+
+                    % Update states
+                    obj.StateEvolution = [obj.StateEvolution; [obj.StateEvolution(end,1)+aux_tspan([2 end]).' AuxEvolution([2 end],:)]];
+                    obj.ElementSet = AuxEvolution(end,:);
+
+                    obj.Tspan = [obj.Tspan obj.CurrentEpoch];
                 end
-    
-                % Perform the propagation 
-                AuxEvolution = obj.Dynamics(aux_tspan); 
 
-                % Update states
-                obj.StateEvolution = [obj.StateEvolution; [obj.StateEvolution(end,1)+aux_tspan(2:end).' AuxEvolution(2:end,:)]];
-                obj.ElementSet = AuxEvolution(end,:);
-
-                obj.Tspan = [obj.Tspan obj.PropagatedEpoch:obj.TimeStep / (24 * 3600):obj.CurrentEpoch];
-    
                 % Update the last propagated epoch 
                 obj.PropagatedEpoch = obj.CurrentEpoch;
             end
@@ -300,10 +317,18 @@ classdef Orbit
                 diff = abs(obj.Tspan-FinalEpoch); 
                 [~, PosFinal] = sort(diff); 
                 PosFinal = PosFinal(1);
+
+                if (PosFinal > size(obj.StateEvolution,1))
+                    PosFinal = size(obj.StateEvolution,1);
+                end
     
                 diff = abs(obj.Tspan-InitialEpoch); 
                 [~, PosInit] = sort(diff);  
                 PosInit = PosInit(1);
+
+                if (PosInit > size(obj.StateEvolution,1))
+                    PosInit = size(obj.StateEvolution,1);
+                end
     
                 % Change to Cartesian coordinates
                 switch (obj.ElementType)

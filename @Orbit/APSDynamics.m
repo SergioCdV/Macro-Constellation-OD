@@ -18,6 +18,11 @@ function [AuxEvolution] = APSDynamics(obj, tspan, model)
         
             % Integration of the osculating problem
             [~, AuxEvolution] = ode45(@(t,s)APSO_dynamics(obj.mu, obj.J2, obj.Re, s, obj.PropagatedEpoch, t), tspan, AuxOrbit.ElementSet, obj.IntegrationOptions);
+
+            if (length(tspan) == 2)
+                AuxEvolution = AuxEvolution([1 end],:);
+            end
+
             AuxOrbit.StateEvolution = [tspan.' AuxEvolution]; 
             AuxEvolution = AuxOrbit.ChangeStateFormat(obj.ElementType).StateEvolution(:,2:end);
 

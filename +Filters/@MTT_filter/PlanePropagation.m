@@ -18,18 +18,28 @@ function [planes] = PlanePropagation(obj, last_epoch, prop_epoch, planes)
         Omega = zeros(3,1);                  % Angular velocity
 
         % RAAN motion
-        Omega(1) = 3/2*obj.epsilon/(L^7*eta^4) * (H/G);                        
+        Omega(1) = 3/2*obj.epsilon/(L^7*eta^4) * (H/G);      
 
-        % Body frame rotation
-        Omega = QuaternionAlgebra.right_isoclinic([Omega; 0]) * QuaternionAlgebra.quaternion_inverse(planes(1:4,i)); 
-        Omega = QuaternionAlgebra.right_isoclinic(planes(1:4,i)) * Omega; 
-        omega = Omega(1:3,1);
+        % Exponential mapping
+        if (step > obj.Tc / 1e3)
+            step = linspace(0,step,1e2);
+            dstep = step(2)-step(1);
+        else
+            dstep = step;
+        end
 
-        % Perigee motion
-        omega(3) = omega(3) +  3/4*obj.epsilon/(L^7*eta^4) * (1 - 5*(H/G)^2);            
-
-        % Propgate the quaternions only using the Lie-Euler method
-        omega = step/2 * omega; 
-        planes(1:4,i) = QuaternionAlgebra.right_isoclinic(planes(1:4,i)) * QuaternionAlgebra.exp_map([omega; 0], One);
+        for j = 1:length(step)
+            % Body frame rotation
+            Omega = QuaternionAlgebra.right_isoclinic([Omega; 0]) * QuaternionAlgebra.quaternion_inverse(planes(1:4,i)); 
+            Omega = QuaternionAlgebra.right_isoclinic(planes(1:4,i)) * Omega; 
+            omega = Omega(1:3,1);
+    
+            % Perigee motion
+            omega(3) = omega(3) +  3/4*obj.epsilon/(L^7*eta^4) * (1 - 5*(H/G)^2);            
+    
+            % Propgate the quaternions only using the Lie-Euler method
+            omega = dstep/2 * omega; 
+            planes(1:4,i) = QuaternionAlgebra.right_isoclinic(planes(1:4,i)) * QuaternionAlgebra.exp_map([omega; 0], One);
+        end
     end
 end

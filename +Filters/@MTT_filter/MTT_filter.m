@@ -10,6 +10,8 @@ classdef MTT_filter < Filters.BayesFilter
         % Grid properties
         M;
         nu;
+        L = 0;
+        R = 0;
 
         % Resampling
         Jmax = 1e3;  
@@ -74,6 +76,9 @@ classdef MTT_filter < Filters.BayesFilter
     end
 
     methods 
+        % Perifocal attitude sampling 
+        [samples] = PerifocalQuatSampling(obj, particles);
+
         % Wrapped normal 
         [f] = wrapped_normal(obj, error_tol, M, mu, sigma); 
 
@@ -86,6 +91,11 @@ classdef MTT_filter < Filters.BayesFilter
 
         % Resampling
         [particles, weights] = Pruning(obj, particles, weights);
+    end
+
+    methods (Static)
+        % Perifocal attitude sampling 
+        [plane, Sigma] = PerifocalUpdate(weights, particles);
     end
 
 end

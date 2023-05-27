@@ -4,11 +4,13 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     particles = PropPrior(1:end-1,:);
     weights = PropPrior(end,:);
 
-    pos = Estimator.StateDim;
+    pos = Estimator.StateDim+1;
     Estimator.StateDim = 4; 
     REstimator = Estimator.Init();
     
     % Corrector step of the KF for the covariance and means
+    Sigma = reshape(particles(pos+1:pos+(pos-1)^2,1), [pos-1 pos-1]); 
+    F = Sigma(1:3,1:3)^(-1);
 
     % Weights update
     L = size(particles,2);
@@ -27,12 +29,22 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
 
         for j = 1:L
             index = L * i + j;
-            sigma_points = reshape( particles(pos^2+pos+1:end,j), pos, []);
-            Sigma = reshape( particles(pos+1:pos^2+pos,j), [pos pos]);
-            [mu, S, ~, y] = REstimator.CorrectionStep(sigma_points, particles(1:pos,j), Sigma, Z);
+            Sigma = blkdiag(1, reshape( particles(pos+1:pos+(pos-1)^2,j), [pos-1 pos-1]));
+            sigma_points = reshape( particles((pos-1)^2+pos+1:end,j), pos, []);
 
+            % UKF step
+            [mu, S, ~, y] = REstimator.CorrectionStep(sigma_points, particles(1:pos,j), Sigma, Z);
+            Sigma = Sigma(2:end,2:end);
+            S = S(2:end,2:end);
+
+            % Deconditioning 
+            a = zeros(3,1);
+            mu(5:end) = mu(5:end) - Sigma(4:end,1:3) * F * a;
+            S(4:end,4:end) = S(4:end,4:end) + S(4:end,1:3) * F * S(4:end,1:3).';
+
+            % Particles update
             particles(1:pos,index) = mu;
-            particles(pos+1:pos+pos^2,index) = reshape(S, [], 1);
+            particles(pos+1:pos+(pos-1)^2,index) = reshape(S, [], 1);
 
             if (isempty(y) || any(isnan(y)))
                 l = 0;
@@ -54,7 +66,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     psi(1,1:L) = (1-obj.PD) .* weights(1,:);
     
     % Assemble the posterior 
-    Posterior = [particles(1:pos+pos^2,:); psi];
+    Posterior = [particles(1:pos+(pos-1)^2,:); psi];
 end
 
 %% Auxiliary functions 
@@ -96,9 +108,8 @@ function [State] = ParticleState(obj, particle)
     omega = 2 * plus - Omega;
 
     % Assemble the set
-    D = [M omega Omega L G H].';    
-    
-%     State = [zeros(1,5) D(1)].';
+    D = [M omega Omega L G H].';   
+    State = [zeros(1,5) D(1)].';
 
     % Preallocation 
 %     Do = Astrodynamics.Brouwer_solution(obj.epsilon, D);

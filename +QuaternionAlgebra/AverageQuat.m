@@ -11,9 +11,9 @@ function [q, Sigma] = AverageQuat(w, dq)
     % Compute the covariance matrix
     R = zeros(4);
 
-    Q = QuaternionAlgebra.right_isoclinic(q);
+    Q = QuaternionAlgebra.left_isoclinic(q);
     for i = 1:size(dq,2)
-        Qi = QuaternionAlgebra.right_isoclinic(dq(:,i));
+        Qi = QuaternionAlgebra.left_isoclinic(dq(:,i));
         R = R + w(i) * Qi(:,1:3) * Qi(:,1:3).';
     end
     Sigma = (Q(:,1:3).' * R * Q(:,1:3))^(-1);

@@ -12,18 +12,18 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
 
     % Preallocate the estimator 
     pos = 8;
-    Q = zeros(pos);
-    Q(end,end) = 1e-3;
+    Q = 1e-7 * eye(pos);
+
     switch (obj.KF_type)
         case 'EKF'
             AnomalyEstimator = Filters.EKF();
         case 'UKF-A'
-            AnomalyEstimator = Filters.UKF('UKF-A', 2, 5E-2, 0);
-            AnomalyEstimator.StateDim = 8;
+            AnomalyEstimator = Filters.UKF('UKF-A', 2, 1E-1, 0);
+            AnomalyEstimator.StateDim = pos-1;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
         case 'UKF-S'
-            AnomalyEstimator = Filters.UKF('UKF-S', 2, 5E-2, 0);
-            AnomalyEstimator.StateDim = 8;
+            AnomalyEstimator = Filters.UKF('UKF-S', 2, 1E-1, 0);
+            AnomalyEstimator.StateDim = pos-1;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
     end
 
@@ -110,6 +110,9 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
                 PropPrior = [PropPrior(1:end-1,:); sigma_points; PropPrior(end,:)];
                 PropPrior(end,:) =  obj.PS * PropPrior(end,:);
 
+                % Augmentation of the perifocal attitude particle representation via tangent space mapping
+                PropPrior = obj.PerifocalQuatSampling(PropPrior);
+
                 % Birth particles
                 born_particles = obj.Birth();
                 [born_particles, bsigma_points] = obj.PropagationStep(last_epoch, last_epoch, AnomalyEstimator, born_particles);
@@ -127,12 +130,18 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
             particles = Posterior(1:end-1,:);
             weights = Posterior(end,:);
 
-            % Averaging of the perifocal frame (state estimation ML)
-            beta = sum(weights / sum(weights) .* particles(pos-3:pos-1,:),2);
-            [q, ~] = QuaternionAlgebra.AverageQuat(weights / sum(weights), particles(1:4,:));
-            obj.planes(1:pos-1,:) = [q; beta];
-            particles(1:pos-1,:) = repmat(obj.planes(1:pos-1,:), 1, size(particles,2));
+            % Averaging of the perifocal frame (ML state estimation)
+            [plane, Sigma] = obj.PerifocalUpdate(weights / sum(weights), particles(1:pos-1,:));
 
+            obj.planes = [plane; reshape(Sigma, [], 1)];
+            particles(1:pos-1,:) = repmat(obj.planes(1:pos-1,:), 1, size(particles,2));
+            
+            for j = 1:size(particles,2)
+                Sigma_t = reshape(particles(pos+1:end,j), [pos-1 pos-1]);
+                Sigma_t(1:end-1,1:end-1) = Sigma;
+                particles(pos+1:end,j) = reshape(Sigma_t, [], 1);
+            end
+            
             % Estimation on the number of targets per plane
             T = sum(weights,2);
             obj.N = round( T + (1-obj.PD) * obj.PS * obj.N );

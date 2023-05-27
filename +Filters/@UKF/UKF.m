@@ -14,6 +14,7 @@ classdef UKF < Filters.BayesFilter
         beta    
         alpha
         k
+        W           % UKF weights
         
         Clock = 0
         InitFlag = true
@@ -34,8 +35,6 @@ classdef UKF < Filters.BayesFilter
 
     properties (Access = private)
         % Hyperparameters
-        W           % UKF weights
-
         L           % Number of sigma points 
         lambda      % Scaling parameter
         c           % Scaling factor
