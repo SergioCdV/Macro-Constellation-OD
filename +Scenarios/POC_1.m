@@ -117,7 +117,7 @@ InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
 % Define an anomaly observer
 InitialState = 0;
 Sigma = deg2rad(0.001)^2;
-% InObs = Sensors.AnomalySensor(InitialEpoch, InitialState, Sigma, PD);
+InObs = Sensors.AnomalySensor(InitialEpoch, InitialState, Sigma, PD);
 
 % Define a radar topocentric observer located at the Equator
 InitialState = [0 -30];
@@ -199,15 +199,15 @@ Measurements = cell(length(ObservationSpan), 6);
 Measurements(:,1) = num2cell(ObservationSpan);
 
 for i = 1:length(index)
-    if (index(i) <= size(InTime,1))
-        Sigma = diag([1e4 1e4 1e4].^2/Re^2);
-        Measurements(i,2) = { meas(index(i),:)./[1 Re Re Re] };
-        Measurements(i,3) = { InState(index(i),:) };
-        Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).'/Re, y) };
-        Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)), y, InState(index(i),:)) };
-        Measurements(i,6) = { reshape(Sigma, [], 1) };
-        Measurements(i,7) = { 'INERTIAL' };
-    end
+%     if (index(i) <= size(InTime,1))
+%         Sigma = diag([1e4 1e4 1e4].^2/Re^2);
+%         Measurements(i,2) = { meas(index(i),:)./[1 Re Re Re] };
+%         Measurements(i,3) = { InState(index(i),:) };
+%         Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).'/Re, y) };
+%         Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)), y, InState(index(i),:)) };
+%         Measurements(i,6) = { reshape(Sigma, [], 1) };
+%         Measurements(i,7) = { 'INERTIAL' };
+%     end
 % 
 %     elseif (index(i) <= size(InTime,1) + size(RadarTime,1))
 %         L = size(InTime,1);
@@ -244,7 +244,7 @@ for i = 1:length(index)
         Measurements(i,7) = {'Telescope'};
     end
 
-    if (0) % (index(i) <= size(InTime,1))
+    if (1) % (index(i) <= size(InTime,1))
         Sigma = deg2rad(1).^2;
         Measurements(i,2) = { meas(index(i),:) };
         Measurements(i,3) = { InState(index(i),:) };
@@ -324,7 +324,7 @@ D = [D; reshape(1e-7*eye(6), [], 1)];
 
 %% Estimation: tracking 
 % Estimator configuration
-MTT = Filters.MTT_filter(1, 2e2, PD, PS, D);
+MTT = Filters.MTT_filter(1, 4e2, PD, PS, D);
 
 % Physical parameters
 MTT.mu = mu;

@@ -19,7 +19,7 @@ function [particles, weights] = Initialization(obj)
         for i = 1:size(obj.planes,2)
             sigma = zeros(pos-1);
             sigma(1:end-1,1:end-1) = reshape(obj.planes(pos:end,i), [pos-2 pos-2]);
-            sigma(end,end) = deg2rad(2)^2;
+            sigma(end,end) = deg2rad(5)^2;
             sigma = reshape(sigma, [], 1);
 
             % Particles as wrapped Gaussian kernels 

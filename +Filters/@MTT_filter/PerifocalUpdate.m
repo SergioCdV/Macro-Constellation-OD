@@ -1,5 +1,5 @@
 
-function [plane, Sigma] = PerifocalUpdate(weights, particles)
+function [plane, Sigma] = PerifocalUpdate(obj, weights, particles)
     % Final mean estimation 
     beta = sum(weights .* particles(5:end,:),2);
     [q, Sigma_q] = QuaternionAlgebra.AverageQuat(weights, particles(1:4,:));
@@ -10,7 +10,7 @@ function [plane, Sigma] = PerifocalUpdate(weights, particles)
     % Final covariance estimation 
     Sigma_b = (weights.*particles(5:7,:)-beta*weights) * (weights.*particles(5:7,:)-beta*weights).';
     Sigma = blkdiag(Sigma_q, Sigma_b);
-    Sigma = 0.5 * (Sigma + Sigma.') + 1e-6 * eye(size(Sigma));
+    Sigma = 0.5 * (Sigma + Sigma.') + obj.PD_tol * eye(size(Sigma));
 
     % Uscented transform 
     UF = Filters.UKF('UKF-A', 2, 1e-1, 0);
@@ -28,5 +28,5 @@ function [plane, Sigma] = PerifocalUpdate(weights, particles)
     Sigma = Sigma_c;
 
     % Numerical conditioning
-    Sigma = 0.5 * (Sigma + Sigma.') + 1e-6 * eye(size(Sigma));
+    Sigma = 0.5 * (Sigma + Sigma.') + obj.PD_tol * eye(size(Sigma));
 end

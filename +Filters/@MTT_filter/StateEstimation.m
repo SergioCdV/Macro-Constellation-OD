@@ -24,9 +24,9 @@ function [X] = StateEstimation(obj, samples, weights, N)
             sigma = (pruned_weights(1,ID).*pruned_samples(pos,ID)-X(1,i)*pruned_weights(1,ID)) * (pruned_weights(1,ID).*pruned_samples(pos,ID)-X(1,i)*pruned_weights(1,ID)).';
     
             if (sum(ID) > 1)
-                sigma = sigma/(1-sum(pruned_weights(1,ID).^2)) + 1e-12;
+                sigma = sigma/(1-sum(pruned_weights(1,ID).^2)) + obj.PD_tol;
             else
-                sigma = 1e-12;
+                sigma = obj.PD_tol;
             end
             X(end,i) = reshape(sigma, [], 1);
         end

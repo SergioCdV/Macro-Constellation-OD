@@ -25,8 +25,7 @@ function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch,
         % Conditioning
         Sigma = reshape(particles(pos+1:end,i), [pos-1 pos-1]); 
 
-        a = zeros(3,1);
-        mu = particles(pos-3:pos,i) + Sigma(4:end,1:3) * F * a;
+        mu = particles(pos-3:pos,i) + Sigma(4:end,1:3) * F * obj.Gibbs_vector(:,i);
         sigma = Sigma(4:end,4:end) - Sigma(4:end,1:3) * F * Sigma(4:end,1:3).';
         REstimator = REstimator.InitConditions(mu, sigma);
 

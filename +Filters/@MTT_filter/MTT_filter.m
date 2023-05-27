@@ -21,6 +21,7 @@ classdef MTT_filter < Filters.BayesFilter
 
         % State estimation
         planes;
+        Gibbs_vector = zeros(3,1);
         N = 1; 
         X;
 
@@ -30,6 +31,7 @@ classdef MTT_filter < Filters.BayesFilter
 
         % Kalman Filter 
         KF_type = 'UKF-A';
+        PD_tol = 1e-6;
     end
 
     methods
@@ -77,7 +79,8 @@ classdef MTT_filter < Filters.BayesFilter
 
     methods 
         % Perifocal attitude sampling 
-        [samples] = PerifocalQuatSampling(obj, particles);
+        [samples, a] = PerifocalQuatSampling(obj, particles);
+        [plane, Sigma] = PerifocalUpdate(obj, weights, particles);
 
         % Wrapped normal 
         [f] = wrapped_normal(obj, error_tol, M, mu, sigma); 
@@ -87,6 +90,7 @@ classdef MTT_filter < Filters.BayesFilter
         [samples] = GibbsSampling(obj, m, mu, Sigma, a); 
 
         % Clustering and state estimation
+        [State] = ParticleState(obj, particle);
         [X] = StateEstimation(obj, N, particles, weights);
 
         % Resampling
@@ -95,7 +99,7 @@ classdef MTT_filter < Filters.BayesFilter
 
     methods (Static)
         % Perifocal attitude sampling 
-        [plane, Sigma] = PerifocalUpdate(weights, particles);
+
     end
 
 end
