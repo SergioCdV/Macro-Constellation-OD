@@ -28,6 +28,7 @@ classdef MTT_filter < Filters.BayesFilter
         % Markov probabilities
         PD = 1; 
         PS = 1;
+        gamma = 1e4;
 
         % Kalman Filter 
         KF_type = 'UKF-A';
@@ -36,7 +37,7 @@ classdef MTT_filter < Filters.BayesFilter
 
     methods
         % Constructor 
-        function [obj] = MTT_filter(myN, myM, myPD, myPS, myPlanes)
+        function [obj] = MTT_filter(myPlanes, myN, myM, myPS, myPD, myGamma)
             % Contruct the filter sample space dimensions
             if (exist('myM', 'var'))
                 obj.M = myM;
@@ -59,6 +60,12 @@ classdef MTT_filter < Filters.BayesFilter
                     obj.PS = myPS;
                 else
                     error('No valid survival probability has been input.'); 
+                end
+            end
+
+            if (exist('myGamma', 'var'))
+                if (myGamma > 0)
+                    obj.PS = myGamma;
                 end
             end
 

@@ -122,6 +122,7 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
     
                 % Correction step 
                 [Posterior] = obj.CorrectionStep(meas_index+indices, Measurements, AnomalyEstimator, PropPrior);
+%                 [Posterior] = obj.ExtendedCorrectionStep(meas_index+indices, Measurements, AnomalyEstimator, PropPrior);
                 Prior = Posterior;
                 last_epoch = prop_epoch;
             end
