@@ -73,7 +73,7 @@ end
 function [y] = FullProcess(obj, SensorModality, ObservationModel, state)
     % Preallocation 
     for i = 1:size(state,2)
-        State = obj.ParticleState(state(:,i)).';
+        State = obj.ParticleState(SensorModality, state(:,i)).';
         [~, aux] = feval(ObservationModel, State);
         if (~isempty(aux))
             % Dimensionalizing 
@@ -84,7 +84,7 @@ function [y] = FullProcess(obj, SensorModality, ObservationModel, state)
                     aux = aux / obj.Re;
             end
 
-            y(1:length(aux),i) = aux;
+            y(1:length(aux),i) = aux.';
         else
             y(1,i) = NaN;
         end

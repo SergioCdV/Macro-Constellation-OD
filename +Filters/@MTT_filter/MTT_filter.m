@@ -14,7 +14,7 @@ classdef MTT_filter < Filters.BayesFilter
         R = 0;
 
         % Resampling
-        Jmax = 1e3;  
+        Jmax = 2e3;  
         PruneThresh = 1e-5;
         MergeThresh = deg2rad(3);
         ResamplingMethod = 'Systematic';
@@ -28,7 +28,8 @@ classdef MTT_filter < Filters.BayesFilter
         % Markov probabilities
         PD = 1; 
         PS = 1;
-        gamma = 1e4;
+        Gamma = 2;
+        ExtendedTarget = false;
 
         % Kalman Filter 
         KF_type = 'UKF-A';
@@ -65,7 +66,7 @@ classdef MTT_filter < Filters.BayesFilter
 
             if (exist('myGamma', 'var'))
                 if (myGamma > 0)
-                    obj.PS = myGamma;
+                    obj.Gamma = myGamma;
                 end
             end
 
@@ -97,7 +98,7 @@ classdef MTT_filter < Filters.BayesFilter
         [samples] = GibbsSampling(obj, m, mu, Sigma, a); 
 
         % Clustering and state estimation
-        [State] = ParticleState(obj, particle);
+        [State] = ParticleState(obj, SensorModality, particle);
         [X] = StateEstimation(obj, N, particles, weights);
 
         % Resampling

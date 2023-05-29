@@ -7,13 +7,14 @@
 classdef DelaunaySensor< Sensors.AbstractSensor
     properties 
         mu = 3.986e14;      % Earth's gravitational parameter
+        Re = 6378e3;        % Earth's radius
     end 
 
     methods 
         % Constructor 
         function [obj] = DelaunaySensor(myInitialEpoch, myInitialState, mySigma, myPD)
             myStateDim = 1;
-            myMeasDim = 1;
+            myMeasDim = 6;
             obj = obj@Sensors.AbstractSensor(myStateDim, myMeasDim, myInitialEpoch, myInitialState, mySigma, myPD);
         end
 
@@ -96,8 +97,9 @@ classdef DelaunaySensor< Sensors.AbstractSensor
             t = []; 
 
             % Observation
+            Orbit(:,1) = Orbit(:,1)./obj.Re;
             for i = 1:length(Tspan)
-                D = Astrodynamics.Delaunay2COE(obj.mu, Orbit(i,:), false);
+                D = Astrodynamics.Delaunay2COE(1, Orbit(i,:), false);
                 meas = [meas; D];
                 t = [t; Tspan(i)];
             end
@@ -105,7 +107,7 @@ classdef DelaunaySensor< Sensors.AbstractSensor
 
         % Likelihood function
         function [q] = LikelihoodFunction(obj, Sigma, z, y)
-            res = mod(y,2*pi)-mod(z,2*pi);
+            res = y-z;
             q = exp((-0.5*res.'*Sigma^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
         end
     end

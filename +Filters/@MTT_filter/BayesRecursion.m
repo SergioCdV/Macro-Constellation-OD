@@ -121,8 +121,12 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
                 PropPrior = [PropPrior born_particles];
     
                 % Correction step 
-                [Posterior] = obj.CorrectionStep(meas_index+indices, Measurements, AnomalyEstimator, PropPrior);
-%                 [Posterior] = obj.ExtendedCorrectionStep(meas_index+indices, Measurements, AnomalyEstimator, PropPrior);
+                if (obj.ExtendedTarget)
+                    [Posterior] = obj.ExtendedCorrectionStep(meas_index+indices, Measurements, AnomalyEstimator, PropPrior);
+                else
+                    [Posterior] = obj.CorrectionStep(meas_index+indices, Measurements, AnomalyEstimator, PropPrior);
+                end
+
                 Prior = Posterior;
                 last_epoch = prop_epoch;
             end

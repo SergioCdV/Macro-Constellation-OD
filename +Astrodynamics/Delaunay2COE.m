@@ -21,11 +21,11 @@ function [s] = Delaunay2COE(mu, x, direction)
     else
         % COE set to the Delaunay state transformation
         a = x(1);       % Semimajor axis
-        e = x(3);       % Eccentricity
-        Omega = x(2);   % RAAN
+        e = x(2);       % Eccentricity
+        Omega = x(3);   % RAAN
         i = x(4);       % Inclination
         omega = x(5);   % AoP
-        M = x(end);     % Mean anomaly
+        M = x(6);       % Mean anomaly
     
         % Keplerian functions
         L = sqrt(mu * a);

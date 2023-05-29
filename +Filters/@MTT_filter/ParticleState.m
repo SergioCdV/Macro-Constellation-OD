@@ -1,6 +1,6 @@
 
 % Transformation from Delaunay to Cartesian elements
-function [State] = ParticleState(obj, particle)
+function [State] = ParticleState(obj, SensorModality, particle)
     % Delaunay elements of the particle 
     qp = particle(1:4,1);
     L = particle(5,1);
@@ -16,21 +16,30 @@ function [State] = ParticleState(obj, particle)
 
     % Assemble the set
     D = [M omega Omega L G H].';   
-    State = [zeros(1,5) D(1)].';
 
-    % Preallocation 
-%     Do = Astrodynamics.Brouwer_solution(obj.epsilon, D);
-%     State = zeros(6,size(D,2)); 
-%     for i = 1:size(D,2)
-%         State(:,i) = Astrodynamics.Delaunay2ECI(Do);
-%         State(1:3,i) = obj.Re * State(1:3,i);
-%         State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);
-%     end
+    switch (SensorModality)
+        case 'ANOMALY'
+            State = [zeros(1,5) M].';
 
-%     State = zeros(6,size(D,2)); 
-%     for i = 1:size(D,2)
-%         State(:,i) = Astrodynamics.Lara_solution(obj.epsilon, D);
-%         State(1:3,i) = obj.Re * State(1:3,i);
-%         State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);
-%     end
+        case 'DELAUNAY'
+            State = Astrodynamics.Delaunay2COE(1, D, true);
+            State(1) = State(1) * obj.Re;
+            State = State.';
+
+        otherwise
+            Do = Astrodynamics.Brouwer_solution(obj.epsilon, D);
+            State = zeros(6,size(D,2)); 
+            for i = 1:size(D,2)
+                State(:,i) = Astrodynamics.Delaunay2ECI(Do);
+                State(1:3,i) = obj.Re * State(1:3,i);
+                State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);
+            end
+        
+            State = zeros(6,size(D,2)); 
+            for i = 1:size(D,2)
+                State(:,i) = Astrodynamics.Lara_solution(obj.epsilon, D);
+                State(1:3,i) = obj.Re * State(1:3,i);
+                State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);
+            end
+    end    
 end

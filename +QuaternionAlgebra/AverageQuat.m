@@ -3,7 +3,7 @@ function [q, Sigma] = AverageQuat(w, dq)
 
     % Compute the average quaternion through the Markeley 2007 method
     Q = w .* dq; 
-    M = Q * Q.';
+    M = Q * dq.';
 
     % Get the eigenvector corresponding to the largest eigenvalue 
     [q,~] = eigs(M,1);

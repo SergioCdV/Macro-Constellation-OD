@@ -23,7 +23,7 @@ Nmax = 2;                   % Number of targets
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
 T = 1;                                              % Number of days 
 EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
-Step = 1200;                                         % Integration step in seconds
+Step = 600;                                         % Integration step in seconds
 tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
 
 % Target birth 
@@ -107,11 +107,12 @@ end
 Pc = 0.0;                   % Probability of false measurements
 Vc = 10;                    % Number of false measurements per sensor (surveillance region)
 
+PD = 0.98;                  % Detection probability
+
 % Define an inertial observer
 InitialState = [0 1 0];
 InitialEpoch = juliandate(datetime('now'));
 Sigma = diag([1e1 1e1 1e1]);
-PD = 0.98;
 InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
 
 % Define an anomaly observer
@@ -213,11 +214,11 @@ for i = 1:size(Constellation_1.OrbitSet,1)
     [time_aux, meas_aux, state_aux] = TelescopeObs2.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
 
     TelescopeTime2 = [TelescopeTime2; time_aux];
-    RaMeas2 = [RaMeas2; [i*ones(size(meas_radec_aux,1),1) meas_radec_aux]];
+    RaMeas2 = [RaMeas2; [i*ones(size(meas_aux,1),1) meas_aux]];
     TelescopeState2 = [TelescopeState2; state_aux];
 end
 
-ObservationSpan = [InTime];
+ObservationSpan = [AnTime];
 [ObservationSpan, index] = sort(ObservationSpan);
 
 % ObservationSpan = [InTime; DyTime; AnTime; RadarTime; TelescopeTime; TelescopeTime2];
@@ -227,15 +228,15 @@ Measurements = cell(length(ObservationSpan), 6);
 Measurements(:,1) = num2cell(ObservationSpan);
 
 for i = 1:length(index)
-    if (index(i) <= size(InTime,1))
-        Sigma = diag([1e5 1e5 1e5].^2/Re^2);
-        Measurements(i,2) = { meas(index(i),:)./[1 Re Re Re] };
-        Measurements(i,3) = { InState(index(i),:) };
-        Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).'/Re, y) };
-        Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)), y, InState(index(i),:)) };
-        Measurements(i,6) = { reshape(Sigma, [], 1) };
-        Measurements(i,7) = { 'INERTIAL' };
-    end
+%     if (index(i) <= size(InTime,1))
+%         Sigma = diag([1e5 1e5 1e5].^2/Re^2);
+%         Measurements(i,2) = { meas(index(i),:)./[1 Re Re Re] };
+%         Measurements(i,3) = { InState(index(i),:) };
+%         Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, meas(index(i),2:end).'/Re, y) };
+%         Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)), y, InState(index(i),:)) };
+%         Measurements(i,6) = { reshape(Sigma, [], 1) };
+%         Measurements(i,7) = { 'INERTIAL' };
+%     end
 % 
 %     elseif (index(i) <= size(InTime,1) + size(RadarTime,1))
 %         L = size(InTime,1);
@@ -271,8 +272,8 @@ for i = 1:length(index)
         Measurements(i,7) = {'Telescope'};
     end
 
-    if (0) 
-        Sigma = deg2rad(1).^2;
+    if (1) 
+        Sigma = deg2rad(0.1).^2;
         Measurements(i,2) = { AnMeas(index(i),:) };
         Measurements(i,3) = { AnState(index(i),:) };
         Measurements(i,4) = { @(y)AnObs.LikelihoodFunction(Sigma, AnMeas(index(i),2:end).', y) };
@@ -282,13 +283,13 @@ for i = 1:length(index)
     end
 
     if (0)
-        Sigma = deg2rad(1).^2;
+        Sigma = deg2rad(5)^2 * eye(6);
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };
         Measurements(i,4) = { @(y)DyObs.LikelihoodFunction(Sigma, DyMeas(index(i),2:end).', y) };
         Measurements(i,5) = { @(y)DyObs.ObservationProcess(DyTime(index(i)), y, DyState(index(i),:)) };
         Measurements(i,6) = { reshape(Sigma, [], 1) };
-        Measurements(i,7) = { 'Delaunay' };
+        Measurements(i,7) = { 'DELAUNAY' };
     end
 end
 
@@ -304,7 +305,7 @@ while (i < length(tspan) && k < length(ObservationSpan))
 end
 
 if (k < length(ObservationSpan))
-    aux(k:length(ObservationSpan)) = repmat(aux(k), 1, length(ObservationSpan)-k);
+    aux(k:length(ObservationSpan)) = repmat(aux(k-1), 1, length(ObservationSpan)-k);
 end
 
 N = aux;
@@ -329,23 +330,7 @@ D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2);
 D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
 D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
 D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
-Dt = [D; reshape(1e-7*eye(6), [], 1)];
-
-%% IOD plane state
-L = sqrt(ElementSet(1)/Re) + sqrt(0.0 * rand());
-G = L * sqrt((1-ElementSet(2)^2));
-H = G * cos(ElementSet(4));
-D = [0 ElementSet(5) ElementSet(3) L G H].'; 
-
-% D = Astrodynamics.Brouwer_solution(J2, D);
-D(5:7) = D(4:6);
-D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2) + 0.0 * rand();
-D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
-D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
-D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
-
-D(1:4) = D(1:4) ./ norm(D(1:4));
-D = [D; reshape(1e-7*eye(6), [], 1)];
+Dt = [D reshape(1e-7*eye(6), 1, [])].';
 
 %% Estimation: IOD
 % Estimator configuration
@@ -356,9 +341,26 @@ D = [D; reshape(1e-7*eye(6), [], 1)];
 % [f, x, N_hat] = IOD_filter.BayesRecursion(ObservationSpan, Measurements);
 % running_time = toc;
 
+%% IOD plane state
+D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false);  
+
+% D = Astrodynamics.Brouwer_solution(J2, D);
+D(5:7) = D(4:6);
+D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2) + 0.0 * rand();
+D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
+D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
+D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
+
+D(1:4) = D(1:4) ./ norm(D(1:4));
+D = [D reshape(1e-7*eye(6), 1, [])].';
+
 %% Estimation: tracking 
+% Extended tracking configuration 
+Gamma = 0.5;                  % Measurements per scan 
+
 % Estimator configuration
-MTT = Filters.MTT_filter(D, 1, 4e2, PS, PD, 1e3);
+MTT = Filters.MTT_filter(D, 1, 4e2, PS, PD, Gamma);
+MTT.ExtendedTarget = true;
 
 % Physical parameters
 MTT.mu = mu;

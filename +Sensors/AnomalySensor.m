@@ -94,11 +94,9 @@ classdef AnomalySensor< Sensors.AbstractSensor
             t = []; 
 
             % Observation
-            for i = 1:length(Tspan)
-                if (1)%dot(Orbit(i,1:3), StateEvolution(i,:)) > 0)
-                    meas = [meas; Orbit(i,6)];
-                    t = [t; Tspan(i)];
-                end
+            for i = 1:length(Tspan)         
+                meas = [meas; Orbit(i,6)];
+                t = [t; Tspan(i)];
             end
         end
 
