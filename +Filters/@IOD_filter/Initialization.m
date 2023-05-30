@@ -7,7 +7,7 @@ function [particles, weights] = Initialization(obj)
     else      
         % Initial uniform distribution on the quaternion sphere 
         M = obj.N * (obj.L * obj.M + 1);
-        particles(1:4,:) = obj.UniformQuat(M);
+        particles(1:4,:) = QuaternionAlgebra.UniformQuat(M);
 
         % Generate the initial uniform distribution on the action space
         Lmin = 1; 

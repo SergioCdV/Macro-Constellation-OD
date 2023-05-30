@@ -51,7 +51,7 @@ classdef IOD_filter < Filters.BayesFilter
                 obj.M = myM;
     
                 % Construct the grid 
-                obj.Grid = obj.UniformSphere(myM);
+                obj.Grid = QuaternionAlgebra.UniformSphere(myM);
             end
 
             if (exist('myN', 'var'))
@@ -87,7 +87,7 @@ classdef IOD_filter < Filters.BayesFilter
         % Bayesian recursion
         [f, X, N] = BayesRecursion(obj, tspan, measurements);
         [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior);
-        [Posterior] = CorrectionStep(obj, Measurements, PropPrior, indices);
+        [Posterior] = CorrectionStep(obj, indices, Measurements, PropPrior);
     end
 
     methods 
@@ -95,23 +95,20 @@ classdef IOD_filter < Filters.BayesFilter
         [samples] = AffineSampling(obj, m, mu, Sigma);
         [samples] = GibbsSampling(obj, m, mu, Sigma, a); 
 
-        % Sampling methods for the sphere
-        [samples] = UniformQuat(obj, m); 
-        [samples] = UniformSphere(obj, m);
-
         % Grid
         [born_particles] = Birth(obj);
         [samples] = UniformTangentQuat(obj, L, m, mode);
         [grid] = TransportGrid(samples, mode, post_mode);
 
         % Clustering and state estimation
-        [q] = SteepestQuat(obj, q0, w, dq);
+        [State] = ParticleState(obj, SensorModality, particle, nu);
         [c, Sigma, index] = QuatClustering(obj, samples, N); 
         [c, Sigma] = ActionClustering(obj, samples, N);
 
         % Resampling
         [particles, weights] = Pruning(obj, particles, weights);
         [particles, weights] = Resampling(obj, particles, weights, N);
+        [samples, a] = PerifocalQuatSampling(obj, particles);
     end
 
     methods (Access = private)

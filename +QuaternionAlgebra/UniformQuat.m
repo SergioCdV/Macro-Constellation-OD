@@ -1,5 +1,5 @@
 
-function [samples] = UniformQuat(obj, m)
+function [samples] = UniformQuat(m)
     % Initialization 
     u = rand(3,m);
 

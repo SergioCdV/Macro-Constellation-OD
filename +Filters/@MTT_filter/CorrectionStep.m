@@ -57,12 +57,12 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
         psi(1,1+L*i:L*(i+1)) = psi(1,1+L*i:L*(i+1)) .* weights(1,:) / sum( psi(1,1+L*i:L*(i+1)) .* weights(1,:),2 );
     end
 
+    % Update the weights with the non-detected particles 
+    psi(1,1:L) = (1-obj.PD) .* weights(1,:);
+
     % Check for NaN 
     pos_nan = isnan(psi(1,:)); 
     psi(1,pos_nan) = zeros(1,sum(pos_nan));
-
-    % Update the weights with the non-detected particles 
-    psi(1,1:L) = (1-obj.PD) .* weights(1,:);
     
     % Assemble the posterior 
     Posterior = [particles(1:pos+(pos-1)^2,:); psi];

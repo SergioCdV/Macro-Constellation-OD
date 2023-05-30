@@ -16,7 +16,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 %     obj.W = CC_quad.W;
 %     obj.nu = CC_quad.tau;
 
-    obj.nu = rand(1,5e1);
+    obj.nu = linspace(0, 2*pi, 3e2);
 
     % Bayesian recursion initialization
     last_epoch = tspan(1);                  % Initial epoch
@@ -33,7 +33,8 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     Prior = [particles; weights];
 
     % Main loop
-    for i = 1:length(tspan)
+    i  = 1;
+    while (i <= length(tspan))
         tic 
 
         % Check for new measurements to process
@@ -93,79 +94,90 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
                 % Propagation step and weight proposal using the kinematic prior
                 indices = index(group == j+1);
                 prop_epoch = Measurements{meas_index + indices(1),1};
-                if (last_epoch ~= prop_epoch)
-                    [PropPrior] = obj.PropagationStep(last_epoch, prop_epoch, Prior);
-                    PropPrior(end,:) = PropPrior(end,:) * obj.PS;
-                else
-                    PropPrior = Prior;
-                end
-                last_epoch = prop_epoch;
+
+                [PropPrior] = obj.PropagationStep(last_epoch, prop_epoch, Prior);
+                PropPrior(end,:) =  obj.PS * PropPrior(end,:);
 
                 % Transport the grid
                 % [particles] = obj.TransportGrid(particles, X{i-1}(), obj.X);
 
                 % Birth particles
                 born_particles = obj.Birth();
-                PropPrior(:,size(particles,2)+1:size(particles,2)+size(born_particles,2)) = born_particles;
+                PropPrior = [born_particles PropPrior];
     
                 % Correction step 
-                [Posterior] = obj.CorrectionStep(Measurements, PropPrior, meas_index+indices);
+                [Posterior] = obj.CorrectionStep(meas_index+indices, Measurements, PropPrior);
+
+                Prior = Posterior;
+                last_epoch = prop_epoch;
             end
+
+            % Final posterior
+            particles = Posterior(1:end-1,:);
+            weights = Posterior(end,:);
+
+            % Estimation on the number of targets (number of planes in the constellation)
+            T = sum(weights,2);
+            obj.N = round( T );
+
+            % Estimation of the plane perifocal state
+%             obj.X = obj.StateEstimation(particles, weights, T);
+%             obj.N = size(obj.X,2);
 
             % Sanity check on the number of processed measurements 
             meas_index = meas_index + new_measurements;
+            
         else
             % Propagate to the new epoch the clustered states
-            prop_epoch = tspan(i);
             if (last_epoch ~= prop_epoch)
                 % Particle propagation
                 [Posterior] = obj.PropagationStep(last_epoch, prop_epoch, Prior);
             else
                 Posterior = Prior;
             end
+
+            particles = Posterior(1:end-1,:);
+            weights = Posterior(end,:);
+
             last_epoch = prop_epoch;
 
             % Transport the grid
             % [particles] = obj.TransportGrid(particles, X{i-1}(), obj.X);
         end
 
+        future = i + max(1,new_measurements);
+
         % New pdf 
         f{i} = Posterior;
-        particles = Posterior(1:end-1,:);
-        weights = Posterior(end,:);
 
-        % Estimation on the number of targets (number of planes in the constellation)
-        T = sum(weights);
+        % Resampling the actions
+        M = (1 + obj.L * obj.M);
+        J = max(obj.N,1) * M;
+        [particles, weights] = obj.Resampling(particles, weights/T, J);
 
-        % Resampling
-        Neff = 1/sum(weights.^2);
+        % Normalizing the weights 
+        weights = weights * T;
 
-        if (Neff < (1/3) * size(particles,2) || size(particles,2) > obj.Jmax)
-            M = (1 + obj.L * obj.M);
+        if (0)%Neff < (1/3) * size(particles,2))
+            % Re-population of the quaternions
+            for j = 1:size(obj.X,2)
+                state = repmat(obj.X(:,j), 1, M);
+                particles(1:4, 1+M*(j-1):M*j) = obj.PerifocalQuatSampling(state); 
+            end
 
-            obj.X = obj.StateEstimation(particles, weights, T);
-            X{i} = obj.X;
-            obj.N = size(obj.X,2);
-            N{i} = obj.N;
-  
-            J = max(obj.N,1) * M;
-
-            % Resampling the actions
-            [particles, weights] = obj.Resampling(particles, weights/T, J);
-
-            % Gaussian sampling to improve impovershment in the action
-            % space
+            % Gaussian sampling to improve impovershment in the action space
             % actions = obj.GibbsSampling(2 * M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), obj.search_limit);
             % particles(5:7, 1+M*(j-1):M*j) = actions(:,M+1:end);
             % actions = mvnrnd(obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), M).'; 
+        end
 
-            % Resampling the quaternions
-            for j = 1:size(obj.X,2)
-                particles(1:4, 1+M*(j-1):M*j) = obj.UniformTangentQuat(obj.L, obj.M, obj.X(1:4,j)); 
-            end
+        X{i} = obj.X;
+        N{i} = obj.N;
 
-            % Normalizing the weights 
-            weights = weights * T;
+        for j = 1:new_measurements-1
+            f{i+j} = f{i};
+            X{i+j} = obj.X;
+            N{i+j} = obj.N;
         end
 
         % New prior 
@@ -174,7 +186,10 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
         time(i) = toc;
         fprintf('Iteration running time: %.4f s\n', time(i));
 
+        % Update the timer 
+        i = future;
     end
+
     fprintf('------------------------------\n');
     fprintf('Bayes filter recursion finished.\n');
     fprintf('Total running time: %.4f s\n', sum(time));

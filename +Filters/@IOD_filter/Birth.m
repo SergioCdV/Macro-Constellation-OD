@@ -3,7 +3,7 @@ function [born_particles] = Birth(obj)
     M = obj.M * obj.L + 1;
 
     % Uniform orbital planes birth
-    born_particles(1:4,:) = obj.UniformQuat(M); 
+    born_particles(1:4,:) = QuaternionAlgebra.UniformQuat(M); 
 
     % Uniform orbital actions birth
     Lmin = 1; 

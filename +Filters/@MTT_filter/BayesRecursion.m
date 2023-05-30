@@ -99,14 +99,14 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
 
             index = 0:new_measurements-1;
 
+            % Augmentation of the perifocal attitude particle representation via tangent space mapping
+            [Prior, obj.Gibbs_vector] = obj.PerifocalQuatSampling(Prior);
+
             % Anomaly distribution update
             for j = 0:max(group)-1
                 % Propagation step and weight proposal using the kinematic prior
                 indices = index(group == j+1);
                 prop_epoch = Measurements{meas_index + indices(1),1};
-
-                % Augmentation of the perifocal attitude particle representation via tangent space mapping
-                [Prior, obj.Gibbs_vector] = obj.PerifocalQuatSampling(Prior);
 
                 [Prior(1:pos-1,:)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:pos-1,:));
                 [PropPrior, sigma_points] = obj.PropagationStep(last_epoch, prop_epoch, AnomalyEstimator, Prior);

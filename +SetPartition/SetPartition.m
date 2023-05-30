@@ -150,7 +150,7 @@ function list = partk(n, k, elements)
     end
 
     % Compute the array of Stirling numbers
-    [~, S] = Stirling2nd(n, k);
+    [~, S] = SetPartition.Stirling2nd(n, k);
         
     % Derecursive loops
     for kappa=2:k
