@@ -273,7 +273,7 @@ for i = 1:length(index)
     end
 
     if (1) 
-        Sigma = deg2rad(0.1).^2;
+        Sigma = deg2rad(1).^2;
         Measurements(i,2) = { AnMeas(index(i),:) };
         Measurements(i,3) = { AnState(index(i),:) };
         Measurements(i,4) = { @(y)AnObs.LikelihoodFunction(Sigma, AnMeas(index(i),2:end).', y) };
@@ -360,7 +360,7 @@ Gamma = 0.5;                  % Measurements per scan
 
 % Estimator configuration
 MTT = Filters.MTT_filter(D, 1, 4e2, PS, PD, Gamma);
-MTT.ExtendedTarget = true;
+MTT.ExtendedTarget = false;
 
 % Physical parameters
 MTT.mu = mu;

@@ -14,7 +14,7 @@ classdef MTT_filter < Filters.BayesFilter
         R = 0;
 
         % Resampling
-        Jmax = 2e3;  
+        Jmax = 1e3;  
         PruneThresh = 1e-5;
         MergeThresh = deg2rad(3);
         ResamplingMethod = 'Systematic';

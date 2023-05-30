@@ -136,7 +136,7 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
             weights = Posterior(end,:);
 
             % Averaging of the perifocal frame (ML state estimation)
-            [plane, Sigma] = obj.PerifocalUpdate(weights / sum(weights), particles(1:pos-1,:));
+            [plane, Sigma] = obj.PerifocalUpdate(weights, particles(1:pos-1,:));
 
             obj.planes = [plane; reshape(Sigma, [], 1)];
             particles(1:pos-1,:) = repmat(obj.planes(1:pos-1,:), 1, size(particles,2));
