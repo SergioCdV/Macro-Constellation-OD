@@ -118,7 +118,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 
             % Estimation on the number of targets (number of planes in the constellation)
             T = sum(weights,2);
-            obj.N = round( T );
+%             obj.N = round( T );
 
             % Estimation of the plane perifocal state
 %             obj.X = obj.StateEstimation(particles, weights, T);

@@ -4,6 +4,7 @@ function [particles, weights] = Initialization(obj)
     % Sanity checks 
     if (isempty(obj.N) || isempty(obj.L) || isempty(obj.M))
         error('The internal filter configuration has not been completed.');
+        
     else      
         % Initial uniform distribution on the quaternion sphere 
         M = obj.N * (obj.L * obj.M + 1);
@@ -27,7 +28,7 @@ function [particles, weights] = Initialization(obj)
         particles(6,:) = particles(5,:) .* sqrt(1-particles(6,:).^2); 
         particles(7,:) = particles(6,:) .* particles(7,:);
 
-        particles(1:4,:) = repmat([0.3827 0 0 0.9239].', 1, M);
+        % particles(1:4,:) = repmat([0.3827 0 0 0.9239].', 1, M);
 
         % Uniform generation of the weights 
         weights = repmat(obj.N/size(particles,2), 1, size(particles,2));

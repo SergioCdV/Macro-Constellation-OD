@@ -336,7 +336,7 @@ Dt(1:4) = QuaternionAlgebra.exp_map([mvnrnd(zeros(3,1), 1e-3*eye(3), 1).'; 0], D
 
 %% Estimation: IOD
 % Estimator configuration
-IOD_filter = Filters.IOD_filter(20, 20, 1, PD, PS);
+IOD_filter = Filters.IOD_filter(5, 5, 1, PD, PS);
 
 % Estimation
 [f, x, N_hat] = IOD_filter.BayesRecursion(ObservationSpan, Measurements);

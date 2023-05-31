@@ -1,19 +1,20 @@
 
 % Transformation from Delaunay to Cartesian elements
 function [State] = ParticleState(obj, SensorModality, particle, nu)
+    % Delaunay elements of the particle 
+    qp = particle(1:4,1);
+    L = particle(5,1);
+    G = particle(6,1);
+    H = particle(7,1);
+
+    % Compute the RAAN and AoP from qp 
+    diff = atan2(qp(2,1), qp(1,1));
+    plus = atan2(qp(3,1), qp(4,1));
+    Omega = 2 * (plus+diff);
+    omega = 2 * plus - Omega;
+
     for j = 1:length(nu)
-        % Delaunay elements of the particle 
-        qp = particle(1:4,1);
-        L = particle(5,1);
-        G = particle(6,1);
-        H = particle(7,1);
         M = nu(j);
-     
-        % Compute the RAAN and AoP from qp 
-        diff = atan2(qp(2,1), qp(1,1));
-        plus = atan2(qp(3,1), qp(4,1));
-        Omega = 2 * (plus+diff);
-        omega = 2 * plus - Omega;
     
         % Assemble the set
         D = [M omega Omega L G H].';   
