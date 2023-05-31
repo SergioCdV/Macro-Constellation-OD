@@ -31,6 +31,9 @@ classdef IOD_filter < Filters.BayesFilter
         % Markov probabilities
         PD = 1; 
         PS = 1;
+
+        % Covariance regularization
+        PD_tol = 1e-6;
     end
 
     properties (Access = private)

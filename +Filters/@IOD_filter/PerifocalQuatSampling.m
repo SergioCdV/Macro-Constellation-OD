@@ -1,7 +1,7 @@
 
 function [samples, a] = PerifocalQuatSampling(obj, particles)
     % Preallocation
-    pos = 8;
+    pos = 7;
     J = size(particles,2);
     samples = particles;          % Output
 

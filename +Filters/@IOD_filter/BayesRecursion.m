@@ -98,9 +98,6 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
                 [PropPrior] = obj.PropagationStep(last_epoch, prop_epoch, Prior);
                 PropPrior(end,:) =  obj.PS * PropPrior(end,:);
 
-                % Transport the grid
-                % [particles] = obj.TransportGrid(particles, X{i-1}(), obj.X);
-
                 % Birth particles
                 born_particles = obj.Birth();
                 PropPrior = [born_particles PropPrior];
@@ -118,11 +115,10 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
 
             % Estimation on the number of targets (number of planes in the constellation)
             T = sum(weights,2);
-%             obj.N = round( T );
 
             % Estimation of the plane perifocal state
-%             obj.X = obj.StateEstimation(particles, weights, T);
-%             obj.N = size(obj.X,2);
+            obj.X = obj.StateEstimation(particles, weights, T);
+            obj.N = size(obj.X,2);
 
             % Sanity check on the number of processed measurements 
             meas_index = meas_index + new_measurements;
@@ -140,9 +136,6 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             weights = Posterior(end,:);
 
             last_epoch = prop_epoch;
-
-            % Transport the grid
-            % [particles] = obj.TransportGrid(particles, X{i-1}(), obj.X);
         end
 
         future = i + max(1,new_measurements);
@@ -155,22 +148,31 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
         J = max(obj.N,1) * M;
         [particles, weights] = obj.Resampling(particles, weights/T, J);
 
+        Neff = 1/sum(weights.^2,2);
+
+        if (Neff < (1/3) * size(particles,2))
+            % Re-population of the quaternions
+            for j = 1:size(obj.X,2)
+                [qd, a] = obj.PerifocalQuatSampling(obj.X(:,j));
+                particles(:, 1+M*(j-1):M*j) = repmat(qd(1:7,:), 1, M);
+
+                % Conditioning
+                Sigma = reshape(obj.X(8:end,j), [6 6]);
+                F = Sigma(1:3,1:3)^(-1);
+                sigma = Sigma(4:6,4:6) - Sigma(4:6,1:3) * F * Sigma(4:6,1:3).';
+                mu = obj.X(5:7,j) + Sigma(4:6,1:3) * F * a;
+
+                % Gaussian sampling to improve impovershment in the action space
+                actions = obj.GibbsSampling(2 * M, mu, sigma, obj.search_limit);
+                % actions = mvnrnd(mu, sigma, M).'; 
+                particles(5:7, 1+M*(j-1):M*j) = actions(:,M+1:end);
+            end
+        end
+
         % Normalizing the weights 
         weights = weights * T;
 
-        if (0)%Neff < (1/3) * size(particles,2))
-            % Re-population of the quaternions
-            for j = 1:size(obj.X,2)
-                state = repmat(obj.X(:,j), 1, M);
-                particles(1:4, 1+M*(j-1):M*j) = obj.PerifocalQuatSampling(state); 
-            end
-
-            % Gaussian sampling to improve impovershment in the action space
-            % actions = obj.GibbsSampling(2 * M, obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), obj.search_limit);
-            % particles(5:7, 1+M*(j-1):M*j) = actions(:,M+1:end);
-            % actions = mvnrnd(obj.X(5:7,j), reshape(obj.X(8:end,j), [3 3]), M).'; 
-        end
-
+        % Save results
         X{i} = obj.X;
         N{i} = obj.N;
 

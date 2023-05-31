@@ -218,7 +218,7 @@ for i = 1:size(Constellation_1.OrbitSet,1)
     TelescopeState2 = [TelescopeState2; state_aux];
 end
 
-ObservationSpan = [DyTime];
+ObservationSpan = [TelescopeTime2];
 [ObservationSpan, index] = sort(ObservationSpan);
 
 % ObservationSpan = [InTime; DyTime; AnTime; RadarTime; TelescopeTime; TelescopeTime2];
@@ -262,12 +262,12 @@ for i = 1:length(index)
 % 
 %     end
 
-    if (0)
+    if (1)
         Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)]);
-        Measurements(i,2) = { RaMeas2(index(i)-L,:) };
-        Measurements(i,3) = { TelescopeState2(index(i)-L,:) };
+        Measurements(i,2) = { RaMeas2(index(i),:) };
+        Measurements(i,3) = { TelescopeState2(index(i),:) };
         Measurements(i,4) = { @(y)TelescopeObs2.LikelihoodFunction(Sigma, RaMeas2(index(i),2:end).', y) };
-        Measurements(i,5) = { @(y)TelescopeObs2.ObservationProcess(TelescopeTime2(index(i)), y, TelescopeState2(index(i)-L,:)) };
+        Measurements(i,5) = { @(y)TelescopeObs2.ObservationProcess(TelescopeTime2(index(i)), y, TelescopeState2(index(i),:)) };
         Measurements(i,6) = {reshape(Sigma, [], 1)};
         Measurements(i,7) = {'Telescope'};
     end
@@ -282,7 +282,7 @@ for i = 1:length(index)
         Measurements(i,7) = { 'ANOMALY' };
     end
 
-    if (1)
+    if (0)
         Sigma = deg2rad(5)^2 * eye(6);
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };
@@ -296,7 +296,7 @@ end
 i = 1;
 k = 1;
 aux = zeros(1,length(ObservationSpan));
-while (i < length(tspan) && k < length(ObservationSpan))
+while (i < length(tspan) && k <= length(ObservationSpan))
     time_diff = tspan(i)/86400 + InitialEpoch <= ObservationSpan & tspan(i+1)/86400 + InitialEpoch > ObservationSpan;
     count = sum(time_diff);
     aux(k:k-1+count) = repmat(N(i), 1, count);
@@ -344,45 +344,45 @@ IOD_filter = Filters.IOD_filter(5, 5, 1, PD, PS);
 N_hat = cell2mat(N_hat);
 
 %% IOD plane state
-% D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false);  
-% 
-% % D = Astrodynamics.Brouwer_solution(J2, D);
-% D(5:7) = D(4:6);
-% D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2) + 0.0 * rand();
-% D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
-% D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
-% D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
-% 
-% D(1:4) = D(1:4) ./ norm(D(1:4));
-% D = [D reshape(1e-7*eye(6), 1, [])].';
-% 
-% %% Estimation: tracking 
-% % Extended tracking configuration 
-% Gamma = 1;                  % Measurements per scan 
-% 
-% % Estimator configuration
-% MTT = Filters.MTT_filter(D, 1, 4e2, PS, PD, Gamma);
-% MTT.ExtendedTarget = false;
-% 
-% % Physical parameters
-% MTT.mu = mu;
-% MTT.epsilon = -J2; 
-% MTT.Re = Re;
-% 
-% % Perturbation of the perifocal attitude 
-% MTT.L = 0;      % Number of layers of the sphere
-% MTT.R = 0;      % Resolution of the layer
-% 
-% % Anomaly partition
-% 
-% MTT.nu = linspace(0,2*pi,1e3);
-% 
-% % Estimation
-% tic
-% [f, x, N_hat, Prior] = MTT.BayesRecursion(ObservationSpan, Measurements);
-% running_time = toc;
-% 
-% N_hat = cell2mat(N_hat);
+D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false);  
+
+% D = Astrodynamics.Brouwer_solution(J2, D);
+D(5:7) = D(4:6);
+D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2) + 0.0 * rand();
+D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
+D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
+D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
+
+D(1:4) = D(1:4) ./ norm(D(1:4));
+D = [D reshape(1e-5*eye(6), 1, [])].';
+
+%% Estimation: tracking 
+% Extended tracking configuration 
+Gamma = 1;                  % Measurements per scan 
+
+% Estimator configuration
+MTT = Filters.MTT_filter(D, 1, 1e2, PS, PD, Gamma);
+MTT.ExtendedTarget = false;
+
+% Physical parameters
+MTT.mu = mu;
+MTT.epsilon = -J2; 
+MTT.Re = Re;
+
+% Perturbation of the perifocal attitude 
+MTT.L = 0;      % Number of layers of the sphere
+MTT.R = 0;      % Resolution of the layer
+
+% Anomaly partition
+
+MTT.nu = linspace(0,2*pi,1e3);
+
+% Estimation
+tic
+[f, x, N_hat, Prior] = MTT.BayesRecursion(ObservationSpan, Measurements);
+running_time = toc;
+
+N_hat = cell2mat(N_hat);
 
 %% Analysis
 % Expectance of the number of targets in time 

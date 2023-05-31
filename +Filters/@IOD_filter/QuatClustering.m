@@ -1,19 +1,13 @@
 
 
-function [c, Sigma, index] = QuatClustering(obj, samples, weights)
-    % Configuration 
-    rng(1); 
-
-    % Perform spherical K-means clustering over the quaternion data
-%     [index, c] = kmeans(samples.', N, 'Distance', 'cosine');
-%     c = (c./sqrt(dot(c,c,2))).';
-%     Sigma = [];
+function [c, Sigma, index] = QuatClustering(obj, samples)
+    % Density between quaternions 
+    d = real( pdist(samples.', @personal_distance) );
+    D = squareform( d );
 
     % Perform density-based clustering 
-    epsilon = 0.05;
-    minpts = max(3, size(samples,1)+1);
-
-    D = squareform( pdist(samples.', "cosine") );
+    epsilon = deg2rad( 20 );
+    minpts = size(samples,1) + 1;
 
     if (size(D,1))
         index = dbscan(D, epsilon, minpts, "Distance", "precomputed");
@@ -34,3 +28,18 @@ function [c, Sigma, index] = QuatClustering(obj, samples, weights)
 
     Sigma = [];
 end
+
+%% Auxiliary functions 
+% NANEUCDIST Euclidean distance ignoring coordinates with NaNs
+function [D] = personal_distance(XI,XJ)  
+    % Correction for missing coordinates
+    d = XI * XJ.';
+    D = acos(abs(d));
+end
+
+%% Auxiliary code 
+
+    % Perform spherical K-means clustering over the quaternion data
+%     [index, c] = kmeans(samples.', N, 'Distance', 'cosine');
+%     c = (c./sqrt(dot(c,c,2))).';
+%     Sigma = [];
