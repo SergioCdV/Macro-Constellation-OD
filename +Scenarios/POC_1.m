@@ -218,7 +218,7 @@ for i = 1:size(Constellation_1.OrbitSet,1)
     TelescopeState2 = [TelescopeState2; state_aux];
 end
 
-ObservationSpan = [TelescopeTime2];
+ObservationSpan = [DyTime];
 [ObservationSpan, index] = sort(ObservationSpan);
 
 % ObservationSpan = [InTime; DyTime; AnTime; RadarTime; TelescopeTime; TelescopeTime2];
@@ -262,8 +262,8 @@ for i = 1:length(index)
 % 
 %     end
 
-    if (1)
-        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)]);
+    if (0)
+        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(1) deg2rad(1)]);
         Measurements(i,2) = { RaMeas2(index(i),:) };
         Measurements(i,3) = { TelescopeState2(index(i),:) };
         Measurements(i,4) = { @(y)TelescopeObs2.LikelihoodFunction(Sigma, RaMeas2(index(i),2:end).', y) };
@@ -282,8 +282,8 @@ for i = 1:length(index)
         Measurements(i,7) = { 'ANOMALY' };
     end
 
-    if (0)
-        Sigma = deg2rad(5)^2 * eye(6);
+    if (1)
+        Sigma = deg2rad(1)^2 * eye(6);
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };
         Measurements(i,4) = { @(y)DyObs.LikelihoodFunction(Sigma, DyMeas(index(i),2:end).', y) };
@@ -339,9 +339,9 @@ Dt(1:4) = QuaternionAlgebra.exp_map([mvnrnd(zeros(3,1), 1e-3*eye(3), 1).'; 0], D
 IOD_filter = Filters.IOD_filter(5, 5, 1, PD, PS);
 
 % Estimation
-[f, x, N_hat] = IOD_filter.BayesRecursion(ObservationSpan, Measurements);
+[f_IOD, x_IOD, N_hat, E_IOD] = IOD_filter.BayesRecursion(ObservationSpan, Measurements);
 
-N_hat = cell2mat(N_hat);
+N_IOD = cell2mat(N_hat);
 
 %% IOD plane state
 D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false);  
@@ -369,17 +369,12 @@ MTT.mu = mu;
 MTT.epsilon = -J2; 
 MTT.Re = Re;
 
-% Perturbation of the perifocal attitude 
-MTT.L = 0;      % Number of layers of the sphere
-MTT.R = 0;      % Resolution of the layer
-
 % Anomaly partition
-
 MTT.nu = linspace(0,2*pi,1e3);
 
 % Estimation
 tic
-[f, x, N_hat, Prior] = MTT.BayesRecursion(ObservationSpan, Measurements);
+[f, x, N_hat, Prior, E] = MTT.BayesRecursion(ObservationSpan, Measurements);
 running_time = toc;
 
 N_hat = cell2mat(N_hat);
@@ -399,6 +394,36 @@ Analysis.ExpectanceTargets = [mean(N_error) std(N_error)];
 
 %% Results
 tspan = 86400 * ( ObservationSpan-ObservationSpan(1) );
+pos = size(N_hat,2)-7;
+
+figure 
+view(3)
+no = [0;0;1];
+for i = 1:size(x_IOD{pos},2)
+    aux = QuaternionAlgebra.right_isoclinic([no; 0]) * QuaternionAlgebra.quaternion_inverse(x_IOD{pos}(1:4,i));
+    n(:,i) = QuaternionAlgebra.right_isoclinic(x_IOD{pos}(1:4,i)) * aux;
+end
+hold on
+m = 100;
+[aa, bb, cc] = sphere(m);
+h = surf(aa, bb, cc);
+set(h, 'FaceColor',[0 0 1], 'FaceAlpha',0.1,'FaceLighting','gouraud','EdgeColor','none')
+scatter3(n(1,:), n(2,:), n(3,:), 'filled'); 
+hold off
+xlabel('$X$')
+ylabel('$Y$')
+ylabel('$Z$')
+grid on;
+%%
+figure
+hold on
+plot(tspan, N)
+scatter(tspan, N_hat); 
+hold off
+legend('$N_p$',' $\hat{N}_p$');
+xlabel('Epoch $t$')
+ylabel('N. planes')
+grid on;
 
 figure
 hold on
@@ -408,6 +433,14 @@ hold off
 legend('$N_p$',' $\hat{N}_p$');
 xlabel('Epoch $t$')
 ylabel('N. planes')
+grid on;
+
+figure
+hold on
+plot(tspan, E)
+hold off
+xlabel('Epoch $t$')
+ylabel('Diff. entropy $E_{max}$')
 grid on;
 
 % Constellation plot 
@@ -428,7 +461,6 @@ zlabel('$Z$')
 grid on;
 
 % Anomaly plot 
-pos = size(N_hat,2)-2;
 figure 
 view(3)
 hold on

@@ -3,11 +3,13 @@ function [X] = StateEstimation(obj, samples, weights, T)
     rng(1); 
 
     % Extract the relevant particles 
-    pruned_samples = samples(:, weights >= obj.RevThresh); 
-    pruned_weights = weights(weights > obj.RevThresh);
+%     pruned_samples = samples(:, weights >= obj.RevThresh); 
+%     pruned_weights = weights(weights > obj.RevThresh);
+    pruned_samples = samples;
+    pruned_weights = weights;
 
     % Perform K-means clustering over the quaternions and perform the state estimation for the perifocal attitude
-    [c, ~, index] = obj.QuatClustering(pruned_samples(1:4,:));
+    [c, ~, index] = obj.QuatClustering(pruned_weights, pruned_samples(1:4,:));
 
     % Estimate the number of planes based on the quaternion distribution
     N = size(c,2);
@@ -21,22 +23,36 @@ function [X] = StateEstimation(obj, samples, weights, T)
         pos = i;
 
         % Quaternion estimation
-        [X(1:4,i), Sigma_q] = QuaternionAlgebra.AverageQuat(pruned_weights(1,ID), pruned_samples(1:4,ID));
+        [X(1:4,i), Sigma_q] = QuaternionAlgebra.AverageQuat(ones(1,sum(ID)), pruned_samples(1:4,ID));
 
-        % Resampling for estimation of the action set
-        [X(5:7,i), ~] = obj.Resampling(pruned_samples(5:7,ID), pruned_weights(1,ID) / sum(pruned_weights(1,ID)), 1);
-        X(5:7,i) = sum(pruned_weights(1,ID) / sum(pruned_weights(1,ID)) .* pruned_samples(5:7,ID),2);
+        % Estimation of the action set
+        w = pruned_weights(1,ID) / sum(pruned_weights(1,ID));
+        X(5:7,i) = sum(w .* pruned_samples(5:7,ID), 2);
 
-        % Covariance 
-        sigma = (pruned_weights(1,ID).*pruned_samples(5:7,ID)-X(5:7,i)*pruned_weights(1,ID)) * (pruned_weights(1,ID).*pruned_samples(5:7,ID)-X(5:7,i)*pruned_weights(1,ID)).';
-
-        if (sum(ID) > 1)
-            sigma = sum(pruned_weights(1,ID),2) * sigma/(sum(pruned_weights(1,ID),2)^2-sum(pruned_weights(1,ID).^2,2)) + obj.PD_tol * eye(3);
-        else
-            sigma = obj.PD_tol * eye(3);
+        % Covariance
+        qs = pruned_samples(1:4,ID);
+        a = zeros(3,size(qs,2));
+        Q = QuaternionAlgebra.quaternion_inverse(X(1:4,i));
+        Q = QuaternionAlgebra.right_isoclinic(Q);
+        for j = 1:size(qs,2)
+            dq = Q * qs(1:4,j) ;
+            aux = QuaternionAlgebra.log_map(dq, [0;0;0;1]);
+            a(:,j) = aux(1:3);
         end
 
-        sigma = blkdiag(Sigma_q, sigma);
+        mu = [zeros(3,1); X(5:7,i)];
+        s = [a; pruned_samples(5:7,ID)];
+ 
+        sigma = (w.*s-mu*w) * (w.*s-mu*w).';
+
+        if (sum(ID) > 1)
+            sigma = sum(pruned_weights(1,ID),2) / (sum(pruned_weights(1,ID),2)^2-sum(pruned_weights(1,ID).^2,2)) * sigma;
+        else
+            sigma = zeros * eye(6);
+        end
+
+        sigma(1:3,1:3) = Sigma_q;
+        sigma = 0.5 * (sigma + sigma.') + obj.PD_tol * eye(6);
         X(8:end,i) = reshape(sigma, [], 1);
     end
 
@@ -45,22 +61,35 @@ function [X] = StateEstimation(obj, samples, weights, T)
         
         for i = pos+1:pos+sum(ID)
             % Quaternion estimation
-            [X(1:4,i), Sigma_q] = QuaternionAlgebra.AverageQuat(pruned_weights(1,ID), pruned_samples(1:4,ID));
+            [X(1:4,i), Sigma_q] = QuaternionAlgebra.AverageQuat(ones(1,sum(ID)), pruned_samples(1:4,ID));
     
-            % Resampling for estimation of the action set
-            [X(5:7,i), ~] = obj.Resampling(pruned_samples(5:7,ID), pruned_weights(1,ID) / sum(pruned_weights(1,ID)), 1);
-            X(5:7,i) = sum(pruned_weights(1,ID) / sum(pruned_weights(1,ID)) .* pruned_samples(5:7,ID),2);
+            % Estimation of the action set
+            w = pruned_weights(1,ID) / sum(pruned_weights(1,ID));
+            X(5:7,i) = sum(w .* pruned_samples(5:7,ID), 2);
     
             % Covariance 
-            sigma = (pruned_weights(1,ID).*pruned_samples(5:7,ID)-X(5:7,i)*pruned_weights(1,ID)) * (pruned_weights(1,ID).*pruned_samples(5:7,ID)-X(5:7,i)*pruned_weights(1,ID)).';
-    
-            if (sum(ID) > 1)
-                sigma = sum(pruned_weights(1,ID),2) * sigma/(sum(pruned_weights(1,ID),2)^2-sum(pruned_weights(1,ID).^2,2)) + obj.PD_tol * eye(3);
-            else
-                sigma = obj.PD_tol * eye(3);
+            Q = QuaternionAlgebra.quaternion_inverse(X(1:4,i));
+            qs = pruned_samples(1:4,ID);
+            a = zeros(3,size(qs,2));
+            for j = 1:size(qs,2)
+                dq = QuaternionAlgebra.right_isoclinic(qs(1:4,j)) * Q;
+                aux = QuaternionAlgebra.log_map(dq, [0;0;0;1]);
+                a(:,j) = aux(1:3);
             end
     
-            sigma = blkdiag(Sigma_q, sigma);
+            mu = [zeros(3,1); X(5:7,i)];
+            s = [a; pruned_samples(5:7,ID)];
+    
+            sigma = (w.*s-mu*w) * (w.*s-mu*w).';
+    
+            if (sum(ID) > 1)
+                sigma = sum(pruned_weights(1,ID),2) / (sum(pruned_weights(1,ID),2)^2-sum(pruned_weights(1,ID).^2,2)) * sigma;
+            else
+                sigma = zeros * eye(6);
+            end
+    
+            sigma(1:3,1:3) = Sigma_q;
+            sigma = 0.5 * (sigma + sigma.') + obj.PD_tol * eye(6);
             X(8:end,i) = reshape(sigma, [], 1);
         end
     end

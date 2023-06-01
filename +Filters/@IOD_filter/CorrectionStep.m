@@ -17,7 +17,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, PropPrior)
         for j = 1:L
             % Compute the particle state 
             fun = @(theta)FullProcess(obj, SensorModality, ObservationModel, Likelihood, particles(1:7,j), theta);
-            l = integral(fun, 0, 2*pi, "AbsTol", 1e-10, "RelTol", 1e-1);
+            l = integral(fun, 0, 2*pi);
             psi(i+1,j) = obj.PD * l;
         end
 

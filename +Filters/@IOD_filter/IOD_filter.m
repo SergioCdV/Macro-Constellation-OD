@@ -88,7 +88,7 @@ classdef IOD_filter < Filters.BayesFilter
         [particles, weights] = Initialization(obj)
 
         % Bayesian recursion
-        [f, X, N] = BayesRecursion(obj, tspan, measurements);
+        [f, X, N, E] = BayesRecursion(obj, tspan, measurements);
         [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior);
         [Posterior] = CorrectionStep(obj, indices, Measurements, PropPrior);
     end
@@ -105,7 +105,7 @@ classdef IOD_filter < Filters.BayesFilter
 
         % Clustering and state estimation
         [State] = ParticleState(obj, SensorModality, particle, nu);
-        [c, Sigma, index] = QuatClustering(obj, samples, N); 
+        [c, Sigma, index] = QuatClustering(obj, weights, samples); 
         [c, Sigma] = ActionClustering(obj, samples, N);
 
         % Resampling

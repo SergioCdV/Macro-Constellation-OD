@@ -1,6 +1,6 @@
 
 
-function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
+function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
     % Repeatibility 
     rng(1); 
 
@@ -9,6 +9,7 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
     N = cell(1,length(tspan)); 
     f = cell(1,length(tspan));
     time = zeros(1,length(tspan));
+    E = zeros(1,length(tspan));
 
     % Preallocate the estimator 
     pos = 8;
@@ -108,7 +109,7 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
                 indices = index(group == j+1);
                 prop_epoch = Measurements{meas_index + indices(1),1};
 
-                [Prior(1:pos-1,:)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:pos-1,:));
+                [Prior(1:end-1,:)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:end-1,:));
                 [PropPrior, sigma_points] = obj.PropagationStep(last_epoch, prop_epoch, AnomalyEstimator, Prior);
                 PropPrior = [PropPrior(1:end-1,:); sigma_points; PropPrior(end,:)];
                 PropPrior(end,:) =  obj.PS * PropPrior(end,:);
@@ -183,6 +184,11 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
         aux = zeros(length(obj.nu),size(particles,2));
         for j = 1:size(particles,2)
             aux(:,j) = obj.wrapped_normal(1e-7, obj.nu.', mod(particles(pos,j),2*pi), particles(end,j));
+
+            % Entropy characterization 
+            Sigma = reshape(particles(pos+1:end,j), [pos-1 pos-1]);
+            entropy = 0.5 * log(det(2*pi*exp(1)*Sigma));
+            E(i) = entropy * (entropy < E(i)) + E(i) * (entropy >= E(i));
         end
         f{i} = sum(weights .* aux,2);
 
@@ -195,6 +201,7 @@ function [f, X, N, Prior] = BayesRecursion(obj, tspan, Measurements)
             f{i+j} = f{i};
             X{i+j} = obj.X;
             N{i+j} = obj.N;
+            E(i+j) = E(i);
         end
 
         % New prior 

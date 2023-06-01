@@ -27,6 +27,7 @@ function [planes] = PlanePropagation(obj, last_epoch, prop_epoch, planes)
         else
             dstep = step;
         end
+        STM = [eye(3) -dstep * eye(3); zeros(3) eye(3)];
 
         for j = 1:length(step)
             % Body frame rotation
@@ -35,11 +36,16 @@ function [planes] = PlanePropagation(obj, last_epoch, prop_epoch, planes)
             omega = Omega(1:3,1);
     
             % Perigee motion
-            omega(3) = omega(3) +  3/4*obj.epsilon/(L^7*eta^4) * (1 - 5*(H/G)^2);            
+            omega(3) = omega(3) + 3/4*obj.epsilon/(L^7*eta^4) * (1 - 5*(H/G)^2);            
     
-            % Propgate the quaternions only using the Lie-Euler method
+            % Propagate the quaternions only using the Lie-Euler method
             omega = dstep/2 * omega; 
             planes(1:4,i) = QuaternionAlgebra.right_isoclinic(planes(1:4,i)) * QuaternionAlgebra.exp_map([omega; 0], One);
+
+            % Propagate the covariance 
+            sigma = reshape(planes(9:end,i), [7 7]);
+            sigma(1:end-1,1:end-1) = STM * sigma(1:end-1,1:end-1) * STM.';
+            planes(9:end,i) = reshape(sigma, [], 1);
         end
     end
 end

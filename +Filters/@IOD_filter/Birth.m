@@ -19,5 +19,5 @@ function [born_particles] = Birth(obj)
     born_particles(7,:) = born_particles(6,:) .* cos_i; 
 
     % Associated weights 
-    born_particles(8,:) = repmat(1e-5/M, 1, M);
+    born_particles(8,:) = repmat(1/M, 1, M);
 end

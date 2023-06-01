@@ -1,12 +1,15 @@
 
 
-function [c, Sigma, index] = QuatClustering(obj, samples)
+function [c, Sigma, index] = QuatClustering(obj, weights, samples)
     % Density between quaternions 
+%     mu = mean(weights);
+%     sigma = std(weights);
+%     samples = samples(:, abs(weights-mu) < sigma); 
     d = real( pdist(samples.', @personal_distance) );
     D = squareform( d );
 
     % Perform density-based clustering 
-    epsilon = deg2rad( 20 );
+    epsilon = deg2rad( 10 );
     minpts = size(samples,1) + 1;
 
     if (size(D,1))
@@ -34,7 +37,7 @@ end
 function [D] = personal_distance(XI,XJ)  
     % Correction for missing coordinates
     d = XI * XJ.';
-    D = acos(abs(d));
+    D = acos(2*d.^2-1);
 end
 
 %% Auxiliary code 

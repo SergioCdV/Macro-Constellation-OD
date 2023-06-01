@@ -1,6 +1,6 @@
 
 
-function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
+function [f, X, N, E] = BayesRecursion(obj, tspan, Measurements)
     % Repeatibility 
     rng(1); 
 
@@ -9,6 +9,7 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
     N = cell(1,length(tspan)); 
     f = cell(1,length(tspan));
     time = zeros(1,length(tspan));
+    E = zeros(1,length(tspan));
 
     % Quadrature precomputation 
 %     CC_quad = Numerics.CollocationMesh.ChebyshevGrid(1e2);
@@ -116,10 +117,6 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
             % Estimation on the number of targets (number of planes in the constellation)
             T = sum(weights,2);
 
-            % Estimation of the plane perifocal state
-            obj.X = obj.StateEstimation(particles, weights, T);
-            obj.N = size(obj.X,2);
-
             % Sanity check on the number of processed measurements 
             meas_index = meas_index + new_measurements;
             
@@ -146,27 +143,36 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
         % Resampling the actions
         M = (1 + obj.L * obj.M);
         J = max(obj.N,1) * M;
-        [particles, weights] = obj.Resampling(particles, weights/T, J);
 
         Neff = 1/sum(weights.^2,2);
+        [particles, weights] = obj.Resampling(particles, weights/T, J);
 
+        % Estimation of the plane perifocal state
         if (Neff < (1/3) * size(particles,2))
             % Re-population of the quaternions
-            for j = 1:size(obj.X,2)
-                [qd, a] = obj.PerifocalQuatSampling(obj.X(:,j));
-                particles(:, 1+M*(j-1):M*j) = repmat(qd(1:7,:), 1, M);
+           
+            obj.X = obj.StateEstimation(particles, weights, T);
+            obj.N = size(obj.X,2);
 
-                % Conditioning
-                Sigma = reshape(obj.X(8:end,j), [6 6]);
-                F = Sigma(1:3,1:3)^(-1);
-                sigma = Sigma(4:6,4:6) - Sigma(4:6,1:3) * F * Sigma(4:6,1:3).';
-                mu = obj.X(5:7,j) + Sigma(4:6,1:3) * F * a;
+%             for j = 1:size(obj.X,2)
+%                 [qd, a] = obj.PerifocalQuatSampling(repmat(obj.X(:,j), 1, M));
+%                 particles(:, 1+M*(j-1):M*j) = qd(1:7,:);
+% 
+%                 % Conditioning
+%                 Sigma = reshape(obj.X(8:end,j), [6 6]);
+%                 F = Sigma(1:3,1:3)^(-1);
+%                 sigma = Sigma(4:6,4:6) - Sigma(4:6,1:3) * F * Sigma(4:6,1:3).';
+%                 mu = obj.X(5:7,j) + Sigma(4:6,1:3) * F * a;
+% 
+%                 % Gaussian sampling to improve impovershment in the action space
+%                 for k = 1:size(mu,2)
+%                     actions = obj.GibbsSampling(1e2, mu(:,k), sigma, obj.search_limit);
+%                     % actions = mvnrnd(mu, sigma, M).'; 
+%                     particles(5:7, k+M*(j-1)) = actions(:,end);
+%                 end
+%             end
 
-                % Gaussian sampling to improve impovershment in the action space
-                actions = obj.GibbsSampling(2 * M, mu, sigma, obj.search_limit);
-                % actions = mvnrnd(mu, sigma, M).'; 
-                particles(5:7, 1+M*(j-1):M*j) = actions(:,M+1:end);
-            end
+%             [particles, weights] = obj.Resampling(particles, weights, M);
         end
 
         % Normalizing the weights 
@@ -176,10 +182,18 @@ function [f, X, N] = BayesRecursion(obj, tspan, Measurements)
         X{i} = obj.X;
         N{i} = obj.N;
 
+        for j = 1:size(obj.X,2)
+            % Entropy characterization 
+            Sigma = reshape(obj.X(8:end,j), [6 6]);
+            entropy = 0.5 * log(det(2*pi*exp(1)*Sigma));
+            E(i) = entropy * (entropy < E(i)) + E(i) * (entropy >= E(i));
+        end
+
         for j = 1:new_measurements-1
             f{i+j} = f{i};
             X{i+j} = obj.X;
             N{i+j} = obj.N;
+            E(i+j) = E(i);
         end
 
         % New prior 

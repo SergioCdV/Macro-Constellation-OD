@@ -10,8 +10,6 @@ classdef MTT_filter < Filters.BayesFilter
         % Grid properties
         M;
         nu;
-        L = 0;
-        R = 0;
 
         % Resampling
         Jmax = 1e3;  
@@ -79,7 +77,7 @@ classdef MTT_filter < Filters.BayesFilter
         [particles, weights] = Initialization(obj)
 
         % Bayesian recursion
-        [f, X, N, Prior] = BayesRecursion(obj, tspan, measurements);
+        [f, X, N, Prior, E] = BayesRecursion(obj, tspan, measurements);
         [PropPrior, sigma] = PropagationStep(obj, last_epoch, new_epoch, Estimator, Prior);
         [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, PropPrior);
         [Prior] = PlanePropagation(obj, last_epoch, prop_epoch, planes);
