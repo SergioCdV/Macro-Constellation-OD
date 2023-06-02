@@ -2,19 +2,19 @@
 % Date: 19/01/2023
 % Author: Sergio Cuevas del Valle
 
-%% Class implementation of several UKF Estimators 
-% This script provides the function implementing the class UKF
-% implementation, inlcuding UKF additive and UKF square 
+%% Class implementation of several USQUE Estimator 
+% This script provides the function implementing the class USQQUE
+% implementation, inlcuding USQUE additive and UKF square 
 
-classdef UKF < Filters.BayesFilter
+classdef USQUE < Filters.BayesFilter
     % Properties
     properties
         % UKF hyperparameters
         Algorithm = 'UKF-A'   % UKF version in use
-        beta    
+        beta = 2;  
         alpha
-        k
-        W           % UKF weights
+        k = 0;
+        W                     % UKF weights
         
         Clock = 0
         InitFlag = true
@@ -31,6 +31,9 @@ classdef UKF < Filters.BayesFilter
 
         StateModel 
         ObservationModel
+
+        a 
+        f
     end
 
     properties (Access = private)
@@ -44,12 +47,33 @@ classdef UKF < Filters.BayesFilter
     % Initialization methods
     methods 
         % Constructor 
-        function [obj] = UKF(Algorithm, beta, alpha, k)
+        function [obj] = USQUE(Algorithm, beta, alpha, k, a, f)
             % Default initialization
-            obj.Algorithm = Algorithm; 
-            obj.beta = beta; 
             obj.alpha = alpha; 
-            obj.k = k; 
+
+            if (exist('Algorithm', 'var'))
+                obj.Algorithm = Algorithm; 
+            end
+
+            if (exist('beta', 'var'))
+                obj.beta = beta; 
+            end
+
+            if (exist('k', 'var'))
+                obj.k = k; 
+            end 
+
+            if (exist('a', 'var'))
+                obj.a = a; 
+            else
+                obj.a = 1;
+            end 
+
+            if (exist('f', 'var'))
+                obj.f = f; 
+            else
+                obj.f = 2 * (obj.a + 1); 
+            end 
         end
 
         % State process
@@ -122,7 +146,7 @@ classdef UKF < Filters.BayesFilter
             obj.Clock = obj.Clock + time_step;
 
             % Estimator update 
-            obj.State = state; 
+            obj.State = [zeros(3,1); state(4:6,:)]; 
             obj.Sigma = sigma;
             obj.Measurements = y;
         end
@@ -134,15 +158,17 @@ classdef UKF < Filters.BayesFilter
         [State, Sigma, Pmeas, Y] = CorrectionStep(obj, sigma, State, Sigma, z);
 
         % Sigma points generation
-        function [sigma] = sigma_points(obj, State, Sigma)
+        function [sigma] = sigma_points(obj, State, Sigma, Q)
+            Sigma = Sigma + Q;
+
             switch (obj.Algorithm)
                 case 'UKF-S'
-                    S = Sigma.';
+                    A = Sigma.';
                 otherwise
-                    S = chol(Sigma).'; 
+                    A = chol(Sigma).'; 
             end
 
-            A = obj.sqc*S;
+            A = obj.sqc*A;
             sigma = [State State+A State-A];
         end
     end
@@ -154,17 +180,10 @@ classdef UKF < Filters.BayesFilter
             Y = sum(obj.W(1,:).*y,2);
         end
 
-        % General UKF prediction 
+        % UKF-A prediction 
         [X, P] = UKFA_prediction(obj, sigma)
 
         % UKF-A correction
-        [State, Sigma, Pyy] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);
-
-        % UKF-S prediction
-        [X, P] = UKFS_prediction(obj, sigma);
-        
-        % UKF-S correction
-        [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z);
-        
+        [State, Sigma, Pyy] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);        
     end
 end

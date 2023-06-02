@@ -1,5 +1,5 @@
 
-function [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, Y, y, z)
+function [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z)
     % Covariance computation
     Sy = [sqrt(obj.W(2,2:end)).*(Y(:,2:end)-y) obj.R];
     [~, Sy] = qr(Sy.', 0);

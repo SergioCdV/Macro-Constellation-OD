@@ -218,11 +218,9 @@ for i = 1:size(Constellation_1.OrbitSet,1)
     TelescopeState2 = [TelescopeState2; state_aux];
 end
 
+% ObservationSpan = [InTime; DyTime; AnTime; RadarTime; TelescopeTime; TelescopeTime2];
 ObservationSpan = [DyTime];
 [ObservationSpan, index] = sort(ObservationSpan);
-
-% ObservationSpan = [InTime; DyTime; AnTime; RadarTime; TelescopeTime; TelescopeTime2];
-% [ObservationSpan, index] = sort(ObservationSpan);
 
 Measurements = cell(length(ObservationSpan), 6);
 Measurements(:,1) = num2cell(ObservationSpan);
@@ -263,7 +261,7 @@ for i = 1:length(index)
 %     end
 
     if (0)
-        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(1) deg2rad(1)]);
+        Sigma = diag([deg2rad(0.1) deg2rad(0.1) deg2rad(0.1) deg2rad(0.1)]);
         Measurements(i,2) = { RaMeas2(index(i),:) };
         Measurements(i,3) = { TelescopeState2(index(i),:) };
         Measurements(i,4) = { @(y)TelescopeObs2.LikelihoodFunction(Sigma, RaMeas2(index(i),2:end).', y) };
@@ -290,6 +288,16 @@ for i = 1:length(index)
         Measurements(i,5) = { @(y)DyObs.ObservationProcess(DyTime(index(i)), y, DyState(index(i),:)) };
         Measurements(i,6) = { reshape(Sigma, [], 1) };
         Measurements(i,7) = { 'DELAUNAY' };
+    end
+
+    if (0)
+        Sigma = diag([1e2 1e2].^2 ./ [Re Re/Tc].^2);
+        Measurements(i,2) = { RdMeas(index(i),:) ./ [1 Re Re/Tc] };
+        Measurements(i,3) = { RadarState(index(i),:) };
+        Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(Sigma, RdMeas(index(i),2:end).', y) };
+        Measurements(i,5) = { @(y)RadarObs.ObservationProcess(RadarTime(index(i)), y, RadarState(index(i),:)) };
+        Measurements(i,6) = { reshape(Sigma, [], 1) };
+        Measurements(i,7) = { 'RADAR' };
     end
 end
 
@@ -336,12 +344,19 @@ Dt(1:4) = QuaternionAlgebra.exp_map([mvnrnd(zeros(3,1), 1e-3*eye(3), 1).'; 0], D
 
 %% Estimation: IOD
 % Estimator configuration
-IOD_filter = Filters.IOD_filter(5, 5, 1, PD, PS);
+% IOD_filter = Filters.IOD_filter(5, 5, 1, PD, PS);
+% 
+% % Estimation
+% [f_IOD, x_IOD, N_hat, E_IOD] = IOD_filter.BayesRecursion(ObservationSpan, Measurements);
+% 
+% N_IOD = cell2mat(N_hat);
+
+%% Estimation: IOD
+% Estimator configuration
+UIOD_filter = Filters.UIOD_filter(1, 50, PS, PD);
 
 % Estimation
-[f_IOD, x_IOD, N_hat, E_IOD] = IOD_filter.BayesRecursion(ObservationSpan, Measurements);
-
-N_IOD = cell2mat(N_hat);
+[x_IOD, N_hat, Prior, E_IOD] = UIOD_filter.BayesRecursion(ObservationSpan, Measurements);
 
 %% IOD plane state
 D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false);  
@@ -361,7 +376,7 @@ D = [D reshape(1e-5*eye(6), 1, [])].';
 Gamma = 1;                  % Measurements per scan 
 
 % Estimator configuration
-MTT = Filters.MTT_filter(D, 1, 1e2, PS, PD, Gamma);
+MTT = Filters.MTT_filter(D, 1, 4e2, PS, PD, Gamma);
 MTT.ExtendedTarget = false;
 
 % Physical parameters
