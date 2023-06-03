@@ -11,7 +11,7 @@ function [State] = ParticleState(obj, SensorModality, particle, nu)
         % Compute the RAAN and AoP from qp 
         diff = atan2(qp(2,1), qp(1,1));
         plus = atan2(qp(3,1), qp(4,1));
-        Omega = 2 * (plus+diff);
+        Omega = (plus+diff);
         omega = 2 * plus - Omega;
         M = nu;
     

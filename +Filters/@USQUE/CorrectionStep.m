@@ -19,5 +19,5 @@ function [State, Sigma, Pmeas, y] = CorrectionStep(obj, sigma, State, Sigma, z)
     end
 
     dq = QuaternionAlgebra.MPR2Quat(obj.a, obj.f, x(1:3,:), true);
-    State = [x(1:end,:); QuaternionAlgebra.right_isoclinic(dq) * QuatState];
+    State = [x; QuaternionAlgebra.right_isoclinic(dq) * QuatState];
 end

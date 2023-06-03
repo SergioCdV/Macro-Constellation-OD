@@ -12,7 +12,7 @@ classdef UIOD_filter < Filters.BayesFilter
         nu;
 
         % Resampling
-        Jmax = 5e1;  
+        Jmax = 5e2;  
         PruneThresh = 1e-5;
         MergeThresh = deg2rad(3);
         ResamplingMethod = 'Systematic';
@@ -24,8 +24,6 @@ classdef UIOD_filter < Filters.BayesFilter
         % Markov probabilities
         PD = 1; 
         PS = 1;
-        Gamma = 2;
-        ExtendedTarget = false;
 
         % Kalman Filter 
         KF_type = 'UKF-A';
@@ -34,7 +32,7 @@ classdef UIOD_filter < Filters.BayesFilter
 
     methods
         % Constructor 
-        function [obj] = UIOD_filter(myN, myM, myPS, myPD, myGamma)
+        function [obj] = UIOD_filter(myN, myM, myPS, myPD)
             % Contruct the filter sample space dimensions
             if (exist('myM', 'var'))
                 obj.M = myM;
@@ -57,12 +55,6 @@ classdef UIOD_filter < Filters.BayesFilter
                     obj.PS = myPS;
                 else
                     error('No valid survival probability has been input.'); 
-                end
-            end
-
-            if (exist('myGamma', 'var'))
-                if (myGamma > 0)
-                    obj.Gamma = myGamma;
                 end
             end
 

@@ -12,9 +12,21 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     psi = zeros(1, L * (length(indices) + 1));
     particles = repmat(particles, 1, length(indices)+1); 
 
-    % Optimization options 
+    % Optimization options (likelihood profiling)
     options = optimoptions('fmincon', 'Display', 'none');
 
+    % Define the ADMM problem 
+%     rho = 1;                           % AL parameter 
+%     A = eye(pos-1);                    % ADMM constraints for the action space
+% 
+%     B = -eye(size(particles,1));        
+%     c = zeros(size(particles,1),1);
+
+    % Box constraints 
+    box(1,:) = [1 1.5];
+    box(2,:) = [sqrt(1-0.01^2) 1];
+    box(3,:) = [-1 1];
+       
     for i = 1:length(indices)
         % Extract the observation model and likelihood functions 
         Z = Measurements{indices(i),2}(2:end).';
@@ -25,24 +37,53 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
         Estimator.R = R;
 
         for j = 1:L
+            % Updated particle index
             index = L * i + j;
-            Sigma = reshape( particles(pos+3+1:pos+3+(pos-1)^2,j), [pos-1 pos-1]);
-            sigma_points = reshape( particles(pos+3+(pos-1)^2+1:end,j), pos+3, []);
 
             % Solve for the ML anomaly
             mu = [particles(pos:pos+3,j); particles(4:6,j)];
             theta = fmincon(@(theta)LikeProcess(obj, SensorModality, ObservationModel, Likelihood, mu, theta), 0, [], [], [], [], 0, 2*pi, [], options); 
+            Estimator = Estimator.AssignObservationProcess(size(Z,1), @(state)FullProcess(obj, SensorModality, ObservationModel, state, theta));
 
             % UKF step
-            Estimator = Estimator.AssignObservationProcess(size(Z,1), @(state)FullProcess(obj, SensorModality, ObservationModel, state, theta));
-            [mu, S, ~, ~] = Estimator.CorrectionStep(sigma_points, particles(1:pos+3,j), Sigma, Z);
+            mean = particles(1:pos+3,j);                              % Predicted mean
+            Sigma = particles(pos+3+1:pos+3+(pos-1)^2,j);             % Predicted covariance
+            sigma_points = particles(pos+3+(pos-1)^2+1:end,j);        % Predicted sigma points
+            Sigma = reshape(Sigma, [pos-1 pos-1]);
+            sigma_points = reshape(sigma_points, pos+3, []);
+        
+            [mu, S, ~, ~] = Estimator.CorrectionStep(sigma_points, mean, Sigma, Z);
 
-            % Particles update
-            particles(1:pos+3,index) = mu;
+            % ADMM step 
+            X = mu(4:6,1);
+            for k = 1:size(X,2)
+                % Projection of the Delaunay action 
+                if (X(1,k) < box(1,1))
+                    X(1,k) = box(1,1);
+                elseif (X(1,k) > box(1,2))
+                    X(1,k) = box(1,2);
+                end
+                
+                % Projection of the angular momentum 
+                if (X(2,k) / X(1,k) < box(2,1))
+                    X(2,k) = X(1,k) * box(2,1);
+                elseif (X(2,k) / X(1,k) > box(2,2))
+                    X(2,k) = X(1,k) * box(2,2);
+                end
+            
+                % Projection of the nodal angular momentum 
+                if (X(3,k) / X(2,k) < box(3,1))
+                    X(3,k) = X(2,k) * box(3,1);
+                elseif (X(3,k) / X(2,k) > box(3,2))
+                    X(3,k) = X(2,k) * box(3,2);
+                end
+            end
+
+            particles(1:pos+3,index) = [mu(1:3,1); X; mu(pos:pos+3,:)];
             particles(pos+3+1:pos+3+(pos-1)^2,index) = reshape(S, [], 1);
 
             % Weights update
-            fun = @(theta)LikeProcess(obj, SensorModality, ObservationModel, Likelihood, [mu(7:end,1); mu(4:6,1)], theta);
+            fun = @(theta)LikeProcess(obj, SensorModality, ObservationModel, Likelihood, [mu(pos:end,1); mu(4:6,1)], theta);
             l = integral(fun, 0, 2*pi);
             psi(1, L*i + j) = obj.PD * l;
         end

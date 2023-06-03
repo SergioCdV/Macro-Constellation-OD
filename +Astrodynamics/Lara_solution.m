@@ -40,7 +40,7 @@ function [Do] = Mean2Long(epsilon, L)
 
     % Output
     Do = [psi_l, chi_l, xi_l, r_l, R_l, Theta_l].';
-    Do = [psi, chi, xi, r, R, Theta].';
+%     Do = [psi, chi, xi, r, R, Theta].';
 end
 
 % Long-period to osculating transformation (Brouwer)

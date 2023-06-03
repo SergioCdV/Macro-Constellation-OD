@@ -6,7 +6,7 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
     % Preallocation 
     X = cell(1,length(tspan));          % State estimation
-    N = cell(1,length(tspan));          % Number of planes
+    N = zeros(1,length(tspan));         % Number of planes
     time = zeros(1,length(tspan));      % Time for each iteration
     E = zeros(1,length(tspan));         % Differential entropy
 
@@ -115,14 +115,10 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
                 [born_particles, bsigma_points] = obj.PropagationStep(last_epoch, last_epoch, PlaneEstimator, born_particles);
                 born_particles = [born_particles(1:end-1,:); bsigma_points; born_particles(end,:)];
 
-                PropPrior = [PropPrior born_particles];
+                % PropPrior = [PropPrior born_particles];
     
                 % Correction step 
-                if (obj.ExtendedTarget)
-                    [Posterior] = obj.ExtendedCorrectionStep(meas_index+indices, Measurements, PlaneEstimator, PropPrior);
-                else
-                    [Posterior] = obj.CorrectionStep(meas_index+indices, Measurements, PlaneEstimator, PropPrior);
-                end
+                [Posterior] = obj.CorrectionStep(meas_index+indices, Measurements, PlaneEstimator, PropPrior);
 
                 Prior = Posterior;
                 last_epoch = prop_epoch;
@@ -170,10 +166,10 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
         X{i} = obj.X;
         obj.N = size(obj.X,2);
-        N{i} = obj.N;
+        N(i) = obj.N;
         for j = 1:new_measurements-1
             X{i+j} = obj.X;
-            N{i+j} = obj.N;
+            N(i+j) = obj.N;
             E(i+j) = E(i);
         end
 

@@ -40,6 +40,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
             % Deconditioning
             mu(5:end) = mu(5:end) - Sigma(4:end,1:3) * F * obj.Gibbs_vector(:,i);
             S(4:end,4:end) = S(4:end,4:end) + S(4:end,1:3) * F * S(4:end,1:3).';
+            S = 0.5 * (S + S.') + obj.PD_tol * eye(size(S,1));
 
             % Particles update
             particles(1:pos,index) = mu;

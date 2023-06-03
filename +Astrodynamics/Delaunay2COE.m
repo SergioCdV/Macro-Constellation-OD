@@ -32,6 +32,6 @@ function [s] = Delaunay2COE(mu, x, direction)
         G = L * sqrt(1-e^2);
         H = G * cos(i); 
         
-        s = real([M Omega omega L G H]);
+        s = real([M omega Omega L G H]);
     end
 end

@@ -6,7 +6,7 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
     % Preallocation 
     X = cell(1,length(tspan));
-    N = cell(1,length(tspan)); 
+    N = zeros(1,length(tspan)); 
     f = cell(1,length(tspan));
     time = zeros(1,length(tspan));
     E = zeros(1,length(tspan));
@@ -195,12 +195,12 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
         % Estimation on the anomaly space
         obj.X = obj.StateEstimation(particles, weights, obj.N);
         X{i} = obj.X;
-        N{i} = obj.N;
+        N(i) = obj.N;
 
         for j = 1:new_measurements-1
             f{i+j} = f{i};
             X{i+j} = obj.X;
-            N{i+j} = obj.N;
+            N(i+j) = obj.N;
             E(i+j) = E(i);
         end
 

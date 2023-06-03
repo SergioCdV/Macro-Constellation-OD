@@ -11,7 +11,7 @@ function [born_particles] = Birth(obj)
 
     % Action set 
     Lmin = 1; 
-    Lmax = 7;
+    Lmax = 1.5;
     L =  Lmin * ones(1,J) + (Lmax-Lmin) .* rand(1,J);
     emin = 0; 
     emax = 0.1; 
@@ -23,7 +23,7 @@ function [born_particles] = Birth(obj)
     born_particles(7,:) = born_particles(6,:) .* cos_i; 
 
     % Covariances
-    sigma = 1e-7 * eye(pos-1);
+    sigma = 1e-3 * eye(pos-1);
     sigma = reshape(sigma, [], 1);
 
     % Particles as wrapped Gaussian kernels 

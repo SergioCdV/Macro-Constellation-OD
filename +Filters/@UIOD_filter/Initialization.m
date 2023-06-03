@@ -6,7 +6,7 @@ function [particles, weights] = Initialization(obj)
         error('The internal filter configuration has not been completed.');
     else  
         % Number of mixture components per plane
-        J = min(obj.M * obj.N, obj.Jmax); 
+        J = max(obj.Jmax, obj.M); 
         pos = 7;
 
         % Preallocation 
@@ -17,10 +17,10 @@ function [particles, weights] = Initialization(obj)
 
         % Action set 
         Lmin = 1; 
-        Lmax = 7;
+        Lmax = 1.5;
         L =  Lmin * ones(1,J) + (Lmax-Lmin) .* rand(1,J);
         emin = 0; 
-        emax = 0.1; 
+        emax = 0.01; 
         e = emin * ones(1, J) + (emax-emin) .* rand(1,J);
         cos_i = repmat(-1, 1, J) + 2 .* rand(1,J);
         
@@ -28,13 +28,16 @@ function [particles, weights] = Initialization(obj)
         particles(6,:) = L .* sqrt(1-e.^2); 
         particles(7,:) = particles(6,:) .* cos_i; 
 
-        mu = [1.04; 0.001; cos(deg2rad(45))];
-        particles(5:7,:) = repmat(mu, 1, J);
-        particles(6,:) = particles(5,:) .* sqrt(1-particles(6,:).^2); 
-        particles(7,:) = particles(6,:) .* particles(7,:);
+%         mu = [1.04; 1e-3; cos(deg2rad(45))];
+%         particles(5:7,:) = repmat(mu, 1, J);
+%         particles(6,:) = particles(5,:) .* sqrt(1-particles(6,:).^2); 
+%         particles(7,:) = particles(6,:) .* particles(7,:);
+
+
+        % particles(1:4,:) = repmat([0.2164 0 0 0.9763].', 1, size(particles,2));
 
         % Covariance matrix
-        sigma = 1e-7 * eye(pos-1);
+        sigma = 1e-4 * eye(pos-1);
         sigma = reshape(sigma, [], 1);
 
         % Particles as wrapped Gaussian kernels 

@@ -9,7 +9,7 @@ function [c, Sigma, index] = QuatClustering(obj, weights, samples)
     D = squareform( d );
 
     % Perform density-based clustering 
-    epsilon = deg2rad( 10 );
+    epsilon = deg2rad( 15 );
     minpts = size(samples,1) + 1;
 
     if (size(D,1))

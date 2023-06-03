@@ -86,11 +86,12 @@ Constellation_1 = Constellation_1.ChangeTimeStep(Step);
 
 % Orbit definition
 ElementType = 'COE'; 
-ElementSet = [r0 1e-3 deg2rad(0) deg2rad(45) deg2rad(0)]; 
+Plane(1,:) = [r0 1e-2 deg2rad(20) deg2rad(15) deg2rad(10)];
+Plane(2,:) = [r0 1e-3 deg2rad(20) deg2rad(15) deg2rad(10)]; 
 
 for i = 1:size(S,1)
     % Generate a random anomaly 
-    ElementSet = [ElementSet(1:5) 2*pi*rand()];
+    ElementSet = [Plane(i,1:5) 2*pi*rand()];
 
     % Add the orbit to the constellation
     AuxOrbit = Orbit(mu, ElementType, ElementSet, InitialEpoch + S{i}(1)/86400);
@@ -261,7 +262,7 @@ for i = 1:length(index)
 %     end
 
     if (0)
-        Sigma = diag([deg2rad(0.1) deg2rad(0.1) deg2rad(0.1) deg2rad(0.1)]);
+        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)]);
         Measurements(i,2) = { RaMeas2(index(i),:) };
         Measurements(i,3) = { TelescopeState2(index(i),:) };
         Measurements(i,4) = { @(y)TelescopeObs2.LikelihoodFunction(Sigma, RaMeas2(index(i),2:end).', y) };
@@ -281,7 +282,7 @@ for i = 1:length(index)
     end
 
     if (1)
-        Sigma = deg2rad(1)^2 * eye(6);
+        Sigma = deg2rad(5)^2 * eye(6);
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };
         Measurements(i,4) = { @(y)DyObs.LikelihoodFunction(Sigma, DyMeas(index(i),2:end).', y) };
@@ -330,46 +331,23 @@ Constellation_1.N = Constellation_1.NumberOfSpacecraft();
 [Constellation_1.Np, Constellation_1.n] = Constellation_1.NumberOfPlanes();
 
 %% True plane state
-D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false); 
-
-% D = Astrodynamics.Brouwer_solution(J2, D);
-D(5:7) = D(4:6);
-D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2);
-D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
-D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
-D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
-Dt = [D reshape(1e-3*eye(6), 1, [])].';
-
-Dt(1:4) = QuaternionAlgebra.exp_map([mvnrnd(zeros(3,1), 1e-3*eye(3), 1).'; 0], Dt(1:4));
+D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false).'; 
 
 %% Estimation: IOD
-% Estimator configuration
-% IOD_filter = Filters.IOD_filter(5, 5, 1, PD, PS);
-% 
-% % Estimation
-% [f_IOD, x_IOD, N_hat, E_IOD] = IOD_filter.BayesRecursion(ObservationSpan, Measurements);
-% 
-% N_IOD = cell2mat(N_hat);
+if (0)
+    % Estimator configuration
+    UIOD_filter = Filters.UIOD_filter(1, 1e2, PS, PD);
+    
+    % Estimation
+    [x_IOD, N_hat, Prior, E_IOD] = UIOD_filter.BayesRecursion(ObservationSpan, Measurements);
+    
+    % IOD plane state
+    D_hat = Astrodynamics.Delaunay2MyElements(x_IOD{end}(1:7,1), false);
+else
+    D_hat = Astrodynamics.Delaunay2MyElements(D, true);
+end
 
-%% Estimation: IOD
-% Estimator configuration
-UIOD_filter = Filters.UIOD_filter(1, 50, PS, PD);
-
-% Estimation
-[x_IOD, N_hat, Prior, E_IOD] = UIOD_filter.BayesRecursion(ObservationSpan, Measurements);
-
-%% IOD plane state
-D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false);  
-
-% D = Astrodynamics.Brouwer_solution(J2, D);
-D(5:7) = D(4:6);
-D(1) = sin(ElementSet(4)/2) * cos((ElementSet(3)-ElementSet(5))/2) + 0.0 * rand();
-D(2) = sin(ElementSet(4)/2) * sin((ElementSet(3)-ElementSet(5))/2);
-D(3) = cos(ElementSet(4)/2) * sin((ElementSet(3)+ElementSet(5))/2);
-D(4) = cos(ElementSet(4)/2) * cos((ElementSet(3)+ElementSet(5))/2);
-
-D(1:4) = D(1:4) ./ norm(D(1:4));
-D = [D reshape(1e-5*eye(6), 1, [])].';
+D_hat = [D_hat(1:end-1,1); 1e-7 * reshape(eye(6), [], 1)];
 
 %% Estimation: tracking 
 % Extended tracking configuration 
@@ -378,6 +356,7 @@ Gamma = 1;                  % Measurements per scan
 % Estimator configuration
 MTT = Filters.MTT_filter(D, 1, 4e2, PS, PD, Gamma);
 MTT.ExtendedTarget = false;
+MTT.planes = D_hat;
 
 % Physical parameters
 MTT.mu = mu;
@@ -391,8 +370,6 @@ MTT.nu = linspace(0,2*pi,1e3);
 tic
 [f, x, N_hat, Prior, E] = MTT.BayesRecursion(ObservationSpan, Measurements);
 running_time = toc;
-
-N_hat = cell2mat(N_hat);
 
 %% Analysis
 % Expectance of the number of targets in time 
