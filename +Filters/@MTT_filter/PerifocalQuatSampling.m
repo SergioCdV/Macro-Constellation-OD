@@ -13,6 +13,7 @@ function [samples, a] = PerifocalQuatSampling(obj, particles)
 
     for i = 1:size(samples,2)
         dq = QuaternionAlgebra.exp_map([a(:,i); 0], [0;0;0;1]);
+        dq = QuaternionAlgebra.quaternion_inverse(dq);
         samples(1:4,i) = QuaternionAlgebra.right_isoclinic(dq) * samples(1:4,i);
     end
 

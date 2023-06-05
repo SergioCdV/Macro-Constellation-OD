@@ -17,13 +17,13 @@ mu = 3.986e14;              % Gravitional parameter of the Earth
 Re = 6378e3;                % Reference Earth radius
 Tc = sqrt(Re^2/mu);         % Characteristic time
 J2 = 1.08263e-3;            % Earth's J2 parameter
-Nmax = 2;                   % Number of targets
+Nmax = 4;                   % Number of targets
 
 % Constellation lifetime
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
 T = 1;                                              % Number of days 
 EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
-Step = 1200;                                         % Integration step in seconds
+Step = 3600;                                         % Integration step in seconds
 tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
 
 % Target birth 
@@ -89,6 +89,7 @@ ElementType = 'COE';
 Plane(1,:) = [r0 1e-2 deg2rad(20) deg2rad(15) deg2rad(10)];
 Plane(2,:) = [r0 1e-3 deg2rad(20) deg2rad(15) deg2rad(10)]; 
 Plane(3,:) = [r0 1e-3 deg2rad(20) deg2rad(15) deg2rad(10)];
+Plane(4,:) = [r0 1e-3 deg2rad(25) deg2rad(12) deg2rad(15)];
 
 for i = 1:size(S,1)
     % Generate a random anomaly 
