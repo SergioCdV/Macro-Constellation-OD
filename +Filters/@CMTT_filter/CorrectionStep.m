@@ -10,7 +10,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     
     % Corrector step of the KF for the covariance and means
     Sigma = reshape(particles(pos+1:pos+(pos-1)^2,1), [pos-1 pos-1]); 
-    F = (Sigma(1:3,1:3) \ eye(3));
+    F = Sigma(1:3,1:3)^(-1);
 
     % Weights update
     L = size(particles,2);
@@ -34,12 +34,13 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
 
             % UKF step
             [mu, S, ~, y] = REstimator.CorrectionStep(sigma_points, particles(1:pos,j), Sigma, Z);
+            Sigma = Sigma(2:end,2:end);
             S = S(2:end,2:end);
 
             % Deconditioning
-            mu(5:end) = mu(5:end) - S(4:end,1:3) * F * 0*  obj.Gibbs_vector(:,i);
+            mu(5:end) = mu(5:end) - Sigma(4:end,1:3) * F * obj.Gibbs_vector(:,i);
             S(4:end,4:end) = S(4:end,4:end) + S(4:end,1:3) * F * S(4:end,1:3).';
-            S = 0.5 * (S + S.');
+            S = 0.5 * (S + S.') + obj.PD_tol * eye(size(S,1));
 
             % Particles update
             particles(1:pos,index) = mu;

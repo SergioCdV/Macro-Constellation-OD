@@ -13,17 +13,17 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
     % Preallocate the estimator 
     pos = 8;
-    Q = 1e-7 * eye(pos);
+    Q = 1e-3 * eye(pos);
 
     switch (obj.KF_type)
         case 'EKF'
             AnomalyEstimator = Filters.EKF();
         case 'UKF-A'
-            AnomalyEstimator = Filters.UKF('UKF-A', 2, 1E-1, 0);
+            AnomalyEstimator = Filters.UKF('UKF-A', 2, 1E-2, 0);
             AnomalyEstimator.StateDim = pos-1;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
         case 'UKF-S'
-            AnomalyEstimator = Filters.UKF('UKF-S', 2, 1E-1, 0);
+            AnomalyEstimator = Filters.UKF('UKF-S', 2, 1E-2, 0);
             AnomalyEstimator.StateDim = pos-1;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
     end
@@ -112,7 +112,7 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
                 [Prior(1:end-1,:)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:end-1,:));
                 [PropPrior, sigma_points] = obj.PropagationStep(last_epoch, prop_epoch, AnomalyEstimator, Prior);
                 PropPrior = [PropPrior(1:end-1,:); sigma_points; PropPrior(end,:)];
-                PropPrior(end,:) =  obj.PS * PropPrior(end,:);
+                PropPrior(end,:) = obj.PS * PropPrior(end,:);
 
                 % Birth particles
                 born_particles = obj.Birth();
@@ -140,11 +140,11 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
             [plane, Sigma] = obj.PerifocalUpdate(weights, particles(1:pos-1,:));
 
             obj.planes = [plane; reshape(Sigma, [], 1)];
-            particles(1:pos-1,:) = repmat(obj.planes(1:pos-1,:), 1, size(particles,2));
+            particles(1:4,:) = repmat(obj.planes(1:4,:), 1, size(particles,2));
             
             for j = 1:size(particles,2)
                 Sigma_t = reshape(particles(pos+1:end,j), [pos-1 pos-1]);
-                Sigma_t(1:end-1,1:end-1) = Sigma;
+                Sigma_t(1:3,1:3) = Sigma(1:3,1:3);
                 particles(pos+1:end,j) = reshape(Sigma_t, [], 1);
             end
             
@@ -161,10 +161,14 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
         else
             % Propagate to the new epoch the clustered states
             prop_epoch = tspan(i);
+            
             if (last_epoch ~= prop_epoch)
+                % Augmentation of the perifocal attitude particle representation via tangent space mapping
+                [Prior, obj.Gibbs_vector] = obj.PerifocalQuatSampling(Prior);
+
                 % Plane propagation 
-                [Prior(1:pos-1,1)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:pos-1,1));
-                Prior(1:pos-1,2:end) = repmat(Prior(1:pos-1,1), 1, size(Prior,2)-1);
+                [Prior(1:end-1,1)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:end-1,1));
+                Prior(1:end-1,2:end) = repmat(Prior(1:end-1,1), 1, size(Prior,2)-1);
 
                 % Particle propagation
                 [Posterior] = obj.PropagationStep(last_epoch, prop_epoch, AnomalyEstimator, Prior);
@@ -182,11 +186,23 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
         % New pdf 
         aux = zeros(length(obj.nu),size(particles,2));
+
+        Cov = zeros((pos-1)^2, size(particles,2));
+        switch (obj.KF_type)
+            case 'UKF-S'
+                for j = 1:size(particles,2)
+                    aux = particles(pos+1:end,j);
+                    Cov = reshape(aux, [pos-1 pos-1]) * reshape(aux, [pos-1 pos-1]).';
+                end
+            otherwise
+                Cov = particles(pos+1:end,:);
+        end
+
         for j = 1:size(particles,2)
-            aux(:,j) = obj.wrapped_normal(1e-7, obj.nu.', mod(particles(pos,j),2*pi), particles(end,j));
+            aux(:,j) = obj.wrapped_normal(1e-4, obj.nu.', mod(particles(pos,j),2*pi), Cov(end,j));
 
             % Entropy characterization 
-            Sigma = reshape(particles(pos+1:end,j), [pos-1 pos-1]);
+            Sigma = reshape(Cov(:,j), [pos-1 pos-1]);
             entropy = 0.5 * log(det(2*pi*exp(1)*Sigma));
             E(i) = entropy * (entropy < E(i)) + E(i) * (entropy >= E(i));
         end

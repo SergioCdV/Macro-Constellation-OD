@@ -17,7 +17,7 @@ function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch,
     sigma_points = zeros(pos * (2*REstimator.StateDim+1), size(particles,2));
 
     Sigma = reshape(particles(pos+1:end,1), [pos-1 pos-1]); 
-    F = (Sigma(1:3,1:3) \ eye(3));
+    F = Sigma(1:3,1:3)^(-1);
 
     % Perform the propagation through the KF step
     REstimator = REstimator.Init().AssignStateProcess(REstimator.StateDim, @(M, step)dynamics(obj.epsilon, M, step));
@@ -27,13 +27,6 @@ function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch,
 
         mu = particles(pos-3:pos,i) + Sigma(4:end,1:3) * F * obj.Gibbs_vector(:,i);
         sigma = Sigma(4:end,4:end) - Sigma(4:end,1:3) * F * Sigma(4:end,1:3).';
-        sigma = 0.5 * (sigma + sigma.');
-        
-        [~, flag] = chol(sigma);
-        if (flag)
-            sigma = sigma + obj.PD_tol * eye(size(sigma)); 
-        end
-
         REstimator = REstimator.InitConditions(mu, sigma);
 
         % UKF step

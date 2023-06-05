@@ -1,4 +1,4 @@
-classdef MTT_filter < Filters.BayesFilter 
+classdef CMTT_filter < Filters.BayesFilter 
 
     properties
         % Gravitational problem 
@@ -31,12 +31,13 @@ classdef MTT_filter < Filters.BayesFilter
 
         % Kalman Filter 
         KF_type = 'UKF-A';
+        PKF_type = 'UKF-A';
         PD_tol = 1e-6;
     end
 
     methods
         % Constructor 
-        function [obj] = MTT_filter(myPlanes, myN, myM, myPS, myPD, myGamma)
+        function [obj] = CMTT_filter(myPlanes, myN, myM, myPS, myPD, myGamma)
             % Contruct the filter sample space dimensions
             if (exist('myM', 'var'))
                 obj.M = myM;
@@ -80,13 +81,12 @@ classdef MTT_filter < Filters.BayesFilter
         [f, X, N, Prior, E] = BayesRecursion(obj, tspan, measurements);
         [PropPrior, sigma] = PropagationStep(obj, last_epoch, new_epoch, Estimator, Prior);
         [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, PropPrior);
-        [Prior] = PlanePropagation(obj, last_epoch, prop_epoch, planes);
     end
 
     methods 
-        % Perifocal attitude sampling 
-        [samples, a] = PerifocalQuatSampling(obj, particles);
-        [plane, Sigma] = PerifocalUpdate(obj, weights, particles);
+        % Perifocal attitude estimation 
+        [PropPlane, Sigma, sigma_points] = PlanePropagation(obj, last_epoch, prop_epoch, PlaneEstimator, planes);
+        [CorrPlane, CorrPlaneSigma] = PlaneCorrection(obj, PlaneEstimator, planes, Sigma, sigma_points, Posterior);
 
         % Wrapped normal 
         [f] = wrapped_normal(obj, error_tol, M, mu, sigma); 

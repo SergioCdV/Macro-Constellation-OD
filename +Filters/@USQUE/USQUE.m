@@ -14,7 +14,6 @@ classdef USQUE < Filters.BayesFilter
         beta = 2;  
         alpha
         k = 0;
-        W                     % UKF weights
         
         Clock = 0
         InitFlag = true
@@ -38,6 +37,7 @@ classdef USQUE < Filters.BayesFilter
 
     properties (Access = private)
         % Hyperparameters
+        W           % UKF weights
         L           % Number of sigma points 
         lambda      % Scaling parameter
         c           % Scaling factor
@@ -82,7 +82,7 @@ classdef USQUE < Filters.BayesFilter
             obj.StateModel = myStateModel;
 
             if (isempty(obj.Q))
-                obj.Q = zeros(myStateDim);
+                obj.Q = 1e-20 * eye(myStateDim);
             end
         end
 
@@ -100,8 +100,8 @@ classdef USQUE < Filters.BayesFilter
         function [obj] = AdditiveCovariances(obj, Q, R)
             switch (obj.Algorithm)
                 case 'UKF-S'
-                    obj.Q = sqrt(Q);
-                    obj.R = sqrt(R);
+                    obj.Q = chol(Q).';
+                    obj.R = chol(R).';
                 otherwise
                     obj.Q = Q;
                     obj.R = R;
@@ -146,9 +146,15 @@ classdef USQUE < Filters.BayesFilter
             obj.Clock = obj.Clock + time_step;
 
             % Estimator update 
-            obj.State = [zeros(3,1); state(4:6,:)]; 
-            obj.Sigma = sigma;
+            obj.State = [state(7:end,:); state(4:6,:)]; 
             obj.Measurements = y;
+
+            switch (obj.Algorithm)
+                case 'UKF-A'
+                    obj.Sigma = sigma;
+                case 'UKF-S'
+                    obj.Sigma = sigma*sigma.';
+            end
         end
 
         % UKF prediction 
@@ -163,9 +169,14 @@ classdef USQUE < Filters.BayesFilter
 
             switch (obj.Algorithm)
                 case 'UKF-S'
-                    A = Sigma.';
+                    A = Sigma;
                 otherwise
-                    A = chol(Sigma).'; 
+                    [A, flag] = chol(Sigma);
+                    if (flag)
+                        A = qr(Sigma).';
+                    else
+                        A = A.';
+                    end
             end
 
             A = obj.sqc*A;
@@ -180,10 +191,12 @@ classdef USQUE < Filters.BayesFilter
             Y = sum(obj.W(1,:).*y,2);
         end
 
-        % UKF-A prediction 
-        [X, P] = UKFA_prediction(obj, sigma)
+       % Additive UKF
+        [X, P] = UKFA_prediction(obj, sigma);                                           % Prediction
+        [State, Sigma, Pyy] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);       % Correction
 
-        % UKF-A correction
-        [State, Sigma, Pyy] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);        
+        % Square root UKF 
+        [X, P] = UKFS_prediction(obj, sigma);                                           % Prediction
+        [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z);        % Correction 
     end
 end

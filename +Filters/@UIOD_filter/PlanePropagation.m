@@ -2,8 +2,15 @@
 
 function [planes] = PlanePropagation(obj, planes, step)
     % Constants
-    step = step / obj.Tc;
+    step = 86400 / obj.Tc * step;
     One = [0;0;0;1];
+
+    if (step > obj.Tc / 1e3)
+        step = linspace(0,step,1e2);
+        dstep = step(2)-step(1);
+    else
+        dstep = step;
+    end
 
     % Propagation of the perifocal attitude
     for i = 1:size(planes,2)
@@ -20,13 +27,6 @@ function [planes] = PlanePropagation(obj, planes, step)
         Omega(1) = 3/2*obj.epsilon/(L^7*eta^4) * (H/G);      
 
         % Exponential mapping
-        if (step > obj.Tc / 1e3)
-            step = linspace(0,step,1e2);
-            dstep = step(2)-step(1);
-        else
-            dstep = step;
-        end
-
         for j = 1:length(step)
             % Body frame rotation
             Omega = QuaternionAlgebra.right_isoclinic([Omega; 0]) * QuaternionAlgebra.quaternion_inverse(planes(1:4,i)); 

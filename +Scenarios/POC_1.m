@@ -88,6 +88,7 @@ Constellation_1 = Constellation_1.ChangeTimeStep(Step);
 ElementType = 'COE'; 
 Plane(1,:) = [r0 1e-2 deg2rad(20) deg2rad(15) deg2rad(10)];
 Plane(2,:) = [r0 1e-3 deg2rad(20) deg2rad(15) deg2rad(10)]; 
+Plane(3,:) = [r0 1e-3 deg2rad(20) deg2rad(15) deg2rad(10)];
 
 for i = 1:size(S,1)
     % Generate a random anomaly 
@@ -143,9 +144,10 @@ TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, 
 % Define a telescope topocentric observer located at the north pole
 InitialState = [0 90];
 InitialEpoch = juliandate(datetime('now'));
-Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
 FOV = deg2rad(40);
-TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, FOV);
+% Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
+Sigma = diag([deg2rad(0.001) deg2rad(0.001)]);
+TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, FOV, 'RADEC');
 
 %% Observation process 
 % Prepare the measurements
@@ -262,7 +264,8 @@ for i = 1:length(index)
 %     end
 
     if (0)
-        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(0.1) deg2rad(0.1)]);
+        Sigma = diag([deg2rad(0.1) deg2rad(0.1) deg2rad(0.01) deg2rad(0.01)]);
+        Sigma = diag([deg2rad(1e-1) deg2rad(1e-1)]);
         Measurements(i,2) = { RaMeas2(index(i),:) };
         Measurements(i,3) = { TelescopeState2(index(i),:) };
         Measurements(i,4) = { @(y)TelescopeObs2.LikelihoodFunction(Sigma, RaMeas2(index(i),2:end).', y) };
@@ -272,7 +275,7 @@ for i = 1:length(index)
     end
 
     if (0) 
-        Sigma = deg2rad(1).^2;
+        Sigma = deg2rad(1e-1).^2;
         Measurements(i,2) = { AnMeas(index(i),:) };
         Measurements(i,3) = { AnState(index(i),:) };
         Measurements(i,4) = { @(y)AnObs.LikelihoodFunction(Sigma, AnMeas(index(i),2:end).', y) };
@@ -282,7 +285,7 @@ for i = 1:length(index)
     end
 
     if (1)
-        Sigma = deg2rad(5)^2 * eye(6);
+        Sigma = blkdiag(deg2rad(5)^2 * eye(3), 5e-2 * eye(3));
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };
         Measurements(i,4) = { @(y)DyObs.LikelihoodFunction(Sigma, DyMeas(index(i),2:end).', y) };
@@ -336,7 +339,7 @@ D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false).
 %% Estimation: IOD
 if (0)
     % Estimator configuration
-    UIOD_filter = Filters.UIOD_filter(1, 1e2, PS, PD);
+    UIOD_filter = Filters.UIOD_filter(1, 2e2, PS, PD);
     
     % Estimation
     [x_IOD, N_hat, Prior, E_IOD] = UIOD_filter.BayesRecursion(ObservationSpan, Measurements);
@@ -354,7 +357,11 @@ D_hat = [D_hat(1:end-1,1); 1e-7 * reshape(eye(6), [], 1)];
 Gamma = 1;                  % Measurements per scan 
 
 % Estimator configuration
-MTT = Filters.MTT_filter(D, 1, 4e2, PS, PD, Gamma);
+if (1)
+    MTT = Filters.MTT_filter(D, 1, 5e1, PS, PD, Gamma);
+else
+    MTT = Filters.CMTT_filter(D, 1, 1e2, PS, PD, Gamma);
+end
 MTT.ExtendedTarget = false;
 MTT.planes = D_hat;
 
@@ -388,25 +395,25 @@ Analysis.ExpectanceTargets = [mean(N_error) std(N_error)];
 tspan = 86400 * ( ObservationSpan-ObservationSpan(1) );
 pos = size(N_hat,2)-7;
 
-figure 
-view(3)
-no = [0;0;1];
-for i = 1:size(x_IOD{pos},2)
-    aux = QuaternionAlgebra.right_isoclinic([no; 0]) * QuaternionAlgebra.quaternion_inverse(x_IOD{pos}(1:4,i));
-    n(:,i) = QuaternionAlgebra.right_isoclinic(x_IOD{pos}(1:4,i)) * aux;
-end
-hold on
-m = 100;
-[aa, bb, cc] = sphere(m);
-h = surf(aa, bb, cc);
-set(h, 'FaceColor',[0 0 1], 'FaceAlpha',0.1,'FaceLighting','gouraud','EdgeColor','none')
-scatter3(n(1,:), n(2,:), n(3,:), 'filled'); 
-hold off
-xlabel('$X$')
-ylabel('$Y$')
-ylabel('$Z$')
-grid on;
-%%
+% figure 
+% view(3)
+% no = [0;0;1];
+% for i = 1:size(x_IOD{pos},2)
+%     aux = QuaternionAlgebra.right_isoclinic([no; 0]) * QuaternionAlgebra.quaternion_inverse(x_IOD{pos}(1:4,i));
+%     n(:,i) = QuaternionAlgebra.right_isoclinic(x_IOD{pos}(1:4,i)) * aux;
+% end
+% hold on
+% m = 100;
+% [aa, bb, cc] = sphere(m);
+% h = surf(aa, bb, cc);
+% set(h, 'FaceColor',[0 0 1], 'FaceAlpha',0.1,'FaceLighting','gouraud','EdgeColor','none')
+% scatter3(n(1,:), n(2,:), n(3,:), 'filled'); 
+% hold off
+% xlabel('$X$')
+% ylabel('$Y$')
+% ylabel('$Z$')
+% grid on;
+
 figure
 hold on
 plot(tspan, N)

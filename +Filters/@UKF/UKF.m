@@ -14,7 +14,6 @@ classdef UKF < Filters.BayesFilter
         beta    
         alpha
         k
-        W           % UKF weights
         
         Clock = 0
         InitFlag = true
@@ -35,6 +34,7 @@ classdef UKF < Filters.BayesFilter
 
     properties (Access = private)
         % Hyperparameters
+        W           % UKF weights
         L           % Number of sigma points 
         lambda      % Scaling parameter
         c           % Scaling factor
@@ -46,10 +46,19 @@ classdef UKF < Filters.BayesFilter
         % Constructor 
         function [obj] = UKF(Algorithm, beta, alpha, k)
             % Default initialization
-            obj.Algorithm = Algorithm; 
-            obj.beta = beta; 
             obj.alpha = alpha; 
-            obj.k = k; 
+
+            if (exist('Algorithm', 'var'))
+                obj.Algorithm = Algorithm; 
+            end
+
+            if (exist('beta', 'var'))
+                obj.beta = beta; 
+            end
+
+            if (exist('k', 'var'))
+                obj.k = k; 
+            end  
         end
 
         % State process
@@ -58,7 +67,7 @@ classdef UKF < Filters.BayesFilter
             obj.StateModel = myStateModel;
 
             if (isempty(obj.Q))
-                obj.Q = zeros(myStateDim);
+                obj.Q = 1e-20 * eye(myStateDim);
             end
         end
 
@@ -76,8 +85,8 @@ classdef UKF < Filters.BayesFilter
         function [obj] = AdditiveCovariances(obj, Q, R)
             switch (obj.Algorithm)
                 case 'UKF-S'
-                    obj.Q = sqrt(Q);
-                    obj.R = sqrt(R);
+                    obj.Q = chol(Q).';
+                    obj.R = chol(R).';
                 otherwise
                     obj.Q = Q;
                     obj.R = R;
@@ -123,8 +132,14 @@ classdef UKF < Filters.BayesFilter
 
             % Estimator update 
             obj.State = state; 
-            obj.Sigma = sigma;
             obj.Measurements = y;
+
+            switch (obj.Algorithm)
+                case 'UKF-A'
+                    obj.Sigma = sigma;
+                case 'UKF-S'
+                    obj.Sigma = sigma*sigma.';
+            end
         end
 
         % UKF prediction 
@@ -135,14 +150,20 @@ classdef UKF < Filters.BayesFilter
 
         % Sigma points generation
         function [sigma] = sigma_points(obj, State, Sigma)
+
             switch (obj.Algorithm)
                 case 'UKF-S'
-                    S = Sigma.';
+                    A = Sigma;
                 otherwise
-                    S = chol(Sigma).'; 
+                    [A, flag] = chol(Sigma);
+                    if (flag)
+                        A = qr(Sigma).';
+                    else
+                        A = A.';
+                    end
             end
 
-            A = obj.sqc*S;
+            A = obj.sqc*A;
             sigma = [State State+A State-A];
         end
     end
@@ -154,17 +175,13 @@ classdef UKF < Filters.BayesFilter
             Y = sum(obj.W(1,:).*y,2);
         end
 
-        % General UKF prediction 
-        [X, P] = UKFA_prediction(obj, sigma)
+        % Additive UKF
+        [X, P] = UKFA_prediction(obj, sigma);                                           % Prediction
+        [State, Sigma, Pyy] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);       % Correction
 
-        % UKF-A correction
-        [State, Sigma, Pyy] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);
-
-        % UKF-S prediction
-        [X, P] = UKFS_prediction(obj, sigma);
-        
-        % UKF-S correction
-        [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z);
+        % Square root UKF 
+        [X, P] = UKFS_prediction(obj, sigma);                                           % Prediction
+        [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z);        % Correction
         
     end
 end

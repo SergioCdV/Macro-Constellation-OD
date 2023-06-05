@@ -1,15 +1,16 @@
 
 
-function [X, P] = UKFS_prediction(obj, sigma)
+function [X, S] = UKFS_prediction(obj, sigma)
     % State prediction
     X = sum(obj.W(1,:).*sigma,2);
 
     % Covariance prediction
-    [~, S] = qr([sqrt(obj.W(2,2:end)).*(sigma(:,2:end)-X) obj.Q].',0);
+    res = (sigma-X) * diag( sqrt(abs(obj.W(2,:))) );
+    [~, S] = qr([res(:,2:end) obj.Q].',0);
 
     if (obj.W(2,1) < 0)
-        P = cholupdate(S, sqrt(abs(obj.W(2,1)))*(sigma(:,1)-X), '-');
+        S = cholupdate(S, res(:,1), '-');
     else
-        P = cholupdate(S, sqrt(abs(obj.W(2,1)))*(sigma(:,1)-X), '+');
+        S = cholupdate(S, res(:,1), '+');
     end
 end

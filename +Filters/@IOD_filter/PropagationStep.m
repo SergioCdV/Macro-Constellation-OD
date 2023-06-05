@@ -3,7 +3,14 @@ function [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior)
     % Constants 
     One = [0;0;0;1];                    % Identity quaternion
     step = new_epoch - last_epoch;      % Time step
-    step = step / obj.Tc;               % Dimensionalizing
+    step = 86400 / obj.Tc * step;
+
+    if (step > obj.Tc / 1e3)
+        step = linspace(0,step,1e2);
+        dstep = step(2)-step(1);
+    else
+        dstep = step;
+    end
 
     % Preallocation 
     particles = Prior(1:end-1,:);       % Prior states
@@ -24,13 +31,6 @@ function [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior)
         Omega(1) = 3/2*obj.epsilon/(L^7*eta^4) * (H/G);      
 
         % Exponential mapping
-        if (step > obj.Tc / 1e3)
-            step = linspace(0,step,1e2);
-            dstep = step(2)-step(1);
-        else
-            dstep = step;
-        end
-
         for j = 1:length(step)
             % Body frame rotation
             Omega = QuaternionAlgebra.right_isoclinic([Omega; 0]) * QuaternionAlgebra.quaternion_inverse(particles(1:4,i)); 

@@ -2,7 +2,7 @@
 function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch, PlaneEstimator, Prior)
     % Constants 
     step = new_epoch - last_epoch;      % Time step
-    step = step / obj.Tc;               % Dimensionalizing
+    step = 86400 / obj.Tc * step;       % Dimensionalizing
     pos = 7;                            % State dimension
     particles = Prior(1:end-1,:);       % Prior states
     weights = Prior(end,:);             % Prior weights

@@ -1,16 +1,19 @@
 
-function [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z)
+function [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, Y, y, z)
     % Covariance computation
-    Sy = [sqrt(obj.W(2,2:end)).*(Y(:,2:end)-y) obj.R];
-    [~, Sy] = qr(Sy.', 0);
+    res = (Y-y) * diag( sqrt(abs(obj.W(2,:))) );
+    [~, Sy] = qr([res(:,2:end) obj.R].',0);
 
     if (obj.W(2,1) < 0)
-        Sy = cholupdate(Sy, sqrt(abs(obj.W(2,1)))*(Y(:,1)-y), '-');
+        Sy = cholupdate(Sy, res(:,1), '-');
     else
-        Sy = cholupdate(Sy, sqrt(abs(obj.W(2,1)))*(Y(:,1)-y), '+');
+        Sy = cholupdate(Sy, res(:,1), '+');
     end
 
-    Pxy = (sigma-State)*diag(obj.W(2,:))*(Y-y).';
+    Pxy = 0; 
+    for i = 1:size(sigma,2)
+        Pxy = Pxy + obj.W(2,i) * (sigma(:,i)-State) * (Y(:,i)-y).';
+    end
 
     % Kalman update
     K = Pxy/Sy/Sy.';
@@ -18,5 +21,8 @@ function [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z)
     % Update
     State = State+K*(z-y);
     U = K*Sy.';
-    Sigma = cholupdate(Sigma, U(:,1), "-");  
+    
+    for i = 1:size(U,2)
+        Sigma = cholupdate(Sigma, U(:,i), "-");  
+    end
 end
