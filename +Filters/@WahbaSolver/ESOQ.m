@@ -1,5 +1,5 @@
 
-function  [q, Sigma] = QUEST(obj, weights, b, r)
+function  [q, Sigma] = ESOQ(obj, weights, b, r)
     % Attitude profile matrix
     B = b * diag(weights) * r.';
 
@@ -18,8 +18,19 @@ function  [q, Sigma] = QUEST(obj, weights, b, r)
     % Optimal quaternion 
     fun = @(lambda)(lambda^4-(a+b)*lambda^2-c*lambda+(a*b+c*sigma-d));
     lambda = fsolve(fun, 1);
-    p = ((lambda + sigma) * eye(3)-H) \ z;
-    q = [p; 1]; 
+    H = B - lambda * eye(3);
+
+    q = zeros(5, size(H,2));
+    for i = 1:size(H,2)
+        index = [1:i-1 i+1:size(H,2)];
+        h = H(index,index);
+        q(1,i) = det(h);
+        q(1+i,i) = -det(h);
+        q(2:i-1,i+1:end) = adj(h) * H([1:i-1 i+1:size(H,2)],i);
+    end
+
+    [~, index] = sort(q(1,:)); 
+    q = q(:,index(end));
     q = q / norm(q);
     A = QuaternionAlgebra.Quat2Matrix(q);
 
@@ -28,14 +39,6 @@ function  [q, Sigma] = QUEST(obj, weights, b, r)
 
     % Covariance matrix
     Sigma = c * ((lambda * eye(3) - B * A) \ eye(3));
-
-    % Sequential rotation 
-    [~, index] = sort(q);
-
-    if (index(end) ~= 4)
-        I = eye(3);
-        q = QuaternionAlgebra.right_isoclinic(q) * [I(:,index(end)); 0];
-    end
 end
 
 %% Auxiliary functions 

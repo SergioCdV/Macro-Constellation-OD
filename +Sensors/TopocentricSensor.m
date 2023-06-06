@@ -8,6 +8,8 @@ classdef TopocentricSensor < Sensors.AbstractSensor
     properties
         type = 'FULL';          % Full attributable vector
         FOV = deg2rad(90);      % Field of view of the sensor
+
+        Re = 6378e3;
     end
 
     methods 
@@ -148,9 +150,17 @@ classdef TopocentricSensor < Sensors.AbstractSensor
 
             % Observation
             for i = 1:length(Tspan)
-                uo = Orbit(i,1:3)/norm(Orbit(i,1:3));
+                % Horizon plane test
+                uo = Orbit(i,1:3)-StateEvolution(i,1:3);
+                uo = uo / norm(uo);
                 us = StateEvolution(i,1:3)/norm(StateEvolution(i,1:3));
-                if (abs(dot(uo,us)) > cos(obj.FOV/2))
+                test = dot(uo,us) > sin(obj.FOV);
+
+                % Sunlight test 
+                s = Astrodynamics.SunEphemeris(Tspan(i));
+                s = s/norm(s);
+                test = test & (dot(Orbit(i,1:3),s) + sqrt(dot(Orbit(i,1:3),Orbit(i,1:3)-obj.Re^2)) <= 0);
+                if (test)
                     meas = [meas; obj.TopocentricObservation(StateEvolution(i,1:3), StateEvolution(i,4:6), Orbit(i,1:3), Orbit(i,4:6))];
                     t = [t; Tspan(i)];
                 end

@@ -15,46 +15,50 @@ mu = 3.86e14;                 % Gavitational parameter of the Sun [m^3 s^−2]
 
 % Epochs
 InitialEpoch = juliandate(datetime('now'));
-EndEpoch = juliandate(datetime('tomorrow'));
+EndEpoch = juliandate(datetime('tomorrow') + days(7));
 
 % Orbit definition
 ElementType = 'COE'; 
-ElementSet = [r0 1e-3 0 deg2rad(90) deg2rad(0) deg2rad(0)]; 
+ElementSet = [r0 1e-3 deg2rad(10) deg2rad(97) deg2rad(10) deg2rad(0)]; 
 
-Orbit_1 = Orbit(mu, ElementType, ElementSet, InitialEpoch).Normalize(true, 2*r0);
+ElementSet = Astrodynamics.sso_elements(6, ElementSet);
+ElementSet(2) = 1e-2;
+ElementSet = [ElementSet ElementSet(1) * sqrt(1-ElementSet(2)^2)];
+
+Orbit_1 = Orbit(mu, ElementType, ElementSet, InitialEpoch).Normalize(true, r0);
 Orbit_1 = Orbit_1.SetFinalEpoch(EndEpoch); 
 
 % Transformation of elements 
-Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
-Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
-Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
-Orbit_1 = Orbit_1.ChangeStateFormat('KS');
-Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
-Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('KS');
-Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
-Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
-Orbit_1 = Orbit_1.ChangeStateFormat('KS');
-Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
-Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('KS');
-Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
-Orbit_1 = Orbit_1.ChangeStateFormat('POL');
-Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
-Orbit_1 = Orbit_1.ChangeStateFormat('POL');
-Orbit_1 = Orbit_1.ChangeStateFormat('KS');
-Orbit_1 = Orbit_1.ChangeStateFormat('POL');
-Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
-Orbit_1 = Orbit_1.ChangeStateFormat('POL');
-Orbit_1 = Orbit_1.ChangeStateFormat('COE');
-Orbit_1 = Orbit_1.ChangeStateFormat('POL');
-Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
+% Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
+% Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+% Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+% Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
+% Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+% Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+% Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
+% Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+% Orbit_1 = Orbit_1.ChangeStateFormat('ECI');
+% Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+% Orbit_1 = Orbit_1.ChangeStateFormat('KS');
+% Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+% Orbit_1 = Orbit_1.ChangeStateFormat('MOE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+% Orbit_1 = Orbit_1.ChangeStateFormat('COE');
+% Orbit_1 = Orbit_1.ChangeStateFormat('POL');
+% Orbit_1 = Orbit_1.ChangeStateFormat('COE');
 
 % Orbit propagation 
-Orbit_1 = Orbit_1.AddPropagator('Keplerian', 0.5);
+Orbit_1 = Orbit_1.AddPropagator('Keplerian', 1);
 
 % Set trajectory 
 Orbit_1.set_graphics();
@@ -66,30 +70,69 @@ Re = 6378.14e3;             % Reference J2 radius [m]
 
 % Orbit definition
 ElementType = 'COE'; 
-ElementSet = [r0 1e-3 0 deg2rad(90) deg2rad(0) deg2rad(0)]; 
-
 Orbit_2 = Orbit(mu, ElementType, ElementSet, InitialEpoch);
 
 Orbit_2 = Orbit_2.DefineJ2Problem(J2, Re);
-Orbit_2 = Orbit_2.Normalize(true, r0);
 Orbit_2 = Orbit_2.SetCurrentEpoch(EndEpoch); 
+Orbit_2 = Orbit_2.Normalize(true, r0);
 Orbit_3 = Orbit_2;
 Orbit_4 = Orbit_3;
 
 % Orbit propagation 
 Orbit_2 = Orbit_2.AddPropagator('Mean J2', 60);
 Orbit_3 = Orbit_3.AddPropagator('Osculating J2', 60);
-Orbit_4 = Orbit_4.AddPropagator('High-precision', 60);
+Orbit_4 = Orbit_4.AddPropagator('High-precision', 1);
 
 Orbit_2 = Orbit_2.Propagate();
 Orbit_3 = Orbit_3.Propagate();
-Orbit_4 = Orbit_4.Propagate();
-
+% Orbit_4 = Orbit_4.Propagate();
+%%
 hold on;
-Orbit_2.PlotTrajectory(figure(1), Orbit_2.InitialEpoch, Orbit_2.PropagatedEpoch);
+% Orbit_2.PlotTrajectory(figure(1), Orbit_2.InitialEpoch, Orbit_2.PropagatedEpoch);
 Orbit_3.PlotTrajectory(figure(1), Orbit_3.InitialEpoch, Orbit_3.PropagatedEpoch);
-Orbit_4.PlotTrajectory(figure(1), Orbit_4.InitialEpoch, Orbit_4.PropagatedEpoch);
+% Orbit_4.PlotTrajectory(figure(1), Orbit_4.InitialEpoch, Orbit_4.PropagatedEpoch);
 hold off
+
+%% Results 
+figure 
+hold on
+plot(Orbit_2.StateEvolution(:,1), Orbit_2.StateEvolution(:,4));
+plot(Orbit_3.StateEvolution(:,1), Orbit_3.StateEvolution(:,4));
+hold off
+xlabel('$t$')
+ylabel('$\Omega$')
+legend('$\hat{\Omega}$', '$\Omega$')
+grid on;
+yticklabels(strrep(yticklabels, '-', '$-$'));
+%%
+figure 
+hold on
+plot(Orbit_2.StateEvolution(:,1), Orbit_2.StateEvolution(:,6), 'k', 'Linewidth', 1);
+plot(Orbit_3.StateEvolution(1:size(Orbit_3.StateEvolution,1),1), Orbit_3.StateEvolution(1:size(Orbit_3.StateEvolution,1),6), 'Linewidth', 0.1);
+hold off
+xlabel('$t$')
+ylabel('$\omega$')
+legend('$\hat{\omega}$', '$\omega$')
+grid on;
+yticklabels(strrep(yticklabels, '-', '$-$'));
+%%
+figure 
+hold on
+plot(Orbit_2.StateEvolution(:,1), log(Orbit_2.StateEvolution(:,4)-Orbit_3.StateEvolution(:,4)));
+hold off
+xlabel('$t$')
+ylabel('log $e_{\Omega}$')
+grid on;
+yticklabels(strrep(yticklabels, '-', '$-$'));
+
+figure 
+hold on
+plot(Orbit_2.StateEvolution(:,1), log(Orbit_2.StateEvolution(:,6)-Orbit_3.StateEvolution(:,6)));
+hold off
+xlabel('$t$')
+ylabel('log $e_{\omega}$')
+grid on;
+yticklabels(strrep(yticklabels, '-', '$-$'));
 
 %% Constellation definition
 % Constellation constructor

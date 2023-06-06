@@ -21,9 +21,9 @@ Nmax = 4;                   % Number of targets
 
 % Constellation lifetime
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
-T = 1;                                              % Number of days 
+T = 2;                                              % Number of days 
 EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
-Step = 3600;                                         % Integration step in seconds
+Step = 600;                                         % Integration step in seconds
 tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
 
 % Target birth 
@@ -132,23 +132,23 @@ DyObs = Sensors.DelaunaySensor(InitialEpoch, InitialState, Sigma, PD);
 InitialState = [0 -30];
 InitialEpoch = juliandate(datetime('now'));
 Sigma = eye(2,2);
-FOV = deg2rad(40);
-RadarObs = Sensors.RadarSensor(InitialEpoch, InitialState, Sigma, PD, FOV);
+min_el = deg2rad(10);
+RadarObs = Sensors.RadarSensor(InitialEpoch, InitialState, Sigma, PD, min_el);
 
 % Define a telescope topocentric observer located at Madrid
 InitialState = [40 -3];
 InitialEpoch = juliandate(datetime('now'));
 Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
-FOV = deg2rad(40);
-TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, FOV);
+min_el = deg2rad(10);
+TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el);
 
 % Define a telescope topocentric observer located at the north pole
 InitialState = [0 90];
 InitialEpoch = juliandate(datetime('now'));
-FOV = deg2rad(40);
+min_el = deg2rad(10);
 % Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
 Sigma = diag([deg2rad(0.001) deg2rad(0.001)]);
-TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, FOV, 'RADEC');
+TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el, 'RADEC');
 
 %% Observation process 
 % Prepare the measurements
@@ -223,7 +223,7 @@ for i = 1:size(Constellation_1.OrbitSet,1)
 end
 
 % ObservationSpan = [InTime; DyTime; AnTime; RadarTime; TelescopeTime; TelescopeTime2];
-ObservationSpan = [DyTime];
+ObservationSpan = [TelescopeTime2];
 [ObservationSpan, index] = sort(ObservationSpan);
 
 Measurements = cell(length(ObservationSpan), 6);
@@ -264,9 +264,9 @@ for i = 1:length(index)
 % 
 %     end
 
-    if (0)
+    if (1)
         Sigma = diag([deg2rad(0.1) deg2rad(0.1) deg2rad(0.01) deg2rad(0.01)]);
-        Sigma = diag([deg2rad(1e-1) deg2rad(1e-1)]);
+        Sigma = diag([deg2rad(1) deg2rad(1)]);
         Measurements(i,2) = { RaMeas2(index(i),:) };
         Measurements(i,3) = { TelescopeState2(index(i),:) };
         Measurements(i,4) = { @(y)TelescopeObs2.LikelihoodFunction(Sigma, RaMeas2(index(i),2:end).', y) };
@@ -285,7 +285,7 @@ for i = 1:length(index)
         Measurements(i,7) = { 'ANOMALY' };
     end
 
-    if (1)
+    if (0)
         Sigma = blkdiag(deg2rad(5)^2 * eye(3), 5e-2 * eye(3));
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };

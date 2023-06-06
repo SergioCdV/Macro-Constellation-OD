@@ -130,8 +130,10 @@ classdef Orbit
                 error('New current epoch is not greater than the actual current epoch');
             elseif (myCurrentEpoch <= obj.FinalEpoch)
                 obj.CurrentEpoch = myCurrentEpoch;
-            elseif (myCurrentEpoch > obj.FinalEpoch)
+            elseif (myCurrentEpoch > obj.FinalEpoch && obj.FinalEpoch > obj.InitialEpoch)
                 obj.CurrentEpoch = obj.FinalEpoch;
+            else
+                obj.CurrentEpoch = myCurrentEpoch;
             end
         end
 

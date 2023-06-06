@@ -9,11 +9,11 @@ classdef WahbaSolver
         end
 
         % Solvers
-        [q, Sigma] = Davenports(weights, b, r);     % Davenport's q method 
-        [q, Sigma] = QUEST(weights, b, r);          % Quest method
-        [q, Sigma] = ESOQ(weights, b, r);           % Estimation of the optimal quaternion
-        [q, Sigma] = ESOQ2(weights, b, r);          % Second estimation of the optimal quaternion
-        [q, Sigma] = TRIAD(weights, b, r);          % TRIAD
+        [q, Sigma] = Davenports(obj, weights, b, r);     % Davenport's q method 
+        [q, Sigma] = QUEST(obj, weights, b, r);          % Quest method
+        [q, Sigma] = ESOQ(obj, weights, b, r);           % Estimation of the optimal quaternion
+        [q, Sigma] = Analytical2(obj, weights, b, r);    % Analytical solution for two measurements
+        [q, Sigma] = TRIAD(obj, weights, b, r);          % TRIAD
 
     end
 end

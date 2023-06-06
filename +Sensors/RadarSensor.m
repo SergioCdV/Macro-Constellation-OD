@@ -111,9 +111,10 @@ classdef RadarSensor < Sensors.AbstractSensor
 
             % Observation
             for i = 1:length(Tspan)
-                uo = Orbit(i,1:3)/norm(Orbit(i,1:3));
+                uo = Orbit(i,1:3)-StateEvolution(i,1:3);
+                uo = uo / norm(uo);
                 us = StateEvolution(i,1:3)/norm(StateEvolution(i,1:3));
-                if (1)%abs(dot(uo,us)) > cos(obj.FOV/2))
+                if (dot(uo,us) > sin(obj.FOV))
                     meas = [meas; obj.TopocentricObservation(StateEvolution(i,1:3), StateEvolution(i,4:6), Orbit(i,1:3), Orbit(i,4:6))];
                     t = [t; Tspan(i)];
                 end
