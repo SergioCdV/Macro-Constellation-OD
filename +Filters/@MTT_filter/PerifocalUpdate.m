@@ -22,7 +22,7 @@ function [plane, Sigma] = PerifocalUpdate(obj, weights, particles)
     mu = [zeros(3,1); beta];
     Sigma = (weights.*x-mu*weights) * (weights.*x-mu*weights).'/(1-sum(weights.^2,2));
     Sigma(1:3,1:3) = Sigma_q;
-    Sigma = 0.5 * (Sigma + Sigma.');
+    Sigma = 0.5 * (Sigma + Sigma.') + obj.PD_tol * eye(size(Sigma,1));
 
     % Final output 
     plane = [q; beta];

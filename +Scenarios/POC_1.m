@@ -17,13 +17,13 @@ mu = 3.986e14;              % Gravitional parameter of the Earth
 Re = 6378e3;                % Reference Earth radius
 Tc = sqrt(Re^2/mu);         % Characteristic time
 J2 = 1.08263e-3;            % Earth's J2 parameter
-Nmax = 4;                   % Number of targets
+Nmax = 2;                   % Number of targets
 
 % Constellation lifetime
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
-T = 2;                                              % Number of days 
+T = 1;                                              % Number of days 
 EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
-Step = 600;                                         % Integration step in seconds
+Step = 1200;                                         % Integration step in seconds
 tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
 
 % Target birth 
@@ -87,9 +87,9 @@ Constellation_1 = Constellation_1.ChangeTimeStep(Step);
 % Orbit definition
 ElementType = 'COE'; 
 Plane(1,:) = [r0 1e-2 deg2rad(20) deg2rad(15) deg2rad(10)];
-Plane(2,:) = [r0 1e-3 deg2rad(20) deg2rad(15) deg2rad(10)]; 
-Plane(3,:) = [r0 1e-3 deg2rad(20) deg2rad(15) deg2rad(10)];
-Plane(4,:) = [r0 1e-3 deg2rad(25) deg2rad(12) deg2rad(15)];
+Plane(2,:) = [r0 1e-3 deg2rad(120) deg2rad(30) deg2rad(50)]; 
+Plane(3,:) = [r0 1e-3 deg2rad(240) deg2rad(60) deg2rad(100)];
+Plane(4,:) = [r0 1e-3 deg2rad(330) deg2rad(90) deg2rad(150)];
 
 for i = 1:size(S,1)
     % Generate a random anomaly 
@@ -146,7 +146,7 @@ TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, 
 InitialState = [0 90];
 InitialEpoch = juliandate(datetime('now'));
 min_el = deg2rad(10);
-% Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
+%  Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
 Sigma = diag([deg2rad(0.001) deg2rad(0.001)]);
 TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el, 'RADEC');
 
@@ -266,7 +266,7 @@ for i = 1:length(index)
 
     if (1)
         Sigma = diag([deg2rad(0.1) deg2rad(0.1) deg2rad(0.01) deg2rad(0.01)]);
-        Sigma = diag([deg2rad(1) deg2rad(1)]);
+        Sigma = diag([deg2rad(1e-5) deg2rad(1e-5)]);
         Measurements(i,2) = { RaMeas2(index(i),:) };
         Measurements(i,3) = { TelescopeState2(index(i),:) };
         Measurements(i,4) = { @(y)TelescopeObs2.LikelihoodFunction(Sigma, RaMeas2(index(i),2:end).', y) };
@@ -287,6 +287,7 @@ for i = 1:length(index)
 
     if (0)
         Sigma = blkdiag(deg2rad(5)^2 * eye(3), 5e-2 * eye(3));
+        Sigma = deg2rad(5)^2 * eye(6);
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };
         Measurements(i,4) = { @(y)DyObs.LikelihoodFunction(Sigma, DyMeas(index(i),2:end).', y) };
@@ -340,7 +341,7 @@ D = Astrodynamics.Delaunay2COE(1, [ElementSet(1:5) 0] ./ [Re 1 1 1 1 1], false).
 %% Estimation: IOD
 if (0)
     % Estimator configuration
-    UIOD_filter = Filters.UIOD_filter(1, 2e2, PS, PD);
+    UIOD_filter = Filters.UIOD_filter(1, 1e1, PS, PD);
     
     % Estimation
     [x_IOD, N_hat, Prior, E_IOD] = UIOD_filter.BayesRecursion(ObservationSpan, Measurements);

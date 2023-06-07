@@ -27,13 +27,13 @@ function [State] = ParticleState(obj, SensorModality, particle)
             State = State.';
 
         otherwise
-            Do = Astrodynamics.Brouwer_solution(obj.epsilon, D);
-            State = zeros(6,size(D,2)); 
-            for i = 1:size(D,2)
-                State(:,i) = Astrodynamics.Delaunay2ECI(Do);
-                State(1:3,i) = obj.Re * State(1:3,i);
-                State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);
-            end
+%             Do = Astrodynamics.Brouwer_solution(obj.epsilon, D);
+%             State = zeros(6,size(D,2)); 
+%             for i = 1:size(D,2)
+%                 State(:,i) = Astrodynamics.Delaunay2ECI(Do);
+%                 State(1:3,i) = obj.Re * State(1:3,i);
+%                 State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);
+%             end
         
             State = zeros(6,size(D,2)); 
             for i = 1:size(D,2)

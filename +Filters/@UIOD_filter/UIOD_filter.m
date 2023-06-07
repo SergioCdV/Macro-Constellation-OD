@@ -12,7 +12,7 @@ classdef UIOD_filter < Filters.BayesFilter
         nu;
 
         % Resampling
-        Jmax = 5e2;  
+        Jmax = 1e2;  
         PruneThresh = 1e-5;
         MergeThresh = deg2rad(3);
         ResamplingMethod = 'Systematic';

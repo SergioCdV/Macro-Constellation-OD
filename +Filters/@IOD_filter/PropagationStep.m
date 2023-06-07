@@ -42,7 +42,8 @@ function [PropPrior] = PropagationStep(obj, last_epoch, new_epoch, Prior)
     
             % Propgate the quaternions only using the Lie-Euler method
             omega = dstep/2 * omega; 
-            particles(1:4,i) = QuaternionAlgebra.right_isoclinic(particles(1:4,i)) * QuaternionAlgebra.exp_map([omega; 0], One);
+            dq = QuaternionAlgebra.exp_map([omega; 0], One);
+            planes(1:4,i) = QuaternionAlgebra.right_isoclinic(dq) * planes(1:4,i);
         end
     end
 

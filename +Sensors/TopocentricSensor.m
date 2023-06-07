@@ -123,8 +123,8 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                 sin_alpha = slant(2,1)/sqrt(slant(1,1)^2+slant(2,1)^2);
                 cos_alpha = slant(1,1)/sqrt(slant(1,1)^2+slant(2,1)^2);
             else
-                sin_alpha = vslant(2,1)/sqrt(slant(1,1)^2+slant(2,1)^2);
-                cos_alpha = vslant(1,1)/sqrt(slant(1,1)^2+slant(2,1)^2);
+                sin_alpha = vslant(2,1)/sqrt(vslant(1,1)^2+vslant(2,1)^2);
+                cos_alpha = vslant(1,1)/sqrt(vslant(1,1)^2+vslant(2,1)^2);
             end
  
             switch (obj.type)
@@ -160,7 +160,7 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                 s = Astrodynamics.SunEphemeris(Tspan(i));
                 s = s/norm(s);
                 test = test & (dot(Orbit(i,1:3),s) + sqrt(dot(Orbit(i,1:3),Orbit(i,1:3)-obj.Re^2)) <= 0);
-                if (test)
+                if (1)%test)
                     meas = [meas; obj.TopocentricObservation(StateEvolution(i,1:3), StateEvolution(i,4:6), Orbit(i,1:3), Orbit(i,4:6))];
                     t = [t; Tspan(i)];
                 end
@@ -176,7 +176,7 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                     z = [cos(z(2,1)) * sin(z(1,1)); sin(z(2,1)) * sin(z(1,1)); cos(z(1,1))];
 
                     % Von-Mises distribution
-                    Sigma = 1;
+                    Sigma = 5e2;
                     q = Sigma * exp(Sigma * x.' * z) / (2* pi * (exp(Sigma)-exp(-Sigma)));
                     
                 otherwise

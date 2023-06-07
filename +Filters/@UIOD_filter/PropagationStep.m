@@ -16,7 +16,7 @@ function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch,
         % Initial conditions
         mu = particles(1:pos,i);
         Sigma = reshape(particles(pos+1:end,i), [pos-1 pos-1]); 
-        Sigma = 0.5 * (Sigma + Sigma.') + obj.PD_tol * eye(size(Sigma,1));
+%         Sigma = 0.5 * (Sigma + Sigma.') + obj.PD_tol * eye(size(Sigma,1));
 
         PlaneEstimator = PlaneEstimator.InitConditions(mu, Sigma);
 

@@ -38,7 +38,8 @@ function [planes] = PlanePropagation(obj, planes, step)
     
             % Propagate the quaternions only using the Lie-Euler method
             omega = dstep/2 * omega; 
-            planes(1:4,i) = QuaternionAlgebra.right_isoclinic(planes(1:4,i)) * QuaternionAlgebra.exp_map([omega; 0], One);
+            dq = QuaternionAlgebra.exp_map([omega; 0], One);
+            planes(1:4,i) = QuaternionAlgebra.right_isoclinic(dq) * planes(1:4,i);
         end
     end
 end

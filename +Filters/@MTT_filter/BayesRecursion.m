@@ -144,7 +144,8 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
             
             for j = 1:size(particles,2)
                 Sigma_t = reshape(particles(pos+1:end,j), [pos-1 pos-1]);
-                Sigma_t(1:3,1:3) = Sigma(1:3,1:3);
+                Sigma(4:6,4:6) = Sigma_t(4:6,4:6);
+                Sigma_t(1:pos-2,1:pos-2) = Sigma;
                 particles(pos+1:end,j) = reshape(Sigma_t, [], 1);
             end
             
@@ -199,7 +200,7 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
         end
 
         for j = 1:size(particles,2)
-            aux(:,j) = obj.wrapped_normal(1e-4, obj.nu.', mod(particles(pos,j),2*pi), Cov(end,j));
+            aux(:,j) = obj.wrapped_normal(1e-7, obj.nu.', mod(particles(pos,j),2*pi), Cov(end,j));
 
             % Entropy characterization 
             Sigma = reshape(Cov(:,j), [pos-1 pos-1]);
