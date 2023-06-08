@@ -29,8 +29,7 @@ function [samples] = AffineSampling(obj, m, mu, Sigma)
         end
 
         % Compute the final samples
-        samples = real(mu + A.' * u);           % Attention with the regularized covariacne
-        %samples = mvnrnd(mu, Sigma, m).';
+        samples = real(mu + A.' * u);           % Attention with the regularized covariance
     else
         warning('Covariance matrix is not positive definite.');
     end

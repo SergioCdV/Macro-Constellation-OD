@@ -2,9 +2,6 @@
 
 function [c, Sigma, index] = QuatClustering(obj, weights, samples)
     % Density between quaternions 
-%     mu = mean(weights);
-%     sigma = std(weights);
-%     samples = samples(:, abs(weights-mu) < sigma); 
     d = real( pdist(samples.', @personal_distance) );
     D = squareform( d );
 
@@ -39,10 +36,3 @@ function [D] = personal_distance(XI,XJ)
     d = XI * XJ.';
     D = acos(2*d.^2-1);
 end
-
-%% Auxiliary code 
-
-    % Perform spherical K-means clustering over the quaternion data
-%     [index, c] = kmeans(samples.', N, 'Distance', 'cosine');
-%     c = (c./sqrt(dot(c,c,2))).';
-%     Sigma = [];

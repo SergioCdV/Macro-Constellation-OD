@@ -32,12 +32,10 @@ function [particles, weights] = Initialization(obj)
 %         particles(5:7,:) = repmat(mu, 1, J);
 %         particles(6,:) = particles(5,:) .* sqrt(1-particles(6,:).^2); 
 %         particles(7,:) = particles(6,:) .* particles(7,:);
-
-
-        % particles(1:4,:) = repmat([0.2164 0 0 0.9763].', 1, size(particles,2));
+%         particles(1:4,:) = repmat([0.2164 0 0 0.9763].', 1, size(particles,2));
 
         % Covariance matrix
-        sigma = 1e-4 * eye(pos-1);
+        sigma = 1e-3 * eye(pos-1);
         sigma = reshape(sigma, [], 1);
 
         % Particles as wrapped Gaussian kernels 

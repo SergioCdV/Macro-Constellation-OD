@@ -144,10 +144,11 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
             if (last_epoch ~= prop_epoch)
                 % Particle propagation
                 [Posterior] = obj.PropagationStep(last_epoch, prop_epoch, PlaneEstimator, Prior);
+                Posterior = [Posterior(pos:pos+3,:); Posterior(4:pos-1,:); Posterior(pos+3+1:pos+3+(pos-1)^2,:); Posterior(end,:)];
             else
                 Posterior = Prior;
             end
-
+            
             particles = Posterior(1:end-1,:);
             weights = Posterior(end,:);
 

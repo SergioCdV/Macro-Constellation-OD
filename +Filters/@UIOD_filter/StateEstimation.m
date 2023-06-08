@@ -30,12 +30,10 @@ function [X] = StateEstimation(obj, samples, weights, T)
         % Covariance
         qs = pruned_samples(1:4,ID);
         a = zeros(3,size(qs,2));
-        Q = QuaternionAlgebra.quaternion_inverse(X(1:4,i));
-        Q = QuaternionAlgebra.right_isoclinic(Q);
+        Q = QuaternionAlgebra.right_isoclinic(X(1:4,i));
         for j = 1:size(qs,2)
-            dq = Q * qs(1:4,j) ;
-            aux = QuaternionAlgebra.log_map(dq, [0;0;0;1]);
-            a(:,j) = aux(1:3);
+            dq = Q * QuaternionAlgebra.quaternion_inverse(qs(1:4,j));
+            a(:,j) = dq(1:3,1) / (1 + dq(4,1));
         end
 
         mu = [zeros(3,1); X(5:7,i)];
