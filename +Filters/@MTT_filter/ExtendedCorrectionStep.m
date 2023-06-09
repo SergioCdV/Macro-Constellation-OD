@@ -82,15 +82,13 @@ function [Posterior] = ExtendedCorrectionStep(obj, indices, Measurements, Estima
     
                 % UKF step
                 [mu, S, ~, ~] = REstimator.CorrectionStep(sigma_points, particles(1:pos,k), Sigma, Z);
-                Sigma = Sigma(2:end,2:end);
                 S = S(2:end,2:end);
-    
-                % Deconditioning
-                mu(5:end) = mu(5:end) - Sigma(4:end,1:3) * F * obj.Gibbs_vector(:,i);
-                S(4:end,4:end) = S(4:end,4:end) + S(4:end,1:3) * F * S(4:end,1:3).';
 
+                % ADMM step 
+                X = projection_constraints(mu(5:7,1), box);
+                
                 % Particles update
-                aux_particles(1:pos,k) = mu;
+                aux_particles(1:pos,index) = [mu(1:4,1); X; mu(end,:)];
                 aux_particles(pos+1:pos+(pos-1)^2,k) = reshape(S, [], 1);
 
                 % Likelihood update
@@ -152,7 +150,9 @@ function [y, dimensions] = FullProcess(obj, SensorModality, ObservationModel, st
         dimensions = [];
 
         for j = 1:size(SensorModality,1)
-            State = obj.ParticleState(SensorModality{j}, state(:,i)).';
+            X = projection_constraints(state(5:7,i), box);
+            proj_state = [state(1:4,i); X; state(end,i)];
+            State = obj.ParticleState(SensorModality{j}, proj_state).';
             [~, aux] = feval(ObservationModel{j}, State);
 
             % Dimensionalizing 
@@ -171,6 +171,33 @@ function [y, dimensions] = FullProcess(obj, SensorModality, ObservationModel, st
             y(1:length(measurement),i) = measurement;
         else
             y(1,i) = NaN;
+        end
+    end
+end
+
+% Projection step 
+function [X] = projection_constraints(X, box)
+
+    for k = 1:size(X,2)
+        % Projection of the Delaunay action 
+        if (X(1,k) < box(1,1))
+            X(1,k) = box(1,1);
+        elseif (X(1,k) > box(1,2))
+            X(1,k) = box(1,2);
+        end
+        
+        % Projection of the angular momentum 
+        if (X(2,k) / X(1,k) < box(2,1))
+            X(2,k) = X(1,k) * box(2,1);
+        elseif (X(2,k) / X(1,k) > box(2,2))
+            X(2,k) = X(1,k) * box(2,2);
+        end
+    
+        % Projection of the nodal angular momentum 
+        if (X(3,k) / X(2,k) < box(3,1))
+            X(3,k) = X(2,k) * box(3,1);
+        elseif (X(3,k) / X(2,k) > box(3,2))
+            X(3,k) = X(2,k) * box(3,2);
         end
     end
 end

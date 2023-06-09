@@ -49,7 +49,8 @@ function [planes] = PlanePropagation(obj, planes, step)
             D(3,1) = 3/2*obj.epsilon/(L^7*eta^4) * (H/G) * step;
             
             % Re-assembling
-            planes(1:4,i) = Astrodynamics.Delaunay2MyElements(D, true);
+            aux = Astrodynamics.Delaunay2MyElements(D, true);
+            planes(1:4,i) = aux(1:4);
         end
     end
 end

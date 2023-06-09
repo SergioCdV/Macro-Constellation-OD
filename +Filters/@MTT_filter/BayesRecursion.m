@@ -109,7 +109,6 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
                 indices = index(group == j+1);
                 prop_epoch = Measurements{meas_index + indices(1),1};
 
-                [Prior(1:end-1,:)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:end-1,:));
                 [PropPrior, sigma_points] = obj.PropagationStep(last_epoch, prop_epoch, AnomalyEstimator, Prior);
                 PropPrior = [PropPrior(1:end-1,:); sigma_points; PropPrior(end,:)];
                 PropPrior(end,:) = obj.PS * PropPrior(end,:);
@@ -145,7 +144,6 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
             for j = 1:size(particles,2)
                 Sigma_t = reshape(particles(pos+1:end,j), [pos-1 pos-1]);
                 Sigma(4:6,4:6) = Sigma_t(4:6,4:6);
-                Sigma_t(1:pos-2,1:pos-2) = Sigma;
                 particles(pos+1:end,j) = reshape(Sigma_t, [], 1);
             end
             
@@ -166,10 +164,6 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
             if (last_epoch ~= prop_epoch)
                 % Augmentation of the perifocal attitude particle representation via tangent space mapping
                 [Prior, obj.Gibbs_vector] = obj.PerifocalQuatSampling(Prior);
-
-                % Plane propagation 
-                [Prior(1:end-1,1)] = obj.PlanePropagation(last_epoch, prop_epoch, Prior(1:end-1,1));
-                Prior(1:end-1,2:end) = repmat(Prior(1:end-1,1), 1, size(Prior,2)-1);
 
                 % Particle propagation
                 [Posterior] = obj.PropagationStep(last_epoch, prop_epoch, AnomalyEstimator, Prior);

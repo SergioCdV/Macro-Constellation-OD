@@ -16,7 +16,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     options = optimoptions('fmincon', 'Display', 'none');
 
     % Box constraints 
-    box(1,:) = [1 7];
+    box(1,:) = [1.03 7];
     box(2,:) = [sqrt(1-0.01^2) 1];
     box(3,:) = [-1 1];
        

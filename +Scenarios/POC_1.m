@@ -17,7 +17,7 @@ mu = 3.986e14;              % Gravitional parameter of the Earth
 Re = 6378e3;                % Reference Earth radius
 Tc = sqrt(Re^2/mu);         % Characteristic time
 J2 = 1.08263e-3;            % Earth's J2 parameter
-Nmax = 2;                   % Number of targets
+Nmax = 1;                   % Number of targets
 
 % Constellation lifetime
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
@@ -146,9 +146,9 @@ TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, 
 InitialState = [0 90];
 InitialEpoch = juliandate(datetime('now'));
 min_el = deg2rad(10);
-%  Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
-Sigma = diag([deg2rad(0.001) deg2rad(0.001)]);
-TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el, 'RADEC');
+Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
+% Sigma = diag([deg2rad(0.001) deg2rad(0.001)]);
+TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el);
 
 %% Observation process 
 % Prepare the measurements
@@ -265,8 +265,8 @@ for i = 1:length(index)
 %     end
 
     if (1)
-        Sigma = diag([deg2rad(0.1) deg2rad(0.1) deg2rad(0.01) deg2rad(0.01)]);
-        Sigma = diag([deg2rad(1e-5) deg2rad(1e-5)]);
+        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(1e-1) deg2rad(1e-1)]);
+        % Sigma = diag([deg2rad(1e-5) deg2rad(1e-5)]);
         Measurements(i,2) = { RaMeas2(index(i),:) };
         Measurements(i,3) = { TelescopeState2(index(i),:) };
         Measurements(i,4) = { @(y)TelescopeObs2.LikelihoodFunction(Sigma, RaMeas2(index(i),2:end).', y) };
@@ -360,7 +360,7 @@ Gamma = 1;                  % Measurements per scan
 
 % Estimator configuration
 if (1)
-    MTT = Filters.MTT_filter(D, 1, 5e1, PS, PD, Gamma);
+    MTT = Filters.MTT_filter(D, 1, 1e2, PS, PD, Gamma);
 else
     MTT = Filters.CMTT_filter(D, 1, 1e2, PS, PD, Gamma);
 end

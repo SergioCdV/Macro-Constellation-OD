@@ -8,10 +8,6 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     Estimator.StateDim = 4; 
     REstimator = Estimator.Init();
     
-    % Corrector step of the KF for the covariance and means
-    Sigma = reshape(particles(pos+1:pos+(pos-1)^2,1), [pos-1 pos-1]); 
-    F = (Sigma(1:3,1:3) \ eye(3));
-
     % Weights update
     L = size(particles,2);
     psi = zeros(1, L * (length(indices) + 1));
@@ -39,7 +35,9 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
 
             % UKF step
             [mu, S, ~, y] = REstimator.CorrectionStep(sigma_points, particles(1:pos,j), Sigma, Z);
+            mu(1:4,1) = particles(1:4,j);
             S = S(2:end,2:end);
+            S(1:3,1:3) = Sigma(2:4,2:4);
 
             % ADMM step 
             X = projection_constraints(mu(5:7,1), box);

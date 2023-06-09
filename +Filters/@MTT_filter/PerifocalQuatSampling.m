@@ -9,27 +9,13 @@ function [samples, a] = PerifocalQuatSampling(obj, particles)
     Sigma = reshape(particles(pos+1:pos+(pos-1)^2,1), [pos-1 pos-1]);
 
     % Generate the Gibbs vector 
-    a = mvnrnd(zeros(3,1), Sigma(1:3,1:3), J).';
+    a = mvnrnd(zeros(3,1), Sigma(1:3,1:3) - Sigma(1:3,4:6) * Sigma(4:6,4:6) * Sigma(1:3,4:6).', J).';
 
     for i = 1:size(samples,2)
-        dq = QuaternionAlgebra.exp_map([a(:,i); 0], [0;0;0;1]);
-        dq = QuaternionAlgebra.quaternion_inverse(dq);
-        samples(1:4,i) = QuaternionAlgebra.right_isoclinic(dq) * samples(1:4,i);
+        dq = QuaternionAlgebra.MPR2Quat(1, 1, a(:,i), true);
+        samples(1:4,i) = QuaternionAlgebra.right_isoclinic( samples(1:4,i) ) * dq;
     end
-
-    % Two expensive
-%     J = obj.L*obj.R+1;
-%     samples = zeros(size(particles,1), J * size(particles,2));    % Output
-%     
-%     for i = 1:size(particles,2)
-%         % Copy the mode
-%         samples(1:end-1, 1+J*(i-1):J*i) = repmat(particles(1:end-1,i), 1, J);
-%         samples(end, 1+J*(i-1):J*i) = repmat(particles(end,i)/J, 1, J);
-% 
-%         % Perturb the perifocal attitude
-%         samples(1:4,1+J*(i-1):J*i) = QuaternionAlgebra.UniformTangentQuat(obj.L, obj.R, particles(1:4,i));       
-%     end
-
+    
     % Numerical conditioning
     samples(1:4,:) = samples(1:4,:) ./ sqrt(dot(samples(1:4,:), samples(1:4,:),1));
 end
