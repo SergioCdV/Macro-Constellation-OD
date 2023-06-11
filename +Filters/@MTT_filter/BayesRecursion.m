@@ -144,6 +144,7 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
             for j = 1:size(particles,2)
                 Sigma_t = reshape(particles(pos+1:end,j), [pos-1 pos-1]);
                 Sigma(4:6,4:6) = Sigma_t(4:6,4:6);
+                Sigma_t(1:end-1,1:end-1) = Sigma;
                 particles(pos+1:end,j) = reshape(Sigma_t, [], 1);
             end
             

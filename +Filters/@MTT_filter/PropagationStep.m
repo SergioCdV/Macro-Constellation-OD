@@ -26,7 +26,7 @@ function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch,
 
         [~, flag] = chol(sigma);
         if (flag)
-            sigma = sigma + obj.PD_tol * eye(size(sigma)); 
+            sigma = 0.5 * (sigma + sigma.') + obj.PD_tol * eye(size(sigma)); 
         end
 
         REstimator = REstimator.InitConditions(mu, sigma);

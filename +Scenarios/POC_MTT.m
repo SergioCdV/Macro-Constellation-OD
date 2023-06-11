@@ -17,7 +17,7 @@ mu = 3.986e14;              % Gravitional parameter of the Earth
 Re = 6378e3;                % Reference Earth radius
 Tc = sqrt(Re^2/mu);         % Characteristic time
 J2 = 1.08263e-3;            % Earth's J2 parameter
-Nmax = 1;                   % Number of targets
+Nmax = 3;                   % Number of targets
 
 % Constellation lifetime
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
@@ -223,7 +223,7 @@ for i = 1:size(Constellation_1.OrbitSet,1)
 end
 
 % ObservationSpan = [InTime; DyTime; AnTime; RadarTime; TelescopeTime; TelescopeTime2];
-ObservationSpan = [TelescopeTime2];
+ObservationSpan = [DyTime];
 [ObservationSpan, index] = sort(ObservationSpan);
 
 Measurements = cell(length(ObservationSpan), 6);
@@ -264,8 +264,8 @@ for i = 1:length(index)
 % 
 %     end
 
-    if (1)
-        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(1e-1) deg2rad(1e-1)]);
+    if (0)
+        Sigma = diag([deg2rad(0.1) deg2rad(0.1) deg2rad(1e-1) deg2rad(1e-1)]);
         % Sigma = diag([deg2rad(1e-5) deg2rad(1e-5)]);
         Measurements(i,2) = { RaMeas2(index(i),:) };
         Measurements(i,3) = { TelescopeState2(index(i),:) };
@@ -285,9 +285,8 @@ for i = 1:length(index)
         Measurements(i,7) = { 'ANOMALY' };
     end
 
-    if (0)
-        Sigma = blkdiag(deg2rad(5)^2 * eye(3), 5e-2 * eye(3));
-        Sigma = deg2rad(5)^2 * eye(6);
+    if (1)
+        Sigma = blkdiag(deg2rad(2) * eye(3), 5e-1 * eye(3));
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };
         Measurements(i,4) = { @(y)DyObs.LikelihoodFunction(Sigma, DyMeas(index(i),2:end).', y) };
@@ -360,7 +359,7 @@ Gamma = 1;                  % Measurements per scan
 
 % Estimator configuration
 if (1)
-    MTT = Filters.MTT_filter(D, 1, 1e2, PS, PD, Gamma);
+    MTT = Filters.MTT_filter(D, 1, 4e2, PS, PD, Gamma);
 else
     MTT = Filters.CMTT_filter(D, 1, 1e2, PS, PD, Gamma);
 end

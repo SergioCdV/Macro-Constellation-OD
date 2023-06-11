@@ -8,8 +8,15 @@ function [samples, a] = PerifocalQuatSampling(obj, particles)
     % Gibbs covariance 
     Sigma = reshape(particles(pos+1:pos+(pos-1)^2,1), [pos-1 pos-1]);
 
-    % Generate the Gibbs vector 
-    a = mvnrnd(zeros(3,1), Sigma(1:3,1:3) - Sigma(1:3,4:6) * Sigma(4:6,4:6) * Sigma(1:3,4:6).', J).';
+    % Generate the MPR vectors 
+%     Sigma = Sigma(1:3,1:3) - Sigma(1:3,4:6) * Sigma(4:6,4:6)^(-1) * Sigma(1:3,4:6).';
+%     [~, flag] = chol(Sigma);
+%     if (flag)
+%         Sigma = 0.5 * (Sigma + Sigma.') + obj.PD_tol * eye(size(Sigma)); 
+%     end
+
+    Sigma = Sigma(1:3,1:3);
+    a = mvnrnd(zeros(3,1), Sigma, J).';
 
     for i = 1:size(samples,2)
         dq = QuaternionAlgebra.MPR2Quat(1, 1, a(:,i), true);
