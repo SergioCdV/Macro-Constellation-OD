@@ -11,6 +11,8 @@ function [c, Sigma, index] = QuatClustering(obj, weights, samples)
 
     if (size(D,1))
         index = dbscan(D, epsilon, minpts, "Distance", "precomputed");
+
+
     
         c = zeros(size(samples,1), max(index));
         for i = 1:max(index)
@@ -25,6 +27,10 @@ function [c, Sigma, index] = QuatClustering(obj, weights, samples)
         c = [];
         index = [];
     end
+
+    [c, ia, ~] = unique(c.', 'rows');
+    c = c.';
+    index = index(ia);
 
     Sigma = [];
 end

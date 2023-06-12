@@ -17,7 +17,7 @@ mu = 3.986e14;              % Gravitional parameter of the Earth
 Re = 6378e3;                % Reference Earth radius
 Tc = sqrt(Re^2/mu);         % Characteristic time
 J2 = 1.08263e-3;            % Earth's J2 parameter
-Nmax = 3;                   % Number of targets
+Nmax = 1;                   % Number of targets
 
 % Constellation lifetime
 InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
@@ -284,7 +284,7 @@ for i = 1:length(index)
         Measurements(i,7) = { 'ANOMALY' };
     end
 
-    if (1)
+    if (0)
         Sigma = blkdiag(deg2rad(2) * eye(3), 5e-1 * eye(3));
         Measurements(i,2) = { DyMeas(index(i),:) };
         Measurements(i,3) = { DyState(index(i),:) };

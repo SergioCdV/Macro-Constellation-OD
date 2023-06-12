@@ -89,4 +89,8 @@ function [X] = StateEstimation(obj, samples, weights, T)
             X(8:end,i) = reshape(sigma, [], 1);
         end
     end
+
+    index = sum(X == 0, 1); 
+    index = index ~= size(X,1); 
+    X = X(:,index);
 end
