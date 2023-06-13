@@ -84,26 +84,26 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                     meas(i,:) = mvnrnd(meas(i,:), obj.Sigma, 1);
                 end
 
-                % Add clutter
-                index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
-                clutter = [normrnd(0, deg2rad(20), length(index), 1) normrnd(0, deg2rad(20), length(index), 1) zeros(length(index),2)];
-                clutterTime = timestamp(index,:);
-                clutterState = StateEvolution(index,:);
-                
-                if (size(clutter,1) > round(1.5 * obj.NC))
-                    index = randi([0 size(clutter,1)], obj.NC, 1); 
-                    clutter = clutter(index,:);
-                    clutterTime = clutterTime(index,:);
-                    clutterState = clutterState(index,:);
-                end
-
-                % Final assembly
-                meas = [meas clutter(index,:)];
-                timestamp = [timestamp; clutterTime];
-                StateEvolution = [StateEvolution; clutterState];
-                [timestamp, index] = sort(timestamp);
-                meas = meas(index,:);
-                StateEvolution = StateEvolution(index,:);
+%                 % Add clutter
+%                 index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
+%                 clutter = [normrnd(0, deg2rad(20), length(index), 1) normrnd(0, deg2rad(20), length(index), 1) zeros(length(index),2)];
+%                 clutterTime = timestamp(index,:);
+%                 clutterState = StateEvolution(index,:);
+%                 
+%                 if (size(clutter,1) > round(1.5 * obj.NC))
+%                     index = randi([0 size(clutter,1)], obj.NC, 1); 
+%                     clutter = clutter(index,:);
+%                     clutterTime = clutterTime(index,:);
+%                     clutterState = clutterState(index,:);
+%                 end
+% 
+%                 % Final assembly
+%                 meas = [meas clutter(index,:)];
+%                 timestamp = [timestamp; clutterTime];
+%                 StateEvolution = [StateEvolution; clutterState];
+%                 [timestamp, index] = sort(timestamp);
+%                 meas = meas(index,:);
+%                 StateEvolution = StateEvolution(index,:);
             else
                 timestamp = []; 
                 meas = []; 
@@ -159,8 +159,8 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                 % Sunlight test 
                 s = Astrodynamics.SunEphemeris(Tspan(i));
                 s = s/norm(s);
-                test = test & (dot(Orbit(i,1:3),s) + sqrt(dot(Orbit(i,1:3),Orbit(i,1:3)-obj.Re^2)) <= 0);
-                if (1)%test)
+                test = test && (dot(Orbit(i,1:3),s) + sqrt(dot(Orbit(i,1:3),Orbit(i,1:3)-obj.Re^2)) > 0);
+                if (0)
                     meas = [meas; obj.TopocentricObservation(StateEvolution(i,1:3), StateEvolution(i,4:6), Orbit(i,1:3), Orbit(i,4:6))];
                     t = [t; Tspan(i)];
                 end

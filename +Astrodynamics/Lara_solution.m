@@ -2,6 +2,7 @@
 function [S] = Lara_solution(epsilon, D)
     % Delaunay to Lara variables 
     epsilon = epsilon/4;
+    H = D(end);
     L = Astrodynamics.Delaunay2Lara(D, true);
 
     % Mean to long-period transformation
@@ -11,7 +12,7 @@ function [S] = Lara_solution(epsilon, D)
     Lo = Long2Osc(epsilon, Ll);
 
     % Lara variables to ECI 
-    S = Astrodynamics.Lara2ECI(Lo, true);
+    S = Astrodynamics.Lara2ECI(H, Lo, true);
 end
 
 %% Auxiliary functions 
@@ -40,7 +41,6 @@ function [Do] = Mean2Long(epsilon, L)
 
     % Output
     Do = [psi_l, chi_l, xi_l, r_l, R_l, Theta_l].';
-%     Do = [psi, chi, xi, r, R, Theta].';
 end
 
 % Long-period to osculating transformation (Brouwer)

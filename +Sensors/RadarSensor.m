@@ -67,25 +67,25 @@ classdef RadarSensor < Sensors.AbstractSensor
                 end
 
                 % Add clutter
-                index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
-                clutter = [normrnd(500e3, 5e2, length(index), 1) normrnd(7e3, 1e2, length(index), 1)];
-                clutterTime = timestamp(index,:);
-                clutterState = StateEvolution(index,:);
-                
-                if (size(clutter,1) > round(1.5 * obj.NC))
-                    index = randi([0 size(clutter,1)], obj.NC, 1); 
-                    clutter = clutter(index,:);
-                    clutterTime = clutterTime(index,:);
-                    clutterState = clutterState(index,:);
-                end
-
-                % Final assembly
-                meas = [meas clutter(index,:)];
-                timestamp = [timestamp; clutterTime];
-                StateEvolution = [StateEvolution; clutterState];
-                [timestamp, index] = sort(timestamp);
-                meas = meas(index,:);
-                StateEvolution = StateEvolution(index,:);
+%                 index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
+%                 clutter = [normrnd(500e3, 5e2, length(index), 1) normrnd(7e3, 1e2, length(index), 1)];
+%                 clutterTime = timestamp(index,:);
+%                 clutterState = StateEvolution(index,:);
+%                 
+%                 if (size(clutter,1) > round(1.5 * obj.NC))
+%                     index = randi([0 size(clutter,1)], obj.NC, 1); 
+%                     clutter = clutter(index,:);
+%                     clutterTime = clutterTime(index,:);
+%                     clutterState = clutterState(index,:);
+%                 end
+% 
+%                 % Final assembly
+%                 meas = [meas clutter(index,:)];
+%                 timestamp = [timestamp; clutterTime];
+%                 StateEvolution = [StateEvolution; clutterState];
+%                 [timestamp, index] = sort(timestamp);
+%                 meas = meas(index,:);
+%                 StateEvolution = StateEvolution(index,:);
             else
                 timestamp = []; 
                 meas = []; 
@@ -114,7 +114,8 @@ classdef RadarSensor < Sensors.AbstractSensor
                 uo = Orbit(i,1:3)-StateEvolution(i,1:3);
                 uo = uo / norm(uo);
                 us = StateEvolution(i,1:3)/norm(StateEvolution(i,1:3));
-                if (dot(uo,us) > sin(obj.FOV))
+                test = dot(uo,us) > sin(obj.FOV);
+                if (test)
                     meas = [meas; obj.TopocentricObservation(StateEvolution(i,1:3), StateEvolution(i,4:6), Orbit(i,1:3), Orbit(i,4:6))];
                     t = [t; Tspan(i)];
                 end

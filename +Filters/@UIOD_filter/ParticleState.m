@@ -3,7 +3,7 @@
 function [State] = ParticleState(obj, SensorModality, particle, nu)
     for i = 1:size(particle,2)
         % Delaunay elements of the particle 
-        D = Astrodynamics.Delaunay2MyElements(particle(:,i), false);  
+        D = Astrodynamics.Delaunay2MyElements(particle(:,i), false);
         D(1,1) = nu;
     
         switch (SensorModality)
@@ -16,7 +16,6 @@ function [State] = ParticleState(obj, SensorModality, particle, nu)
                 State(:,i) = state.';
     
             otherwise
-
                 State(:,i) = Astrodynamics.Lara_solution(obj.epsilon, D);
                 State(1:3,i) = obj.Re * State(1:3,i);
                 State(4:6,i) = obj.Re/obj.Tc * State(4:6,i);

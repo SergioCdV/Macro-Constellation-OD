@@ -111,11 +111,11 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
                 PropPrior(end,:) =  obj.PS * PropPrior(end,:);
 
                 % Birth particles
-                born_particles = obj.Birth();
-                [born_particles, bsigma_points] = obj.PropagationStep(last_epoch, last_epoch, PlaneEstimator, born_particles);
-                born_particles = [born_particles(1:end-1,:); bsigma_points; born_particles(end,:)];
-
-                PropPrior = [PropPrior born_particles];
+%                 born_particles = obj.Birth();
+%                 [born_particles, bsigma_points] = obj.PropagationStep(last_epoch, last_epoch, PlaneEstimator, born_particles);
+%                 born_particles = [born_particles(1:end-1,:); bsigma_points; born_particles(end,:)];
+% 
+%                 PropPrior = [PropPrior born_particles];
     
                 % Correction step 
                 [Posterior] = obj.CorrectionStep(meas_index+indices, Measurements, PlaneEstimator, PropPrior);
@@ -134,9 +134,6 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
             % Sanity check on the number of processed measurements 
             meas_index = meas_index + new_measurements;
-
-            % Estimation on the plane space
-            obj.X = obj.StateEstimation(particles, weights, T(1));
 
         else
             % Propagate to the new epoch the clustered states
@@ -165,6 +162,13 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
             E(i) = entropy * (entropy < E(i)) + E(i) * (entropy >= E(i));
         end
 
+        % New prior 
+        M = min(obj.M * obj.N, obj.Jmax);
+        [particles, weights] = obj.Resampling(particles, weights / T(1), M);          % Pruning of the weights and merging of the particles via resampling
+
+        % Estimation on the plane space
+        obj.X = obj.StateEstimation(particles, weights, T(1));
+
         X{i} = obj.X;
         obj.N = size(obj.X,2);
         N(i) = obj.N;
@@ -174,9 +178,6 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
             E(i+j) = E(i);
         end
 
-        % New prior 
-        M = min(obj.M * obj.N, obj.Jmax);
-        [particles, weights] = obj.Resampling(particles, weights / T(1), M);          % Pruning of the weights and merging of the particles via resampling
         Prior = [particles; T(1) * weights];
 
         time(i) = toc;

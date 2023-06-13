@@ -1,6 +1,6 @@
 
 
-function [s] = Lara2ECI(x, direction)
+function [s] = Lara2ECI(H, x, direction)
     if (direction)
         % Polar variables 
         psi = x(1,1); 
@@ -10,10 +10,10 @@ function [s] = Lara2ECI(x, direction)
         R = x(5,1);
         Theta = x(6,1);
 
-        c = sqrt(1-xi^2-chi^2);
+        c = H/Theta;
         
-        t  = 1-chi^2/(1+c);
-        tau  = 1-xi^2/(1+c);
+        t = 1-chi^2/(1+c);
+        tau = 1-xi^2/(1+c);
         q = xi*chi/(1+c);
 
         s(1,1) = r * (t*cos(psi)+q*sin(psi));

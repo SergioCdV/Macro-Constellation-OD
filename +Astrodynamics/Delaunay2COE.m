@@ -5,8 +5,8 @@ function [s] = Delaunay2COE(mu, x, direction)
     if (direction)
         % Delaunay set to the COE state transformation
         M = x(1);           % Mean anomaly
-        Omega = x(3);       % RAAN
         omega = x(2);       % AoP
+        Omega = x(3);       % RAAN
         L = x(4);           % Delaunay action
         G = x(5);           % Angular momentum
         H = x(end);         % Polar angular momentum

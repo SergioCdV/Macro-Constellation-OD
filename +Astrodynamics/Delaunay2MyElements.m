@@ -11,10 +11,13 @@ function [X] = Delaunay2MyElements(x, direction)
 
         cos_i = H/G;
 
-        q(1,1) = sin(acos(cos_i)/2) * cos((Omega-omega)/2);
-        q(2,1) = sin(acos(cos_i)/2) * sin((Omega-omega)/2);
-        q(3,1) = cos(acos(cos_i)/2) * sin((Omega+omega)/2);
-        q(4,1) = cos(acos(cos_i)/2) * cos((Omega+omega)/2);
+        diff = (Omega-omega)/2;
+        plus = (Omega+omega)/2;
+
+        q(1,1) = sin(acos(cos_i)/2) * cos(diff);
+        q(2,1) = sin(acos(cos_i)/2) * sin(diff);
+        q(3,1) = cos(acos(cos_i)/2) * sin(plus);
+        q(4,1) = cos(acos(cos_i)/2) * cos(plus);
 
         % Assemble the set
         X = [q; L; G; H; M];  
@@ -29,7 +32,7 @@ function [X] = Delaunay2MyElements(x, direction)
         % Compute the RAAN and AoP from qp 
         diff = atan2(qp(2,1), qp(1,1));
         plus = atan2(qp(3,1), qp(4,1));
-        Omega = (plus+diff);
+        Omega = plus + diff;
         omega = 2 * plus - Omega;
     
         % Assemble the set

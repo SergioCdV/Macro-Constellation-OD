@@ -16,7 +16,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     options = optimoptions('fmincon', 'Display', 'none');
 
     % Box constraints 
-    box(1,:) = [1.03 7];
+    box(1,:) = [1.03 1.5];
     box(2,:) = [sqrt(1-0.01^2) 1];
     box(3,:) = [-1 1];
        
@@ -80,7 +80,7 @@ end
 function [y] = FullProcess(obj, SensorModality, ObservationModel, box, particles, M)
     % Compute the spacecraft state
     particles(5:7,:) = projection_constraints(particles(5:7,:), box);
-    State = obj.ParticleState(SensorModality, particles, M);
+    State = real(obj.ParticleState(SensorModality, particles, M));
 
     for i = 1:size(State,2)
         [~, aux] = feval(ObservationModel, State(:,i).');
@@ -108,7 +108,8 @@ function [l] = LikeProcess(obj, SensorModality, ObservationModel, Likelihood, bo
     % Valuation of the likelihood
     for i = 1:length(M)
         particles(5:7,:) = projection_constraints(particles(5:7,:), box);
-        State = obj.ParticleState(SensorModality, particles, M(i));
+        State = real(obj.ParticleState(SensorModality, particles, M(i)));
+
         [~, aux] = feval(ObservationModel, State.');
         if (~isempty(aux) && all(~isnan(aux)))
             % Dimensionalizing 
@@ -127,7 +128,6 @@ function [l] = LikeProcess(obj, SensorModality, ObservationModel, Likelihood, bo
 end
 
 % Projection function 
-% Projection step 
 function [X] = projection_constraints(X, box)
     for k = 1:size(X,2)
         % Projection of the Delaunay action 
