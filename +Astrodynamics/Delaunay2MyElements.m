@@ -34,7 +34,10 @@ function [X] = Delaunay2MyElements(x, direction)
         plus = atan2(qp(3,1), qp(4,1));
         Omega = plus + diff;
         omega = 2 * plus - Omega;
+
+        R = QuaternionAlgebra.Quat2Matrix(qp);
+        cos_i = R(end,end);
     
         % Assemble the set
-        X = [0 omega Omega L G H].';
+        X = [0 omega Omega L G G * cos_i].';
     end

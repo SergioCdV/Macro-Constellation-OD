@@ -9,7 +9,7 @@ function [S] = Lara_solution(epsilon, D)
     Ll = Mean2Long(-epsilon, L);
 
     % Long-period to osculating transformation
-    Lo = Long2Osc(epsilon, Ll);
+    Lo = Long2Osc(H, epsilon, Ll);
 
     % Lara variables to ECI 
     S = Astrodynamics.Lara2ECI(H, Lo, true);
@@ -44,7 +44,7 @@ function [Do] = Mean2Long(epsilon, L)
 end
 
 % Long-period to osculating transformation (Brouwer)
-function [Lo] = Long2Osc(epsilon, L)
+function [Lo] = Long2Osc(H, epsilon, L)
     psi = L(1);           
     chi = L(2);       
     xi = L(3);       
@@ -53,7 +53,7 @@ function [Lo] = Long2Osc(epsilon, L)
     Theta = L(6);     
 
     p = Theta^2;
-    c = sqrt(1-xi^2-chi^2);
+    c = H/Theta;
     epsilon = epsilon/p^2; 
 
     % Transformation

@@ -16,23 +16,20 @@ function [particles, weights] = Initialization(obj)
         particles(1:4,:) = QuaternionAlgebra.UniformQuat(J);
 
         % Action set 
-        Lmin = 1; 
-        Lmax = 1.5;
-        L =  Lmin * ones(1,J) + (Lmax-Lmin) .* rand(1,J);
-        emin = 0; 
-        emax = 0.01; 
-        e = emin * ones(1, J) + (emax-emin) .* rand(1,J);
-        cos_i = repmat(-1, 1, J) + 2 .* rand(1,J);
+        box(1,:) = [obj.Lmin obj.Lmax];
+        box(2,:) = [sqrt(1-obj.emax^2) 1];
+        box(3,:) = [-1 1];
+
+        L = box(1,1) * ones(1,J) + diff(box(1,:)) .* rand(1,J);
+        eta = box(1,1) * ones(1,J) + diff(box(2,:)) .* rand(1,J);
         
         particles(5,:) = L; 
-        particles(6,:) = L .* sqrt(1-e.^2); 
-        particles(7,:) = particles(6,:) .* cos_i; 
+        particles(6,:) = L .* eta; 
 
-%         mu = [1.04; 1e-3; cos(deg2rad(45))];
-%         particles(5:7,:) = repmat(mu, 1, J);
-%         particles(6,:) = particles(5,:) .* sqrt(1-particles(6,:).^2); 
-%         particles(7,:) = particles(6,:) .* particles(7,:);
-%         particles(1:4,:) = repmat([0.2164 0 0 0.9763].', 1, size(particles,2));
+        for i = 1:size(particles,2)
+            R = QuaternionAlgebra.Quat2Matrix(particles(1:4,i));
+            particles(7,i) = particles(6,i) .* R(end,end); 
+        end
 
         % Covariance matrix
         sigma = 1e-3 * eye(pos-1);

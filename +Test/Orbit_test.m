@@ -19,11 +19,11 @@ EndEpoch = juliandate(datetime('tomorrow') + days(7));
 
 % Orbit definition
 ElementType = 'COE'; 
-ElementSet = [r0 1e-3 deg2rad(10) deg2rad(97) deg2rad(10) deg2rad(0)]; 
+ElementSet = [r0 1e-3 deg2rad(10) deg2rad(5) deg2rad(10) deg2rad(0)]; 
 
-ElementSet = Astrodynamics.sso_elements(6, ElementSet);
-ElementSet(2) = 1e-2;
-ElementSet = [ElementSet ElementSet(1) * sqrt(1-ElementSet(2)^2)];
+% ElementSet = Astrodynamics.sso_elements(6, ElementSet);
+% ElementSet(2) = 1e-2;
+% ElementSet = [ElementSet ElementSet(1) * sqrt(1-ElementSet(2)^2)];
 
 Orbit_1 = Orbit(mu, ElementType, ElementSet, InitialEpoch).Normalize(true, r0);
 Orbit_1 = Orbit_1.SetFinalEpoch(EndEpoch); 
@@ -83,15 +83,37 @@ Orbit_2 = Orbit_2.AddPropagator('Mean J2', 60);
 Orbit_3 = Orbit_3.AddPropagator('Osculating J2', 60);
 Orbit_4 = Orbit_4.AddPropagator('High-precision', 1);
 
+
 Orbit_2 = Orbit_2.Propagate();
 Orbit_3 = Orbit_3.Propagate();
 % Orbit_4 = Orbit_4.Propagate();
+
+for j = 1:size(Orbit_2.StateEvolution,1)
+    a = Orbit_2.StateEvolution(j,2);
+    e = Orbit_2.StateEvolution(j,3);
+    Omega = Orbit_2.StateEvolution(j,4);
+    i = Orbit_2.StateEvolution(j,5);
+    omega = Orbit_2.StateEvolution(j,6);
+    M = Orbit_2.StateEvolution(j,7);
+    D = [M omega Omega sqrt(a) sqrt(a*(1-e^2)) sqrt(a*(1-e^2))*cos(i)];
+    Lara_orbit(:,j) = Astrodynamics.Lara_solution(J2, D);
+end
 %%
 hold on;
 % Orbit_2.PlotTrajectory(figure(1), Orbit_2.InitialEpoch, Orbit_2.PropagatedEpoch);
 Orbit_3.PlotTrajectory(figure(1), Orbit_3.InitialEpoch, Orbit_3.PropagatedEpoch);
+plot3(Lara_orbit(1,:), Lara_orbit(2,:), Lara_orbit(3,:))
 % Orbit_4.PlotTrajectory(figure(1), Orbit_4.InitialEpoch, Orbit_4.PropagatedEpoch);
 hold off
+%%
+figure
+diff = Orbit_3.ChangeStateFormat('ECI').StateEvolution(:,2:end)-Orbit_2.ChangeStateFormat('ECI').StateEvolution(:,2:end);
+diff2 = Orbit_3.ChangeStateFormat('ECI').StateEvolution(:,2:end)-Lara_orbit.';
+hold on 
+plot(Orbit_2.StateEvolution(:,1), log(sqrt(dot(diff,diff,2))))
+plot(Orbit_2.StateEvolution(:,1), log(sqrt(dot(diff2,diff2,2))))
+hold off 
+legend('mean', 'Lara')
 
 %% Results 
 figure 

@@ -13,17 +13,17 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
     % Preallocate the estimator 
     pos = 8;
-    Q = 1e-3 * eye(pos);
+    Q = 1e-1 * eye(pos);
 
     switch (obj.KF_type)
         case 'EKF'
             AnomalyEstimator = Filters.EKF();
         case 'UKF-A'
-            AnomalyEstimator = Filters.UKF('UKF-A', 2, 1E-2, 0);
+            AnomalyEstimator = Filters.UKF('UKF-A', 2, 1E-1, 0);
             AnomalyEstimator.StateDim = pos-1;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
         case 'UKF-S'
-            AnomalyEstimator = Filters.UKF('UKF-S', 2, 1E-2, 0);
+            AnomalyEstimator = Filters.UKF('UKF-S', 2, 1E-1, 0);
             AnomalyEstimator.StateDim = pos-1;
             AnomalyEstimator = AnomalyEstimator.AdditiveCovariances(Q, zeros(3)).Init();
     end

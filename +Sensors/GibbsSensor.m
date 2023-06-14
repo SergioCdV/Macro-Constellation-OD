@@ -58,27 +58,27 @@ classdef GibbsSensor< Sensors.AbstractSensor
                 end
 
                 % Add clutter
-                index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
-                clutter = rand(length(index), 3); 
-                clutter = clutter./sqrt(dot(clutter,clutter,2));
-                clutter = clutter .* ( mean(sqrt(dot(meas(index,:),meas(index,:),2))) );
-                clutterTime = timestamp(index,:);
-                clutterState = StateEvolution(index,:);
-                
-                if (size(clutter,1) > round(1.5 * obj.NC))
-                    index = randi([0 size(clutter,1)], obj.NC, 1); 
-                    clutter = clutter(index,:);
-                    clutterTime = clutterTime(index,:);
-                    clutterState = clutterState(index,:);
-                end
-
-                % Final assembly
-                meas = [meas clutter(index,:)];
-                timestamp = [timestamp; clutterTime];
-                StateEvolution = [StateEvolution; clutterState];
-                [timestamp, index] = sort(timestamp);
-                meas = meas(index,:);
-                StateEvolution = StateEvolution(index,:);
+%                 index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
+%                 clutter = rand(length(index), 3); 
+%                 clutter = clutter./sqrt(dot(clutter,clutter,2));
+%                 clutter = clutter .* ( mean(sqrt(dot(meas(index,:),meas(index,:),2))) );
+%                 clutterTime = timestamp(index,:);
+%                 clutterState = StateEvolution(index,:);
+%                 
+%                 if (size(clutter,1) > round(1.5 * obj.NC))
+%                     index = randi([0 size(clutter,1)], obj.NC, 1); 
+%                     clutter = clutter(index,:);
+%                     clutterTime = clutterTime(index,:);
+%                     clutterState = clutterState(index,:);
+%                 end
+% 
+%                 % Final assembly
+%                 meas = [meas clutter(index,:)];
+%                 timestamp = [timestamp; clutterTime];
+%                 StateEvolution = [StateEvolution; clutterState];
+%                 [timestamp, index] = sort(timestamp);
+%                 meas = meas(index,:);
+%                 StateEvolution = StateEvolution(index,:);
 
             else
                 timestamp = []; 

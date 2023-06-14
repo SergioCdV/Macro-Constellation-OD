@@ -28,6 +28,11 @@ classdef UIOD_filter < Filters.BayesFilter
         % Kalman Filter 
         KF_type = 'UKF-A';
         PD_tol = 1e-6;
+
+        % Phase space delimiters 
+        Lmin = 1.03;
+        Lmax = 1.5;
+        emax = 0.2;
     end
 
     methods

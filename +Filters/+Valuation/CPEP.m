@@ -27,11 +27,14 @@ end
 
 %% Auxiliary function
 function [d] = DelaunayDistance(q2, q1, selector)
-    if (selector == 1)
-        dq = QuaternionAlgebra.right_isoclinic(q2(1:4,1)) * QuaternionAlgebra.quaternion_inverse(q1(1:4,1)); 
-        theta = dq(end);
-        d = 2 * acos(theta);
-    else
-        d = norm(q2(5:7,1)-q1(5:7,1));
+    switch (selector)
+        case 1
+            dq = QuaternionAlgebra.right_isoclinic(q2(1:4,1)) * QuaternionAlgebra.quaternion_inverse(q1(1:4,1)); 
+            theta = QuaternionAlgebra.MPR2Quat(1,1,dq,false);
+            d = norm(theta);
+        case 0
+            d = norm(q2(5:7,1)-q1(5:7,1));
+        case 2
+            d = norm([cos(q2); sin(q2)] - [cos(q1); sin(q1)]);
     end
 end

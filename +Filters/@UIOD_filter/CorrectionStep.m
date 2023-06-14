@@ -16,8 +16,8 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     options = optimoptions('fmincon', 'Display', 'none');
 
     % Box constraints 
-    box(1,:) = [1.03 1.5];
-    box(2,:) = [sqrt(1-0.01^2) 1];
+    box(1,:) = [obj.Lmin obj.Lmax];
+    box(2,:) = [sqrt(1-obj.emax^2) 1];
     box(3,:) = [-1 1];
        
     for i = 1:length(indices)
@@ -49,6 +49,8 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
 
             % ADMM step 
             X = projection_constraints(mu(4:6,1), box);
+            R = QuaternionAlgebra.Quat2Matrix(mu(pos:pos+3,:));
+            X(end) = X(end-1) * R(3,3);
 
             % Final assembling
             particles(1:pos+3,index) = [mu(1:3,1); X; mu(pos:pos+3,:)];

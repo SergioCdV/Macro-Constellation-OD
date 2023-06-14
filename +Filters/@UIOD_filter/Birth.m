@@ -10,17 +10,20 @@ function [born_particles] = Birth(obj)
     born_particles(1:4,:) = QuaternionAlgebra.UniformQuat(J);
 
     % Action set 
-    Lmin = 1; 
-    Lmax = 1.5;
-    L =  Lmin * ones(1,J) + (Lmax-Lmin) .* rand(1,J);
-    emin = 0; 
-    emax = 0.1; 
-    e = emin * ones(1, J) + (emax-emin) .* rand(1,J);
-    cos_i = repmat(-1, 1, J) + 2 .* rand(1,J);
+    box(1,:) = [obj.Lmin obj.Lmax];
+    box(2,:) = [sqrt(1-obj.emax^2) 1];
+    box(3,:) = [-1 1];
+
+    L = box(1,1) * ones(1,J) + diff(box(1,:)) .* rand(1,J);
+    eta = box(1,1) * ones(1,J) + diff(box(2,:)) .* rand(1,J);
     
     born_particles(5,:) = L; 
-    born_particles(6,:) = L .* sqrt(1-e.^2); 
-    born_particles(7,:) = born_particles(6,:) .* cos_i; 
+    born_particles(6,:) = L .* eta;
+
+    for i = 1:size(born_particles,2)
+        R = QuaternionAlgebra.Quat2Matrix(born_particles(1:4,i));
+        born_particles(7,i) = born_particles(6,i) .* R(end,end); 
+    end
 
     % Covariances
     sigma = 1e-3 * eye(pos-1);

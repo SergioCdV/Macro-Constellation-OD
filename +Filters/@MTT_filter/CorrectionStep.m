@@ -14,8 +14,8 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     particles = repmat(particles, 1, length(indices)+1); 
 
     % Box constraints 
-    box(1,:) = [1.03 7];
-    box(2,:) = [sqrt(1-0.01^2) 1];
+    box(1,:) = [obj.Lmin obj.Lmax];
+    box(2,:) = [sqrt(1-obj.emax^2) 1];
     box(3,:) = [-1 1];
 
     for i = 1:length(indices)
@@ -41,7 +41,9 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
 
             % ADMM step 
             X = projection_constraints(mu(5:7,1), box);
-            
+            R = QuaternionAlgebra.Quat2Matrix(mu(1:4,:));
+            X(end) = X(end-1) * R(3,3);
+
             % Particles update
             particles(1:pos,index) = [mu(1:4,1); X; mu(end,:)];
             particles(pos+1:pos+(pos-1)^2,index) = reshape(S, [], 1);
@@ -98,7 +100,6 @@ end
 
 % Projection step 
 function [X] = projection_constraints(X, box)
-
     for k = 1:size(X,2)
         % Projection of the Delaunay action 
         if (X(1,k) < box(1,1))
