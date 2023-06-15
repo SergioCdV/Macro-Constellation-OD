@@ -12,6 +12,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     L = size(particles,2);
     psi = zeros(1, L * (length(indices) + 1));
     particles = repmat(particles, 1, length(indices)+1); 
+    PD_t = zeros(1,L);
 
     % Box constraints 
     box(1,:) = [obj.Lmin obj.Lmax];
@@ -50,8 +51,10 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
 
             if (isempty(y) || any(isnan(y)))
                 l = 0;
+                PD_t(j) = 0.0;
             else
                 l = feval(Likelihood, y);
+                PD_t(j) = obj.PD;
             end
 
             psi(1, L*i + j) = obj.PD * l;
@@ -61,7 +64,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     end
 
     % Update the weights with the non-detected particles 
-    psi(1,1:L) = (1-obj.PD) .* weights(1,:);
+    psi(1,1:L) = (1-PD_t) .* weights(1,:);
 
     % Check for NaN 
     pos_nan = isnan(psi(1,:)); 

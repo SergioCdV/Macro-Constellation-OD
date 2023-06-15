@@ -12,6 +12,10 @@ classdef TopocentricSensor < Sensors.AbstractSensor
         Re = 6378e3;
     end
 
+    properties (Access = private)
+        kappa = 100;
+    end
+
     methods 
         % Constructor 
         function [obj] = TopocentricSensor(myInitialEpoch, myInitialState, mySigma, myPD, myFOV, myType)
@@ -40,6 +44,13 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                 else
                     error('FOV cannot be greater than 180 deg.');
                 end
+            end
+
+            switch (myType)
+                case 'RADEC'
+                    x = mvnrnd([0 0 1], blkdiag(max(diag(obj.Sigma)), obj.Sigma), 1e3).';
+                    R = norm(sum(x,2)) / size(x,2);
+                    obj.kappa = R*(2-R^2) / (1-R^2);
             end
         end
 
@@ -160,7 +171,7 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                 s = Astrodynamics.SunEphemeris(Tspan(i));
                 s = s/norm(s);
                 test = test && (dot(Orbit(i,1:3),s) + sqrt(dot(Orbit(i,1:3),Orbit(i,1:3)-obj.Re^2)) > 0);
-                if (0)
+                if (test)
                     meas = [meas; obj.TopocentricObservation(StateEvolution(i,1:3), StateEvolution(i,4:6), Orbit(i,1:3), Orbit(i,4:6))];
                     t = [t; Tspan(i)];
                 end
@@ -176,8 +187,8 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                     z = [cos(z(2,1)) * sin(z(1,1)); sin(z(2,1)) * sin(z(1,1)); cos(z(1,1))];
 
                     % Von-Mises distribution
-                    Sigma = 5e2;
-                    q = Sigma * exp(Sigma * x.' * z) / (2* pi * (exp(Sigma)-exp(-Sigma)));
+                    obj.kappa = 5e2;
+                    q = obj.kappa * exp(obj.kappa * x.' * z) / (2* pi * (exp(obj.kappa)-exp(-obj.kappa)));
                     
                 otherwise
                     res = y-z;
