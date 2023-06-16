@@ -285,6 +285,9 @@ if (0)
     UIOD_filter = Filters.UIOD_filter(1, 5e2, PS, PD);
     
     % Estimation
+    UIOD.Lmin = 1.03; 
+    UIOD.Lmax = 1.5;
+    UIOD.emax = 0.2;
     [X, N_hat, Prior, E_IOD] = UIOD_filter.BayesRecursion(ObservationSpan, Measurements);
     
     % IOD plane state
@@ -319,22 +322,7 @@ if (0)
     MeanOrbit = MeanOrbit.AddPropagator('Mean J2', Step);
     MeanOrbit = MeanOrbit.SetCurrentEpoch(InitialEpoch + S{1}(2)/86400);
     MeanOrbit = MeanOrbit.Propagate();
-    
-    %% Analysis
-    % Expectance of the number of targets in time 
-    N_error = N_hat-N;
-    Analysis.ExpectancePlanes = [mean(N_error) std(N_error)];
-    
-    for i = 1:length(N_hat)
-        % CPEP
-        Analysis.CPEP(1,i) = Filters.Valuation.CPEP(Constellation_1.N, N_hat(i), X{i}(1:7,:), Dq(1:end-1,:), 0.1, 1);
-        Analysis.CPEP(2,i) = Filters.Valuation.CPEP(Constellation_1.N, N_hat(i), X{i}(1:7,:), Dq(1:end-1,:), 0.1, 0);
-    
-        % Hausdorff
-        Analysis.HaussdorfDistance(1,i) = Filters.Valuation.Hausdorff(X{i}(1:7,:), Dq(1:end-1,:), 1);
-        Analysis.HaussdorfDistance(2,i) = Filters.Valuation.Hausdorff(X{i}(1:7,:), Dq(1:end-1,:), 0);
-    end
-    
+       
     %% Estimation: MTT-A
     % Extended tracking configuration 
     Gamma = 1;                  % Measurements per scan 
@@ -343,6 +331,10 @@ if (0)
     iod_plane = [D_hat(:,1); 1e-5 * reshape(eye(6), [], 1)];
     MTT = Filters.MTT_filter(iod_plane, 1, 5e2, PS, PD, Gamma);
     MTT.ExtendedTarget = false;
+
+    MTT.Lmin = 1.03; 
+    MTT.Lmax = 1.5;
+    MTT.emax = 0.2;
     
     % Physical parameters
     MTT.mu = mu;
@@ -354,30 +346,44 @@ if (0)
     
     % Estimation
     [f, x, M_hat, ~, E] = MTT.BayesRecursion(ObservationSpan, Measurements);
-    
-    %% Analysis
-    % Expectance of the number of targets in time 
-    M_error = M_hat-N;
-    Analysis.ExpectanceTargets = [mean(M_error) std(M_error)];
-    
-    for i = 1:length(M_hat)
-        % CPEP
-        if (M_hat(i))
-            Analysis.CPEP(3,i) = Filters.Valuation.CPEP(Constellation_1.N, M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 1);
-            Analysis.CPEP(4,i) = Filters.Valuation.CPEP(Constellation_1.N, M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 0);
-            Analysis.CPEP(5,i) = Filters.Valuation.CPEP(Constellation_1.n, M_hat(i), x{i}(8,:), Dq(end,:), 0.1, 2);
-        
-            % Hausdorff
-            Analysis.HaussdorfDistance(3,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 1);
-            Analysis.HaussdorfDistance(4,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 0);
-            Analysis.HaussdorfDistance(5,i) = Filters.Valuation.Hausdorff(x{i}(8,:), Dq(end,:), 2);
-        else
-        end
-    end
 
     save POC_VV.mat;
 else
     load POC_VV.mat;
+end
+
+%% Analysis
+% Expectance of the number of targets in time 
+N_error = N_hat-N;
+Analysis.ExpectancePlanes = [mean(N_error) std(N_error)];
+
+for i = 1:length(N_hat)
+    % CPEP
+    Analysis.CPEP(1,i) = Filters.Valuation.CPEP(Constellation_1.N, N_hat(i), X{i}(1:7,:), Dq(1:end-1,:), 0.1, 1);
+    Analysis.CPEP(2,i) = Filters.Valuation.CPEP(Constellation_1.N, N_hat(i), X{i}(1:7,:), Dq(1:end-1,:), 0.1, 0);
+
+    % Hausdorff
+    Analysis.HaussdorfDistance(1,i) = Filters.Valuation.Hausdorff(X{i}(1:7,:), Dq(1:end-1,:), 1);
+    Analysis.HaussdorfDistance(2,i) = Filters.Valuation.Hausdorff(X{i}(1:7,:), Dq(1:end-1,:), 0);
+end
+
+% Expectance of the number of targets in time 
+M_error = M_hat-N;
+Analysis.ExpectanceTargets = [mean(M_error) std(M_error)];
+
+for i = 1:length(M_hat)
+    % CPEP
+    if (M_hat(i))
+        Analysis.CPEP(3,i) = Filters.Valuation.CPEP(Constellation_1.n, M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 1);
+        Analysis.CPEP(4,i) = Filters.Valuation.CPEP(Constellation_1.n, M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 0);
+        Analysis.CPEP(5,i) = Filters.Valuation.CPEP(Constellation_1.n, M_hat(i), x{i}(8,:), Dq(end,:), 0.1, 2);
+    
+        % Hausdorff
+        Analysis.HaussdorfDistance(3,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 1);
+        Analysis.HaussdorfDistance(4,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 0);
+        Analysis.HaussdorfDistance(5,i) = Filters.Valuation.Hausdorff(x{i}(8,:), Dq(end,:), 2);
+    else
+    end
 end
 
 %% Results
@@ -448,7 +454,7 @@ ylim([0 4])
 %%
 figure
 hold on
-plot(tspan, E_IOD)
+plot(tspan, E_IOD, 'o-')
 hold off
 xlabel('Epoch $t$')
 ylabel('Diff. entropy $E_{max}$')
@@ -457,7 +463,7 @@ grid on;
 %%
 figure
 hold on
-plot(tspan/3600, Analysis.CPEP(1,:))
+plot(tspan/3600, Analysis.CPEP(1,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{CPEP}_{\mathbf{q}}$')
@@ -465,7 +471,7 @@ grid on;
 
 figure
 hold on
-plot(tspan/3600, Analysis.CPEP(2,:))
+plot(tspan/3600, Analysis.CPEP(2,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{CPEP}_{\mathbf{\Gamma}}$')
@@ -473,7 +479,7 @@ grid on;
 
 figure
 hold on
-plot(tspan/3600, Analysis.HaussdorfDistance(1,:))
+plot(tspan/3600, Analysis.HaussdorfDistance(1,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{H}_{\mathbf{q}}$')
@@ -481,7 +487,7 @@ grid on;
 
 figure
 hold on
-plot(tspan/3600, Analysis.HaussdorfDistance(2,:))
+plot(tspan/3600, Analysis.HaussdorfDistance(2,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{H}_{\mathbf{\Gamma}}$')
@@ -490,7 +496,7 @@ grid on;
 %%
 figure
 hold on
-plot(tspan/3600, Analysis.CPEP(3,:))
+plot(tspan/3600, Analysis.CPEP(3,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{CPEP}_{\mathbf{q}}$')
@@ -498,7 +504,7 @@ grid on;
 
 figure
 hold on
-plot(tspan/3600, Analysis.CPEP(4,:))
+plot(tspan/3600, Analysis.CPEP(4,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{CPEP}_{\mathbf{\Gamma}}$')
@@ -506,7 +512,7 @@ grid on;
 
 figure
 hold on
-plot(tspan/3600, Analysis.CPEP(5,:))
+plot(tspan/3600, Analysis.CPEP(5,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{CPEP}_{M}$')
@@ -514,7 +520,7 @@ grid on;
 
 figure
 hold on
-plot(tspan/3600, Analysis.HaussdorfDistance(3,:))
+plot(tspan/3600, Analysis.HaussdorfDistance(3,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{H}_{\mathbf{q}}$')
@@ -522,7 +528,7 @@ grid on;
 
 figure
 hold on
-plot(tspan/3600, Analysis.HaussdorfDistance(4,:))
+plot(tspan/3600, Analysis.HaussdorfDistance(4,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{H}_{\mathbf{\Gamma}}$')
@@ -530,7 +536,7 @@ grid on;
 
 figure
 hold on
-plot(tspan/3600, Analysis.HaussdorfDistance(5,:))
+plot(tspan/3600, Analysis.HaussdorfDistance(5,:), 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('$\textrm{H}_{M}$')
@@ -577,7 +583,7 @@ zticklabels(strrep(zticklabels, '-', '$-$'));
 %%
 figure
 hold on
-plot(tspan/3600, E)
+plot(tspan/3600, E, 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('Diff. entropy $E_{max}$')

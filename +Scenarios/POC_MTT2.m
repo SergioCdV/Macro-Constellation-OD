@@ -11,7 +11,7 @@ clear
 rng(1);
 
 %% General user defined input
-if (1)
+if (0)
     % Constants 
     r0 = 29600.318e3;           % Characteristic distance of the Earth orbit    
     mu = 3.986e14;              % Gravitional parameter of the Earth
@@ -384,6 +384,10 @@ if (1)
     MTT.mu = mu;
     MTT.epsilon = -J2; 
     MTT.Re = Re;
+
+    MTT.Lmin = 1.03; 
+    MTT.Lmax = 6;
+    MTT.emax = 0.2;
     
     % Anomaly partition
     MTT.nu = linspace(0, 2*pi, 1e3);
@@ -393,29 +397,29 @@ if (1)
 
     tspan = 86400 * ( ObservationSpan-ObservationSpan(1) );
     
-    %% Analysis
-    % Expectance of the number of targets in time 
-    M_error = M_hat-N;
-    Analysis.ExpectanceTargets = [mean(M_error) std(M_error)];
-    
-    for i = 1:length(M_hat)
-        % CPEP
-        if (M_hat(i))
-            Analysis.CPEP(1,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 1);
-            Analysis.CPEP(2,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 0);
-            Analysis.CPEP(3,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(8,:), Dq(end,:), 0.1, 2);
-        
-            % Hausdorff
-            Analysis.HaussdorfDistance(1,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 1);
-            Analysis.HaussdorfDistance(2,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 0);
-            Analysis.HaussdorfDistance(3,i) = Filters.Valuation.Hausdorff(x{i}(8,:), Dq(end,:), 2);
-        else
-        end
-    end
-
     save POC_MTT.mat
 else
     load POC_MTT.mat;
+end
+
+%% Analysis
+% Expectance of the number of targets in time 
+M_error = M_hat-N;
+Analysis.ExpectanceTargets = [mean(M_error) std(M_error)];
+
+for i = 1:length(M_hat)
+    % CPEP
+    if (M_hat(i))
+        Analysis.CPEP(1,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 1);
+        Analysis.CPEP(2,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 0);
+        Analysis.CPEP(3,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(8,:), Dq(end,:), 0.1, 2);
+    
+        % Hausdorff
+        Analysis.HaussdorfDistance(1,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 1);
+        Analysis.HaussdorfDistance(2,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 0);
+        Analysis.HaussdorfDistance(3,i) = Filters.Valuation.Hausdorff(x{i}(8,:), Dq(end,:), 2);
+    else
+    end
 end
 
 %% Results
