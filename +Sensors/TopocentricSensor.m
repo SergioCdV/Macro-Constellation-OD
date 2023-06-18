@@ -51,6 +51,10 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                     x = mvnrnd([0 0 1], blkdiag(max(diag(obj.Sigma)), obj.Sigma), 1e3).';
                     R = norm(sum(x,2)) / size(x,2);
                     obj.kappa = R*(2-R^2) / (1-R^2);
+
+                    if (obj.kappa > 7e2)
+                        obj.kappa = 7e2;
+                    end
             end
         end
 
@@ -95,26 +99,27 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                     meas(i,:) = mvnrnd(meas(i,:), obj.Sigma, 1);
                 end
 
-%                 % Add clutter
-%                 index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
-%                 clutter = [normrnd(0, deg2rad(20), length(index), 1) normrnd(0, deg2rad(20), length(index), 1) zeros(length(index),2)];
-%                 clutterTime = timestamp(index,:);
-%                 clutterState = StateEvolution(index,:);
-%                 
-%                 if (size(clutter,1) > round(1.5 * obj.NC))
-%                     index = randi([0 size(clutter,1)], obj.NC, 1); 
-%                     clutter = clutter(index,:);
-%                     clutterTime = clutterTime(index,:);
-%                     clutterState = clutterState(index,:);
-%                 end
-% 
-%                 % Final assembly
-%                 meas = [meas clutter(index,:)];
-%                 timestamp = [timestamp; clutterTime];
-%                 StateEvolution = [StateEvolution; clutterState];
-%                 [timestamp, index] = sort(timestamp);
-%                 meas = meas(index,:);
-%                 StateEvolution = StateEvolution(index,:);
+                % Add clutter
+                index = logical(randsrc(size(meas,1), 1, [0, 1; 1-obj.PC, obj.PC]));
+                clutter = [normrnd(0, deg2rad(0), length(index), 1) normrnd(0, deg2rad(1), length(index), 1) zeros(length(index),2)];
+                clutterTime = timestamp(index,:);
+                clutterState = StateEvolution(index,:);
+                clutter = clutter(index,:);
+                
+                if (size(clutter,1) > round(1.5 * obj.NC))
+                    index = randi([0 size(clutter,1)], obj.NC, 1); 
+                    clutter = clutter(index,:);
+                    clutterTime = clutterTime(index,:);
+                    clutterState = clutterState(index,:);
+                end
+
+                % Final assembly
+                meas = [meas clutter(index,:)];
+                timestamp = [timestamp; clutterTime];
+                StateEvolution = [StateEvolution; clutterState];
+                [timestamp, index] = sort(timestamp);
+                meas = meas(index,:);
+                StateEvolution = StateEvolution(index,:);
             else
                 timestamp = []; 
                 meas = []; 
@@ -187,7 +192,6 @@ classdef TopocentricSensor < Sensors.AbstractSensor
                     z = [cos(z(2,1)) * sin(z(1,1)); sin(z(2,1)) * sin(z(1,1)); cos(z(1,1))];
 
                     % Von-Mises distribution
-                    obj.kappa = 5e2;
                     q = obj.kappa * exp(obj.kappa * x.' * z) / (2* pi * (exp(obj.kappa)-exp(-obj.kappa)));
                     
                 otherwise

@@ -27,16 +27,11 @@ function [d] = DelaunayDistance(q2, q1, selector)
     switch (selector)
         case 1
             dq = QuaternionAlgebra.right_isoclinic(q2(1:4,1)) * QuaternionAlgebra.quaternion_inverse(q1(1:4,1)); 
-            if (dq(4) < 0)
-                dq = -dq;
-            end
             theta = QuaternionAlgebra.MPR2Quat(1,1,dq,false);
             d = norm(theta);
         case 0
             d = norm(q2(5:7,1)-q1(5:7,1));
         case 2
-            n1 = [cos(q2); sin(q2)];
-            n2 = [cos(q1); sin(q1)];
-            d = 1-dot(n1,n2);
+            d = mod(abs(q1-q2), 2*pi);
     end
 end

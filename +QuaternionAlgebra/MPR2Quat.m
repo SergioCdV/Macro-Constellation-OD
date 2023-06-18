@@ -7,6 +7,9 @@ function [X] = MPR2Quat(a, f, x, direction)
         q = [(a + q(1,:)) / f .* x(1:3,:); q(1,:)];
         X = q;
     else
+        if (x(4) < 0)
+            x = -x;
+        end
         X = f * x(1:3,:) ./ (a + x(4,:));
     end
 end

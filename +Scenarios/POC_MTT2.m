@@ -11,21 +11,21 @@ clear
 rng(1);
 
 %% General user defined input
-if (0)
+if (1)
     % Constants 
     r0 = 29600.318e3;           % Characteristic distance of the Earth orbit    
     mu = 3.986e14;              % Gravitional parameter of the Earth
     Re = 6378e3;                % Reference Earth radius
     Tc = sqrt(Re^2/mu);         % Characteristic time
     J2 = 1.08263e-3;            % Earth's J2 parameter
-    Nmax = 4;                   % Number of targets
+    Nmax = 8;                   % Number of targets
     
     % Constellation lifetime
-    InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
-    T = 7;                                              % Number of days 
-    EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
-    Step = 7200;                                         % Integration step in seconds
-    tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
+    InitialEpoch = juliandate(datetime([2010 03 21 00 00 00]));         % Initial epoch in JD
+    T = 7;                                                              % Number of days 
+    EndEpoch = juliandate(datetime([2010 03 21 00 00 00])+days(T));     % End epoch
+    Step = 1 * 3600;                                                    % Integration step in seconds
+    tspan = 0:Step:T * 86400;                                           % Relative lifetime in seconds
     
     % Target birth 
     PS = 1;                  % Probability of surviving
@@ -33,7 +33,7 @@ if (0)
     
     % Constellation definition
     ElementType = 'COE'; 
-    Plane(1,:) = [r0 1e-3 deg2rad(145) deg2rad(56) deg2rad(3383.33+15)];
+    Plane(1,:) = [r0 1e-3 deg2rad(145) deg2rad(56) deg2rad(338.33+15)];
     Plane = repmat(Plane, Nmax, 1);
     
     %% Target births and deaths 
@@ -92,7 +92,7 @@ if (0)
     
     for i = 1:size(Plane,1)
         % Generate a random anomaly 
-        ElementSet = [Plane(i,1:5) deg2rad(90 * (i-1))];
+        ElementSet = [Plane(i,1:5) deg2rad(45 * (i-1))];
     
         % Add the orbit to the constellation
         AuxOrbit = Orbit(mu, ElementType, ElementSet, InitialEpoch + S{i}(1)/86400);
@@ -106,10 +106,10 @@ if (0)
     end
     
     %% Sensor network 
-    Pc = 0.0;                  % Probability of false measurements
+    PC = 0.0;                  % Probability of false measurements
     Vc = 0;                    % Number of false measurements per sensor (surveillance region)
     
-    PD = 0.98;                  % Detection probability
+    PD = 0.98;                 % Detection probability
     
     % Define an inertial observer
 %     InitialState = [0 1 0];
@@ -136,45 +136,63 @@ if (0)
     
     % Define a telescope topocentric observer located at Canarias
 
-    InitialEpoch = juliandate(datetime('now'));
+    InitialEpoch = juliandate(datetime([2010 03 21 00 00 00]));
     Sigma = diag([deg2rad(0.001) deg2rad(0.001) deg2rad(0.001) deg2rad(0.001)]);
     Sigma = diag([deg2rad(0.001) deg2rad(0.001)]);
     min_el = deg2rad(7);
 
     InitialState = [28.3 -15.59];
     TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el, 'RADEC');
+    TelescopeObs.PC = PC; 
+    TelescopeObs.NC = Vc;
     
     % Define a telescope topocentric observer located at Israel
     InitialState = [30.70 34.8];
-    TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(90), 'RADEC');
+    TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs2.PC = PC; 
+    TelescopeObs2.NC = Vc;
 
     % Define a telescope topocentric observer located at Hawai
     InitialState = [20.70 -156.3571]; 
-    TelescopeObs3 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(90), 'RADEC');
+    TelescopeObs3 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs3.PC = PC; 
+    TelescopeObs3.NC = Vc;
 
     % Define a telescope topocentric observer located at Mexico
     InitialState = [30.70 -104.02];
-    TelescopeObs4 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(90), 'RADEC');
+    TelescopeObs4 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs4.PC = PC; 
+    TelescopeObs4.NC = Vc;
 
     % Define a telescope topocentric observer located at South Africa
     InitialState = [-32.37 20.81];
-    TelescopeObs5 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(90), 'RADEC');
+    TelescopeObs5 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs5.PC = PC; 
+    TelescopeObs5.NC = Vc;
 
     % Define a telescope topocentric observer located at UK
     InitialState = [-2.89 53.189];
-    TelescopeObs6 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(90), 'RADEC');
+    TelescopeObs6 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs6.PC = PC; 
+    TelescopeObs6.NC = Vc;
 
     % Define a telescope topocentric observer located at Chile
     InitialState = [-30.167 -70.800];
-    TelescopeObs7 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(90), 'RADEC');
+    TelescopeObs7 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs7.PC = PC; 
+    TelescopeObs7.NC = Vc;
 
     % Define a telescope topocentric observer located at Australia
     InitialState = [-31.272 149.0616];
-    TelescopeObs8 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(90), 'RADEC');
+    TelescopeObs8 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs8.PC = PC; 
+    TelescopeObs8.NC = Vc;
 
     % Define a telescope topocentric observer located at China
     InitialState = [32.2 80.0];
-    TelescopeObs9 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(90), 'RADEC');
+    TelescopeObs9 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs9.PC = PC; 
+    TelescopeObs9.NC = Vc;
 
     %% Observation process 
     % Prepare the measurements
@@ -307,9 +325,6 @@ if (0)
             Measurements(i,3) = { TelescopeState(index(i),:) };
             Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, RaMeas(index(i),2:end).', y) };
             Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(TelescopeTime(index(i)), y, TelescopeState(index(i),:)) };
-
-            Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(1) deg2rad(1)].^2);
-            Sigma = diag([deg2rad(1) deg2rad(1)].^2);
             Measurements(i,6) = {reshape(Sigma, [], 1)};
 
             Measurements(i,7) = {'Telescope'};
@@ -376,8 +391,8 @@ if (0)
     Gamma = 1;                  % Measurements per scan 
     
     % Estimator configuration
-    iod_plane = [dD_hat; D_hat(5:end-1,1); 1e-4 * reshape(eye(6), [], 1)];
-    MTT = Filters.MTT_filter(iod_plane, 1, 2e2, PS, PD, Gamma);
+    iod_plane = [dD_hat; D_hat(5:end-1,1); 1e-5 * reshape(eye(6), [], 1)];
+    MTT = Filters.MTT_filter(iod_plane, 1, 5e2, PS, PD, Gamma);
     MTT.ExtendedTarget = false;
     
     % Physical parameters
@@ -397,7 +412,7 @@ if (0)
 
     tspan = 86400 * ( ObservationSpan-ObservationSpan(1) );
     
-    save POC_MTT.mat
+%     save POC_MTT.mat
 else
     load POC_MTT.mat;
 end
@@ -412,7 +427,7 @@ for i = 1:length(M_hat)
     if (M_hat(i))
         Analysis.CPEP(1,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 1);
         Analysis.CPEP(2,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(1:7,:), Dq(1:end-1,:), 0.1, 0);
-        Analysis.CPEP(3,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(8,:), Dq(end,:), 0.1, 2);
+        Analysis.CPEP(3,i) = Filters.Valuation.CPEP(N(i), M_hat(i), x{i}(8,:), Dq(end,:), deg2rad(20), 2);
     
         % Hausdorff
         Analysis.HaussdorfDistance(1,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 1);
@@ -424,7 +439,7 @@ end
 
 %% Results
 figure 
-scatter(RaMeas(:,2), RaMeas(:,3), 'filled');
+scatter(rad2deg(RaMeas(:,2)), rad2deg(RaMeas(:,3)));
 grid on; 
 xlabel('$\alpha$')
 ylabel('$\delta$')
@@ -531,7 +546,7 @@ grid on;
 
 %% 
 % Anomaly plot 
-pos = length(M_hat)-5;
+pos = 290;
 figure 
 view(3)
 hold on
@@ -570,11 +585,13 @@ zticklabels(strrep(zticklabels, '-', '$-$'));
 %%
 figure
 hold on
-plot(tspan/3600, E)
+plot(tspan/3600, E, 'o-')
 hold off
 xlabel('Epoch $t$ [h]')
 ylabel('Diff. entropy $E_{max}$')
 grid on;
+xticklabels(strrep(xticklabels, '-', '$-$'));
+yticklabels(strrep(yticklabels, '-', '$-$'));
 
 %%
 figure

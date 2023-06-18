@@ -51,7 +51,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
 
             if (isempty(y) || any(isnan(y)))
                 l = 0;
-                PD_t(j) = 0.0;
+                PD_t(j) = 0;
             else
                 l = feval(Likelihood, y);
                 PD_t(j) = obj.PD;

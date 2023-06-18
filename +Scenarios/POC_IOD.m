@@ -11,7 +11,7 @@ clear
 rng(1);
 
 %% General user defined input
-if (0)
+if (1)
     % Constants 
     r0 = 6928e3;                % Characteristic distance of the Earth orbit    
     mu = 3.986e14;              % Gravitional parameter of the Earth
@@ -22,9 +22,9 @@ if (0)
     
     % Constellation lifetime
     InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
-    T = 7;                                              % Number of days 
+    T = 5;                                              % Number of days 
     EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
-    Step = 60;                                          % Integration step in seconds
+    Step = 600;                                          % Integration step in seconds
     tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
     
     % Target birth 
@@ -34,8 +34,8 @@ if (0)
     % Constellation definition
     ElementType = 'COE'; 
     Plane(1,:) = [r0 1e-3 deg2rad(0) deg2rad(97) deg2rad(0)];
-    Plane(2,:) = [r0 1e-3 deg2rad(0) deg2rad(97) deg2rad(0)];
-    Plane(3,:) = [r0 1e-3 deg2rad(0) deg2rad(97) deg2rad(0)];
+    Plane(2,:) = [r0 1e-3 deg2rad(20) deg2rad(45) deg2rad(20)];
+    Plane(3,:) = [r0 1e-3 deg2rad(40) deg2rad(10) deg2rad(40)];
     Plane = repmat(Plane, Nmax, 1);
     
     %% Target births and deaths 
@@ -111,31 +111,31 @@ if (0)
     Pc = 0.0;                  % Probability of false measurements
     Vc = 0;                    % Number of false measurements per sensor (surveillance region)
     
-    PD = 0.005;                  % Detection probability
+    PD = 0.98;                 % Detection probability
     
     % Define an inertial observer
-    InitialState = [0 1 0];
-    InitialEpoch = juliandate(datetime('now'));
-    Sigma = diag([5e1 5e1 5e1]);
-    InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
+%     InitialState = [0 1 0];
+%     InitialEpoch = juliandate(datetime('now'));
+%     Sigma = diag([5e1 5e1 5e1]);
+%     InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
     
     % Define an anomaly observer
     % InitialState = 0;
     % Sigma = deg2rad(0.001)^2;
     % AnObs = Sensors.AnomalySensor(InitialEpoch, InitialState, Sigma, PD);
-    
-    % Define a radar topocentric observer located at the Equator
-    % InitialState = [0 85];
-    % InitialEpoch = juliandate(datetime('now'));
-    % Sigma = diag([70 10]);
-    % min_el = deg2rad(7);
-    % RadarObs = Sensors.RadarSensor(InitialEpoch, InitialState, Sigma, PD, min_el);
-    
+
     % Define an Delaunay observer
     % InitialState = 0;
     % Sigma = deg2rad(0.001)^2 * eye(6);
     % DyObs = Sensors.DelaunaySensor(InitialEpoch, InitialState, Sigma, PD);
     
+    % Define a radar topocentric observer located at the Equator
+    InitialState = [36.533 -6.283];
+    InitialEpoch = juliandate(datetime('now'));
+    Sigma = diag([70 10]);
+    min_el = deg2rad(7);
+    RadarObs = Sensors.RadarSensor(InitialEpoch, InitialState, Sigma, PD, min_el);
+        
     % Define a telescope topocentric observer located at Canarias
     InitialEpoch = juliandate(datetime('now'));
     Sigma = diag([deg2rad(0.001) deg2rad(0.001) deg2rad(0.001) deg2rad(0.001)]);
@@ -224,11 +224,11 @@ if (0)
     %     AnState = [AnState; state_aux];
     
         % Radar observer
-    %     [time_aux, meas_aux, state_aux] = RadarObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
-    % 
-    %     RadarTime = [RadarTime; time_aux];
-    %     RdMeas = [RdMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
-    %     RadarState = [RadarState; state_aux];
+        [time_aux, meas_aux, state_aux] = RadarObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
+    
+        RadarTime = [RadarTime; time_aux];
+        RdMeas = [RdMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
+        RadarState = [RadarState; state_aux];
     
         % Telescope observer
         [time_aux, meas_aux, state_aux] = TelescopeObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
@@ -295,46 +295,34 @@ if (0)
     end
     
     %% Pre-processing of the measurements
-    ObservationSpan = TelescopeTime;
+    ObservationSpan = [TelescopeTime; RadarTime];
     [ObservationSpan, index] = sort(ObservationSpan);
     
     Measurements = cell(length(ObservationSpan), 6);
     Measurements(:,1) = num2cell(ObservationSpan);
     
     for i = 1:length(index)
-        if (index(i) <= size(InTime,1))
-            L = 0;
-            Sigma = diag([1e3 1e3 1e4]./[Re Re Re]);
-            Measurements(i,2) = { InMeas(index(i)-L,:)./[1 Re Re Re] };
-            Measurements(i,3) = { InState(index(i)-L,:) };
-            Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, InMeas(index(i)-L,2:end).'./[Re; Re; Re], y) };
-            Measurements(i,5) = { @(y)InObs.ObservationProcess(InTime(index(i)-L), y, InState(index(i)-L,:)) };
+        if (index(i) <= size(TelescopeTime,1))
+            Measurements(i,2) = { RaMeas(index(i),:) };
+            Measurements(i,3) = { TelescopeState(index(i),:) };
+            Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, RaMeas(index(i),2:end).', y) };
+            Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(TelescopeTime(index(i)), y, TelescopeState(index(i),:)) };
+            Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(1) deg2rad(1)].^2);
+            Sigma = diag([deg2rad(1) deg2rad(1)].^2);
             Measurements(i,6) = {reshape(Sigma, [], 1)};
-            Measurements(i,7) = {'INERTIAL'};
-    
-    %     elseif (index(i) <= size(DyTime,1) + size(InTime,1))
-    %         L = size(InTime,1);
-    %         Sigma = blkdiag(deg2rad(0.1) * eye(3), 5e-2 * eye(3));
-    %         Measurements(i,2) = { DyMeas(index(i)-L,:) };
-    %         Measurements(i,3) = { DyState(index(i)-L,:) };
-    %         Measurements(i,4) = { @(y)DyObs.LikelihoodFunction(Sigma, DyMeas(index(i)-L,2:end).', y) };
-    %         Measurements(i,5) = { @(y)DyObs.ObservationProcess(DyTime(index(i)-L), y, DyState(index(i)-L,:)) };
-    %         Measurements(i,6) = { reshape(Sigma, [], 1) };
-    %         Measurements(i,7) = { 'DELAUNAY' };
+            
+            Measurements(i,7) = {'Telescope'};
+
+        elseif (index(i) <= size(TelescopeTime,1) + size(RadarTime,1))
+            L = size(TelescopeTime,1);
+            Sigma = diag([5e2 5e1].^2 ./ [Re Re/Tc].^2);
+            Measurements(i,2) = { RdMeas(index(i)-L,:) };
+            Measurements(i,3) = { RadarState(index(i)-L,:) };
+            Measurements(i,4) = { @(y)RadarObs.LikelihoodFunction(Sigma, RdMeas(index(i)-L,2:end).', y) };
+            Measurements(i,5) = { @(y)RadarObs.ObservationProcess(RadarTime(index(i)-L), y, RadarState(index(i)-L,:)) };
+            Measurements(i,6) = { reshape(Sigma, [], 1) };
+            Measurements(i,7) = { 'RADAR' };
         end
-
-        Measurements(i,2) = { RaMeas(index(i),:) };
-        
-        Measurements(i,3) = { TelescopeState(index(i),:) };
-        Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, RaMeas(index(i),2:end).', y) };
-        Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(TelescopeTime(index(i)), y, TelescopeState(index(i),:)) };
-        
-        Sigma = diag([deg2rad(1) deg2rad(1) deg2rad(1) deg2rad(1)].^2);
-        Sigma = diag([deg2rad(1) deg2rad(1)].^2);
-        Measurements(i,6) = {reshape(Sigma, [], 1)};
-        
-        Measurements(i,7) = {'Telescope'};
-
     end
     
     i = 1;
@@ -370,6 +358,10 @@ if (0)
     PD = 0.98;
     UIOD_filter = Filters.UIOD_filter(1, 5e2, PS, PD);
     
+    UIOD_filter.Lmin = 1.03; 
+    UIOD_filter.Lmax = 3;
+    UIOD_filter.emax = 0.2;
+
     % Estimation
     [X, N_hat, Prior, E_IOD] = UIOD_filter.BayesRecursion(ObservationSpan, Measurements);
     
@@ -423,6 +415,10 @@ if (0)
     % Anomaly partition
     MTT.nu = linspace(0,2*pi,1e3);
     
+    MTT.Lmin = 1.03; 
+    MTT.Lmax = 6;
+    MTT.emax = 0.2;
+
     % Estimation
     [f, x, M_hat, ~, E] = MTT.BayesRecursion(ObservationSpan, Measurements);
 
@@ -469,14 +465,12 @@ end
 tspan = 86400 * ( ObservationSpan-ObservationSpan(1) );
 
 figure 
-scatter3(InMeas(:,2)/Re, InMeas(:,3)/Re, InMeas(:,4)/Re, 'filled');
+scatter(RaMeas(:,2), RaMeas(:,3), 'filled');
 grid on; 
-xlabel('$X$')
-ylabel('$Y$')
-zlabel('$Z$')
+xlabel('$\alpha$')
+ylabel('$\delta$')
 xticklabels(strrep(xticklabels, '-', '$-$'));
 yticklabels(strrep(yticklabels, '-', '$-$'));
-zticklabels(strrep(zticklabels, '-', '$-$'));
 
 %%
 figure 

@@ -13,7 +13,7 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
     % Preallocate the estimator 
     pos = 8;
-    Q = 1e-5 * eye(pos);
+    Q = 1e-6 * eye(pos);
 
     switch (obj.KF_type)
         case 'EKF'
@@ -195,7 +195,7 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
         end
 
         for j = 1:size(particles,2)
-            aux(:,j) = obj.wrapped_normal(1e-7, obj.nu.', mod(particles(pos,j),2*pi), Cov(end,j));
+            aux(:,j) = obj.wrapped_normal(1e-4, obj.nu.', mod(particles(pos,j),2*pi), Cov(end,j));
 
             % Entropy characterization 
             Sigma = reshape(Cov(:,j), [pos-1 pos-1]);
