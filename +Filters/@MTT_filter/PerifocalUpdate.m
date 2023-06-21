@@ -2,7 +2,9 @@
 function [plane, Sigma] = PerifocalUpdate(obj, weights, particles)
     % Reliability weights
     c = sum(weights,2);
-    weights = weights / c;
+    if (c)
+        weights = weights / c;
+    end
     
     % Final mean estimation 
     [q, ~] = QuaternionAlgebra.AverageQuat(ones(1,size(particles,2)), particles(1:4,:));
@@ -10,11 +12,11 @@ function [plane, Sigma] = PerifocalUpdate(obj, weights, particles)
     a = zeros(3,size(particles,2));
     for i = 1:size(particles,2)
         dq = QuaternionAlgebra.left_isoclinic( particles(1:4,i) ).' * q;
-        a(:,i) = dq(1:3,1)/ (1 + dq(4,1));
+        a(:,i) = QuaternionAlgebra.MPR2Quat(1, 1, dq, false);
     end
 
     % Action estimation 
-    am = sum(weights .* a,2);
+    am = sum(weights .* a, 2);
     beta = sum(weights .* particles(5:end,:),2);
 
     % Covariance estimation

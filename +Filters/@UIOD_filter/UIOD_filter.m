@@ -31,7 +31,7 @@ classdef UIOD_filter < Filters.BayesFilter
 
         % Phase space delimiters 
         Lmin = 1.03;
-        Lmax = 1.5;
+        Lmax = 7;
         emax = 0.2;
     end
 

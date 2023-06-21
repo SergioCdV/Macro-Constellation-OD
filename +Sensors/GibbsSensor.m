@@ -10,10 +10,10 @@ classdef GibbsSensor< Sensors.AbstractSensor
 
     methods 
         % Constructor 
-        function [obj] = GibbsSensor(myInitialEpoch, myInitialState, mySigma, myPD)
+        function [obj] = GibbsSensor(myInitialEpoch, myInitialState, mySigma, myPD, mySR)
             myStateDim = 3;
             myMeasDim = 3;
-            obj = obj@Sensors.AbstractSensor(myStateDim, myMeasDim, myInitialEpoch, myInitialState, mySigma, myPD);
+            obj = obj@Sensors.AbstractSensor(myStateDim, myMeasDim, myInitialEpoch, myInitialState, mySigma, myPD, mySR);
         end
 
         % Configuration of the clutter model 
@@ -92,20 +92,29 @@ classdef GibbsSensor< Sensors.AbstractSensor
             % Preallocaton
             meas = []; 
             t = []; 
+            prev = 1e5; 
 
             % Observation
             for i = 1:length(Tspan)
-                if (1)%dot(Orbit(i,1:3), StateEvolution(i,:)) > 0)
+                dS = Tspan(i)-Tspan(1);
+                curr = mod(dS * 86400, obj.SR);
+                test = curr < prev;
+                prev = curr;
+                
+                if (test)
                     meas = [meas; Orbit(i,1:3)];
                     t = [t; Tspan(i)];
                 end
             end
         end
+    end
 
+    methods (Static)
         % Likelihood function
-        function [q] = LikelihoodFunction(obj, Sigma, z, y)
+        function [q] = LikelihoodFunction(Sigma, z, y)
             res = y-z;
-            q = exp((-0.5*res.'*Sigma^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
+            n = size(Sigma,1);
+            q = exp(-0.5 * res.' * Sigma^(-1) * res) / sqrt(det(Sigma)*(2*pi)^n);
         end
     end
     

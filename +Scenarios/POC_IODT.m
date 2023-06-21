@@ -1,10 +1,9 @@
 %% Combinatorial constellation macro-determination 
-% Date: 02/02/2023
+% Date: 14/06/2023
 % Author: Sergio Cuevas del Valle
 
-%% Constellation orbit determination. Scenario I %%
-% This script provides a 1 plane constellation of 5 spacecraft, generating
-% measurements from Madrid and Paris.
+%% Constellation orbit determination. Scenario I. Basic Verification and Validation %%
+% This script provides a 1 plane constellation of 1 spacecraft, which randomly generates GNSS ECI measurements.
 
 close all 
 clear 
@@ -18,6 +17,7 @@ if (0)
     Re = 6378e3;                % Reference Earth radius
     Tc = sqrt(Re^2/mu);         % Characteristic time
     J2 = 1.08263e-3;            % Earth's J2 parameter
+
     Nmax = 1;                   % Number of targets
     
     % Constellation lifetime
@@ -108,14 +108,14 @@ if (0)
     %% Sensor network 
     Pc = 0.0;                  % Probability of false measurements
     Vc = 0;                    % Number of false measurements per sensor (surveillance region)
-    
-    PD = 0.005;                  % Detection probability
-    
+        
     % Define an inertial observer
+    PD = 0.98;                 % Probability of detection 
+    sampling_rate = 10000;      % Sampling rate [s]
     InitialState = [0 1 0];
     InitialEpoch = juliandate(datetime('now'));
-    Sigma = diag([5e1 5e1 5e1]);
-    InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
+    Sigma = diag([1e1 1e1 1e1]);
+    InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate);
     
     % Define an anomaly observer
     % InitialState = 0;
@@ -126,28 +126,6 @@ if (0)
     % InitialState = 0;
     % Sigma = deg2rad(0.001)^2 * eye(6);
     % DyObs = Sensors.DelaunaySensor(InitialEpoch, InitialState, Sigma, PD);
-    
-    % Define a radar topocentric observer located at the Equator
-    % InitialState = [0 85];
-    % InitialEpoch = juliandate(datetime('now'));
-    % Sigma = diag([70 10]);
-    % min_el = deg2rad(7);
-    % RadarObs = Sensors.RadarSensor(InitialEpoch, InitialState, Sigma, PD, min_el);
-    
-    % Define a telescope topocentric observer located at Madrid
-    % InitialState = [40 -3];
-    % InitialEpoch = juliandate(datetime('now'));
-    % Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
-    % min_el = deg2rad(0);
-    % TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el);
-    
-    % Define a telescope topocentric observer located at the north pole
-    % InitialState = [5 85];
-    % InitialEpoch = juliandate(datetime('now'));
-    % min_el = deg2rad(90);
-    % %Sigma = diag([deg2rad(0.01) deg2rad(0.01) deg2rad(0.001) deg2rad(0.001)]);
-    % Sigma = diag([deg2rad(1E-2) deg2rad(1E-2)]);
-    % TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el, 'RADEC');
     
     %% Observation process 
     % Prepare the measurements
@@ -164,18 +142,6 @@ if (0)
     AnTime = [];
     AnMeas = [];
     AnState = [];
-    
-    RadarTime = [];
-    RdMeas = [];
-    RadarState = [];
-    
-    TelescopeTime = [];
-    RaMeas = [];
-    TelescopeState = [];
-    
-    TelescopeTime2 = [];
-    RaMeas2 = [];
-    TelescopeState2 = [];
     
     for i = 1:size(Constellation_1.OrbitSet,1)
         % Inertial observer
@@ -198,31 +164,10 @@ if (0)
     %     AnTime = [AnTime; time_aux];
     %     AnMeas = [AnMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
     %     AnState = [AnState; state_aux];
-    
-        % Radar observer
-    %     [time_aux, meas_aux, state_aux] = RadarObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
-    % 
-    %     RadarTime = [RadarTime; time_aux];
-    %     RdMeas = [RdMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
-    %     RadarState = [RadarState; state_aux];
-    
-        % Telescope observer
-    %     [time_aux, meas_aux, state_aux] = TelescopeObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
-    % 
-    %     TelescopeTime = [TelescopeTime; time_aux];
-    %     RaMeas = [RaMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
-    %     TelescopeState = [TelescopeState; state_aux];
-    
-        % Second telescope observer
-    %     [time_aux, meas_aux, state_aux] = TelescopeObs2.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
-    % 
-    %     TelescopeTime2 = [TelescopeTime2; time_aux];
-    %     RaMeas2 = [RaMeas2; [i*ones(size(meas_aux,1),1) meas_aux]];
-    %     TelescopeState2 = [TelescopeState2; state_aux];
     end
     
     %% Pre-processing of the measurements
-    ObservationSpan = [InTime];
+    ObservationSpan = InTime;
     [ObservationSpan, index] = sort(ObservationSpan);
     
     Measurements = cell(length(ObservationSpan), 6);
@@ -231,7 +176,7 @@ if (0)
     for i = 1:length(index)
         if (index(i) <= size(InTime,1))
             L = 0;
-            Sigma = diag([1e3 1e3 1e4]./[Re Re Re]);
+            Sigma = diag([1e2 1e2 1e2]./[Re Re Re]);
             Measurements(i,2) = { InMeas(index(i)-L,:)./[1 Re Re Re] };
             Measurements(i,3) = { InState(index(i)-L,:) };
             Measurements(i,4) = { @(y)InObs.LikelihoodFunction(Sigma, InMeas(index(i)-L,2:end).'./[Re; Re; Re], y) };
@@ -263,7 +208,7 @@ if (0)
     end
     
     if (k < length(ObservationSpan))
-        aux(k:length(ObservationSpan)) = repmat(aux(k-1), 1, length(ObservationSpan)-k);
+        aux(k:length(ObservationSpan)) = repmat(aux(k-1), 1, length(k:length(ObservationSpan)) );
     end
     
     N = aux;
@@ -281,7 +226,6 @@ if (0)
 
     %% Estimation: IOD
     % Estimator configuration
-    PD = 0.98;
     UIOD_filter = Filters.UIOD_filter(1, 5e2, PS, PD);
     
     % Estimation
@@ -342,7 +286,7 @@ if (0)
     MTT.Re = Re;
     
     % Anomaly partition
-    MTT.nu = linspace(0,2*pi,1e3);
+    MTT.nu = linspace(0, 2*pi, 1e3);
     
     % Estimation
     [f, x, M_hat, ~, E] = MTT.BayesRecursion(ObservationSpan, Measurements);
@@ -382,7 +326,6 @@ for i = 1:length(M_hat)
         Analysis.HaussdorfDistance(3,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 1);
         Analysis.HaussdorfDistance(4,i) = Filters.Valuation.Hausdorff(x{i}(1:7,:), Dq(1:end-1,:), 0);
         Analysis.HaussdorfDistance(5,i) = Filters.Valuation.Hausdorff(x{i}(8,:), Dq(end,:), 2);
-    else
     end
 end
 
@@ -416,7 +359,7 @@ quiver3(zeros(1,size(nref,2)), zeros(1,size(nref,2)), zeros(1,size(nref,2)), nre
 
 n = no;
 for i = 1:size(D_hat,2)
-    for j = 1:size(n,2)
+    for j = 1:size(no,2)
         aux = QuaternionAlgebra.right_isoclinic(no(:,j)) * QuaternionAlgebra.quaternion_inverse(D_hat(1:4,i));
         n(:,size(no,2)*(i-1)+j) = QuaternionAlgebra.right_isoclinic(D_hat(1:4,i)) * aux;
     end
@@ -449,7 +392,6 @@ legend('$N_p$',' $\hat{N}_p$');
 xlabel('Epoch $t$ [h]')
 ylabel('N. planes')
 grid on;
-ylim([0 4])
 
 %%
 figure
@@ -544,7 +486,7 @@ grid on;
 
 %% 
 % Anomaly plot 
-pos = length(M_hat)-1;
+pos = length(M_hat)-4;
 figure 
 view(3)
 hold on

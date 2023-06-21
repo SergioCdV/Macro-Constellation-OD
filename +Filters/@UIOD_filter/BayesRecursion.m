@@ -12,15 +12,15 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
     % Preallocate the estimator 
     pos = 7;
-    Q = 1e-4 * eye(pos-1);
+    Q = 1e-1 * eye(pos-1);
 
     switch (obj.KF_type)
         case 'UKF-A'
-            PlaneEstimator = Filters.USQUE('UKF-A', 2, 1E-1, 0, 1);
+            PlaneEstimator = Filters.USQUE('UKF-A', 2, 1E-2, 0, 1);
             PlaneEstimator.StateDim = pos-1;
             PlaneEstimator = PlaneEstimator.AdditiveCovariances(Q, zeros(3)).Init();
         case 'UKF-S'
-            PlaneEstimator = Filters.USQUE('UKF-S', 2, 1E-1, 0, 1);
+            PlaneEstimator = Filters.USQUE('UKF-S', 2, 1E-2, 0, 1);
             PlaneEstimator.StateDim = pos-1;
             PlaneEstimator = PlaneEstimator.AdditiveCovariances(Q, zeros(3)).Init();
     end

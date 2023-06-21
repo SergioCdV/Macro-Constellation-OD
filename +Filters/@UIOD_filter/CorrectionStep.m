@@ -11,6 +11,7 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
     L = size(particles,2);
     psi = zeros(1, L * (length(indices) + 1));
     particles = repmat(particles, 1, length(indices)+1); 
+    PD_t = zeros(1,L);
 
     % Optimization options (likelihood profiling)
     options = optimoptions('fmincon', 'Display', 'none');
@@ -59,14 +60,18 @@ function [Posterior] = CorrectionStep(obj, indices, Measurements, Estimator, Pro
             % Weights update
             fun = @(theta)LikeProcess(obj, SensorModality, ObservationModel, Likelihood, box, [mu(pos:end,1); mu(4:6,1)], theta);
             l = integral(fun, 0, 2*pi);
+            if (isnan(l))
+                l = 0;
+            end
             psi(1, L*i + j) = obj.PD * l;
+            PD_t(j) = obj.PD * sign(l);
         end
 
         psi(1,1+L*i:L*(i+1)) = psi(1,1+L*i:L*(i+1)) .* weights(1,:) / sum( psi(1,1+L*i:L*(i+1)) .* weights(1,:),2 );
     end
 
     % Update the weights with the non-detected particles 
-    psi(1,1:L) = (1-obj.PD) .* weights(1,:);
+    psi(1,1:L) = (1-PD_t) .* weights(1,:);
 
     % Check for NaN 
     pos_nan = isnan(psi(1,:)); 
@@ -113,6 +118,7 @@ function [l] = LikeProcess(obj, SensorModality, ObservationModel, Likelihood, bo
         State = real(obj.ParticleState(SensorModality, particles, M(i)));
 
         [~, aux] = feval(ObservationModel, State.');
+
         if (~isempty(aux) && all(~isnan(aux)))
             % Dimensionalizing 
             switch (SensorModality)

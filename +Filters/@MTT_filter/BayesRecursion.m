@@ -13,7 +13,7 @@ function [f, X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
     % Preallocate the estimator 
     pos = 8;
-    Q = 1e-6 * eye(pos);
+    Q = 1e-4 * eye(pos);
 
     switch (obj.KF_type)
         case 'EKF'

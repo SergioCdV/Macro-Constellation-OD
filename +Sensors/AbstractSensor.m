@@ -11,17 +11,17 @@ classdef (Abstract) AbstractSensor
         CurrentEpoch;           % Current epoch
 
         Sigma;                  % Noise covariance
-        NC = 0;                 % Average number of false measurements
-
         PD;                     % Probability of detection
+        SR = 1;                 % Sampling rate [s]
         PC = 0;                 % Clutter probability
+        NC = 0;                 % Average number of false measurements
 
         StateDim;               % Dimension of the state vector
         MeasDim;                % Dimension of the measurement vector
     end
     
     methods
-        function obj = AbstractSensor(myStateDim, myMeasDim, myInitialEpoch, myInitialState, mySigma, myPD)
+        function obj = AbstractSensor(myStateDim, myMeasDim, myInitialEpoch, myInitialState, mySigma, myPD, mySR)
             % Dimensionality checks
             obj.StateDim = myStateDim; 
             obj.MeasDim = myMeasDim; 
@@ -56,6 +56,12 @@ classdef (Abstract) AbstractSensor
                 obj.PD = myPD;
             else
                 error('No valid detection probability has been input.'); 
+            end
+
+            if (exist('mySR', 'var'))
+                if (mySR)
+                    obj.SR = mySR;
+                end
             end
         end
 
