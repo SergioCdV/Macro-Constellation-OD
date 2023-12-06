@@ -30,7 +30,7 @@ function [sc] = ScPropagation(obj, sc, step)
     
             % Propagate the quaternions only using the Lie-Euler method
             omega = step/2 * omega;
-            dq = QuaternionAlgebra.exp_map([omega; 0], One);
+            dq = QuaternionAlgebra.exp_map(omega, One);
             sc(1:4,i) = QuaternionAlgebra.right_isoclinic(dq) * sc(1:4,i);
 
             % Propagate the anomalies

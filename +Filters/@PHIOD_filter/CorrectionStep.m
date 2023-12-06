@@ -36,8 +36,8 @@ function [Posterior, mean_PD] = CorrectionStep(obj, indices, Measurements, Estim
             % UKF step
             mu = particles(1:pos+3,j);                                % Predicted mean
             Sigma = particles(pos+3+1:pos+3+(pos-1)^2,j);             % Predicted covariance
-            sigma_points = particles(pos+3+(pos-1)^2+1:end,j);        % Predicted sigma points
             Sigma = reshape(Sigma, [pos-1 pos-1]);
+            sigma_points = particles(pos+3+(pos-1)^2+1:end,j);        % Predicted sigma points
             sigma_points = reshape(sigma_points, pos+3, []);
         
             [mu, S, ~, y] = Estimator.CorrectionStep(sigma_points, mu, Sigma, Z);

@@ -6,10 +6,10 @@ function [sigma, State, Sigma] = PropagationStep(obj, time_step)
 %     obj.Q = Q;
 
     % Generate sigma points 
-    sigma = obj.sigma_points([zeros(3,1); obj.State(5:7,1)], obj.Sigma, obj.Q);
+    sigma = obj.sigma_points([zeros(3,1); obj.State(5:end,1)], obj.Sigma, obj.Q);
 
     % Generation of the quaternions 
-    X = [QuaternionAlgebra.MPR2Quat(obj.a, obj.f, sigma(1:3,:), true); sigma(4:6,:)];
+    X = [QuaternionAlgebra.MPR2Quat(obj.a, obj.f, sigma(1:3,:), true); sigma(4:end,:)];
 
     for i = 1:size(X,2)
         X(1:4,i) = QuaternionAlgebra.right_isoclinic(X(1:4,i)) * obj.State(1:4,1);
@@ -25,7 +25,7 @@ function [sigma, State, Sigma] = PropagationStep(obj, time_step)
         dq(:,i) = QuaternionAlgebra.right_isoclinic(X(1:4,i)) * Q;
     end
 
-    sigma = [QuaternionAlgebra.MPR2Quat(obj.a, obj.f, dq(1:4,:), false); X(5:7,:)];
+    sigma = [QuaternionAlgebra.MPR2Quat(obj.a, obj.f, dq(1:4,:), false); X(5:end,:)];
 
     % State and covariance prediction 
     switch (obj.Algorithm)

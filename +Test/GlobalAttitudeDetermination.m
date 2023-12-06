@@ -1,6 +1,5 @@
 %% In-orbit validation %% 
-% Sergio Cuevas del Valle, GNC, FOSSA Systems
-% 02/06/2023 
+% Sergio Cuevas del Valle
 
 %% Global attitude determination
 % This file provides the function to provide global attitude determination for a given spacecraft.

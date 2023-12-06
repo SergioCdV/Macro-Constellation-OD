@@ -23,9 +23,8 @@ function [PropPrior, sigma_points] = PropagationStep(obj, last_epoch, new_epoch,
         [points, m, sigma] = TargetEstimator.PropagationStep(step);
 
         % Save the update
-        Sigma = reshape(sigma, [pos-1 pos-1]);
         aug_particles(1:pos+3,i) = m;
-        aug_particles(pos+3+1:end,i) = reshape(Sigma, [], 1);
+        aug_particles(pos+3+1:end,i) = reshape(sigma, [], 1);
         sigma_points(:,i) = reshape(points, [], 1);
     end
 
