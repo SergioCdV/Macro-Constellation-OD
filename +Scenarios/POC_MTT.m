@@ -465,9 +465,12 @@ figure
 view(3)
 hold on
 plot3(cos(MTT.nu), sin(MTT.nu), f{pos}); 
-plot(cos(MTT.nu), sin(MTT.nu), 'k'); 
 for i = 1:min(size(x{pos},2), 1)
-    stem3(cos(x{pos}(8,i)), sin(x{pos}(8,i)), 1, 'k');
+    s = Astrodynamics.Delaunay2MyElements(x{pos}(1:7,i), false);
+    s(1,1) = x{pos}(8,i);
+    s = Astrodynamics.Delaunay2COE(1, s, true);
+    M = s(end);
+    stem3(cos(M), sin(M), 1, 'r', 'filled');
 end
 xlabel('$X$')
 ylabel('$Y$')
@@ -476,20 +479,27 @@ for i = 1:min(1,size(Constellation_1.OrbitSet,1))
         diff_time = Constellation_1.OrbitSet{i,2}.InitialEpoch + Constellation_1.OrbitSet{i,2}.Normalize(false, r0).StateEvolution(:,1)/86400 >= ObservationSpan(pos);
         index = find(diff_time, 1, 'first');
         Set = Constellation_1.OrbitSet{i,2}.ChangeStateFormat('COE').StateEvolution(index,7);
-        scatter3(cos(Set), sin(Set), 1, 'filled', 'r');
+        scatter3(cos(Set), sin(Set), 1, 'filled', 'b');
     end
 end
 legend('$f(M)$', '$\hat{M}_i$', '$M$', 'AutoUpdate', 'off')
-
+plot(cos(MTT.nu), sin(MTT.nu), 'k');
 for i = 2:size(x{pos},2)
-    stem3(cos(x{pos}(8,i)), sin(x{pos}(8,i)), 1, 'k');
+    s = Astrodynamics.Delaunay2MyElements(x{pos}(1:7,i), false);
+    s(1,1) = x{pos}(8,i);
+    s = Astrodynamics.Delaunay2COE(1, s, true);
+    M = s(end);
+    stem3(cos(M), sin(M), 1, 'r', 'filled');
 end
 for i = 2:size(Constellation_1.OrbitSet,1)
     if (Constellation_1.OrbitSet{i,2}.InitialEpoch + S{i}(end)/86400 >= ObservationSpan(pos))
         diff_time = Constellation_1.OrbitSet{i,2}.InitialEpoch + Constellation_1.OrbitSet{i,2}.Normalize(false, r0).StateEvolution(:,1)/86400 >= ObservationSpan(pos);
         index = find(diff_time, 1, 'first');
         Set = Constellation_1.OrbitSet{i,2}.ChangeStateFormat('COE').StateEvolution(index,7);
-        scatter3(cos(Set), sin(Set), 1, 'filled', 'r');
+        scatter3(cos(Set), sin(Set), 1, 'filled', 'b');
     end
 end
 grid on; 
+xticklabels(strrep(xticklabels, '-', '$-$'));
+yticklabels(strrep(yticklabels, '-', '$-$'));
+zticklabels(strrep(zticklabels, '-', '$-$'));

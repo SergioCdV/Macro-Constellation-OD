@@ -108,7 +108,7 @@ classdef DelaunaySensor< Sensors.AbstractSensor
         % Likelihood function
         function [q] = LikelihoodFunction(obj, Sigma, z, y)
             res = y-z;
-            q = exp((-0.5*res.'*Sigma^(-1)*res))/sqrt(det(Sigma)*(2*pi)^(size(Sigma,1)));
+            q = exp(-0.5 * res.'* (Sigma\res) )/ sqrt( det(Sigma) * (2*pi)^(size(Sigma,1)) );
         end
     end
     

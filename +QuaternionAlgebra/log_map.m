@@ -9,5 +9,5 @@ function [l] = log_map(x, v)
         l = [0;0;0;1];
     end
 
-    l = [x(1:3)/norm(x(1:3)) * atan2(norm(x(1:3)), x(4)); 0];
+    l = x(1:3)/norm(x(1:3)) * atan2(norm(x(1:3)), x(4));
 end

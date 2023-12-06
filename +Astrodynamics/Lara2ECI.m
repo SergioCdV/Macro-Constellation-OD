@@ -14,7 +14,7 @@ function [s] = Lara2ECI(H, x, direction)
         
         t = 1-chi^2/(1+c);
         tau = 1-xi^2/(1+c);
-        q = xi*chi/(1+c);
+        q = chi * xi/(1+c);
 
         s(1,1) = r * (t*cos(psi)+q*sin(psi));
         s(2,1) = r * (t*sin(psi)-q*cos(psi));

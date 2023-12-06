@@ -11,7 +11,7 @@ clear
 rng(1);
 
 %% General user defined input
-if (1)
+if (0)
     % Constants 
     r0 = 29600.318e3;           % Characteristic distance of the Earth orbit    
     mu = 3.986e14;              % Gravitional parameter of the Earth
@@ -108,145 +108,77 @@ if (1)
     %% Sensor network 
     PC = 0.0;                  % Probability of false measurements
     Vc = 0;                    % Number of false measurements per sensor (surveillance region)
-    
     PD = 0.98;                 % Detection probability
-    
-    % Define an inertial observer
-%     InitialState = [0 1 0];
-%     InitialEpoch = juliandate(datetime('now'));
-%     Sigma = diag([5e1 5e1 5e1]);
-%     InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
-    
-    % Define an anomaly observer
-    % InitialState = 0;
-    % Sigma = deg2rad(0.001)^2;
-    % AnObs = Sensors.AnomalySensor(InitialEpoch, InitialState, Sigma, PD);
-    
-    % Define an Delaunay observer
-    % InitialState = 0;
-    % Sigma = deg2rad(0.001)^2 * eye(6);
-    % DyObs = Sensors.DelaunaySensor(InitialEpoch, InitialState, Sigma, PD);
-    
-    % Define a radar topocentric observer located at the Equator
-    % InitialState = [0 85];
-    % InitialEpoch = juliandate(datetime('now'));
-    % Sigma = diag([70 10]);
-    % min_el = deg2rad(7);
-    % RadarObs = Sensors.RadarSensor(InitialEpoch, InitialState, Sigma, PD, min_el);
+    sampling_rate = 10000;      % Sampling rate [s]
     
     % Define a telescope topocentric observer located at Canarias
-
     InitialEpoch = juliandate(datetime([2010 03 21 00 00 00]));
     Sigma = diag([deg2rad(0.001) deg2rad(0.001) deg2rad(0.001) deg2rad(0.001)]);
     Sigma = diag([deg2rad(0.001) deg2rad(0.001)]);
     min_el = deg2rad(7);
 
     InitialState = [28.3 -15.59];
-    TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, min_el, 'RADEC');
+    TelescopeObs = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, min_el, 'RADEC');
     TelescopeObs.PC = PC; 
     TelescopeObs.NC = Vc;
     
     % Define a telescope topocentric observer located at Israel
     InitialState = [30.70 34.8];
-    TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs2 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, deg2rad(7), 'RADEC');
     TelescopeObs2.PC = PC; 
     TelescopeObs2.NC = Vc;
 
     % Define a telescope topocentric observer located at Hawai
     InitialState = [20.70 -156.3571]; 
-    TelescopeObs3 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs3 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, deg2rad(7), 'RADEC');
     TelescopeObs3.PC = PC; 
     TelescopeObs3.NC = Vc;
 
     % Define a telescope topocentric observer located at Mexico
     InitialState = [30.70 -104.02];
-    TelescopeObs4 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs4 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, deg2rad(7), 'RADEC');
     TelescopeObs4.PC = PC; 
     TelescopeObs4.NC = Vc;
 
     % Define a telescope topocentric observer located at South Africa
     InitialState = [-32.37 20.81];
-    TelescopeObs5 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs5 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, deg2rad(7), 'RADEC');
     TelescopeObs5.PC = PC; 
     TelescopeObs5.NC = Vc;
 
     % Define a telescope topocentric observer located at UK
     InitialState = [-2.89 53.189];
-    TelescopeObs6 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs6 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, deg2rad(7), 'RADEC');
     TelescopeObs6.PC = PC; 
     TelescopeObs6.NC = Vc;
 
     % Define a telescope topocentric observer located at Chile
     InitialState = [-30.167 -70.800];
-    TelescopeObs7 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs7 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, deg2rad(7), 'RADEC');
     TelescopeObs7.PC = PC; 
     TelescopeObs7.NC = Vc;
 
     % Define a telescope topocentric observer located at Australia
     InitialState = [-31.272 149.0616];
-    TelescopeObs8 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs8 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, deg2rad(7), 'RADEC');
     TelescopeObs8.PC = PC; 
     TelescopeObs8.NC = Vc;
 
     % Define a telescope topocentric observer located at China
     InitialState = [32.2 80.0];
-    TelescopeObs9 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, deg2rad(7), 'RADEC');
+    TelescopeObs9 = Sensors.TopocentricSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate, deg2rad(7), 'RADEC');
     TelescopeObs9.PC = PC; 
     TelescopeObs9.NC = Vc;
 
     %% Observation process 
     % Prepare the measurements
     FinalObserveEpoch = EndEpoch;
-    
-    InTime = [];
-    InMeas = [];
-    InState = [];
-    
-    DyTime = [];
-    DyMeas = [];
-    DyState = [];
-    
-    AnTime = [];
-    AnMeas = [];
-    AnState = [];
-    
-    RadarTime = [];
-    RdMeas = [];
-    RadarState = [];
-    
+        
     TelescopeTime = [];
     RaMeas = [];
     TelescopeState = [];
     
     for i = 1:size(Constellation_1.OrbitSet,1)
-        % Inertial observer
-%         [time_aux, meas_aux, state_aux] = InObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);   
-%     
-%         InTime = [InTime; time_aux];
-%         InMeas = [InMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
-%         InState = [InState; state_aux];
-    
-        % Delaunay observer
-    %     [time_aux, meas_aux, state_aux] = DyObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);   
-    % 
-    %     DyTime = [DyTime; time_aux];
-    %     DyMeas = [DyMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
-    %     DyState = [DyState; state_aux];
-    
-        % Anomaly observer
-    %     [time_aux, meas_aux, state_aux] = AnObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);   
-    % 
-    %     AnTime = [AnTime; time_aux];
-    %     AnMeas = [AnMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
-    %     AnState = [AnState; state_aux];
-    
-        % Radar observer
-    %     [time_aux, meas_aux, state_aux] = RadarObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
-    % 
-    %     RadarTime = [RadarTime; time_aux];
-    %     RdMeas = [RdMeas; [i*ones(size(meas_aux,1),1) meas_aux]];
-    %     RadarState = [RadarState; state_aux];
-    
         % Telescope observer
         [time_aux, meas_aux, state_aux] = TelescopeObs.Observe(Constellation_1.OrbitSet{i,2}, FinalObserveEpoch);
     
@@ -319,15 +251,14 @@ if (1)
     Measurements(:,1) = num2cell(ObservationSpan);
     
     for i = 1:length(index)
+        Measurements(i,2) = { RaMeas(index(i),:) };
 
-            Measurements(i,2) = { RaMeas(index(i),:) };
+        Measurements(i,3) = { TelescopeState(index(i),:) };
+        Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, RaMeas(index(i),2:end).', y) };
+        Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(TelescopeTime(index(i)), y, TelescopeState(index(i),:)) };
+        Measurements(i,6) = {reshape(Sigma, [], 1)};
 
-            Measurements(i,3) = { TelescopeState(index(i),:) };
-            Measurements(i,4) = { @(y)TelescopeObs.LikelihoodFunction(Sigma, RaMeas(index(i),2:end).', y) };
-            Measurements(i,5) = { @(y)TelescopeObs.ObservationProcess(TelescopeTime(index(i)), y, TelescopeState(index(i),:)) };
-            Measurements(i,6) = {reshape(Sigma, [], 1)};
-
-            Measurements(i,7) = {'Telescope'};
+        Measurements(i,7) = {'Telescope'};
     end
     
     i = 1;
@@ -552,7 +483,11 @@ view(3)
 hold on
 plot3(cos(MTT.nu), sin(MTT.nu), f{pos}); 
 for i = 1:min(size(x{pos},2), 1)
-    stem3(cos(x{pos}(8,i)), sin(x{pos}(8,i)), 1, 'r', 'filled');
+    s = Astrodynamics.Delaunay2MyElements(x{pos}(1:7,i), false);
+    s(1,1) = x{pos}(8,i);
+    s = Astrodynamics.Delaunay2COE(1, s, true);
+    M = s(end);
+    stem3(cos(M), sin(M), 1, 'r', 'filled');
 end
 xlabel('$X$')
 ylabel('$Y$')
@@ -567,7 +502,11 @@ end
 legend('$f(M)$', '$\hat{M}_i$', '$M$', 'AutoUpdate', 'off')
 plot(cos(MTT.nu), sin(MTT.nu), 'k');
 for i = 2:size(x{pos},2)
-    stem3(cos(x{pos}(8,i)), sin(x{pos}(8,i)), 1, 'r', 'filled');
+    s = Astrodynamics.Delaunay2MyElements(x{pos}(1:7,i), false);
+    s(1,1) = x{pos}(8,i);
+    s = Astrodynamics.Delaunay2COE(1, s, true);
+    M = s(end);
+    stem3(cos(M), sin(M), 1, 'r', 'filled');
 end
 for i = 2:size(Constellation_1.OrbitSet,1)
     if (Constellation_1.OrbitSet{i,2}.InitialEpoch + S{i}(end)/86400 >= ObservationSpan(pos))

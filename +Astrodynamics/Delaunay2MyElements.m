@@ -28,6 +28,12 @@ function [X] = Delaunay2MyElements(x, direction)
         L = x(5,1);
         G = x(6,1);
         H = x(7,1);
+        
+        if (length(x) >= 8)
+            M = x(8,1);
+        else
+            M = 0;
+        end
     
         % Compute the RAAN and AoP from qp 
         diff = atan2(qp(2,1), qp(1,1));
@@ -39,5 +45,5 @@ function [X] = Delaunay2MyElements(x, direction)
         cos_i = R(end,end);
     
         % Assemble the set
-        X = [0 omega Omega L G G * cos_i].';
+        X = [M omega Omega L G G * cos_i].';
     end

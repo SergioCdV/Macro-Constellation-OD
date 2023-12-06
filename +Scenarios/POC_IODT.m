@@ -492,7 +492,11 @@ view(3)
 hold on
 plot3(cos(MTT.nu), sin(MTT.nu), f{pos}); 
 for i = 1:min(size(x{pos},2), 1)
-    stem3(cos(x{pos}(8,i)), sin(x{pos}(8,i)), 1, 'r', 'filled');
+    s = Astrodynamics.Delaunay2MyElements(x{pos}(1:7,i), false);
+    s(1,1) = x{pos}(8,i);
+    s = Astrodynamics.Delaunay2COE(1, s, true);
+    M = s(end);
+    stem3(cos(M), sin(M), 1, 'r', 'filled');
 end
 xlabel('$X$')
 ylabel('$Y$')
@@ -507,7 +511,11 @@ end
 legend('$f(M)$', '$\hat{M}_i$', '$M$', 'AutoUpdate', 'off')
 plot(cos(MTT.nu), sin(MTT.nu), 'k');
 for i = 2:size(x{pos},2)
-    stem3(cos(x{pos}(8,i)), sin(x{pos}(8,i)), 1, 'r', 'filled');
+    s = Astrodynamics.Delaunay2MyElements(x{pos}(1:7,i), false);
+    s(1,1) = x{pos}(8,i);
+    s = Astrodynamics.Delaunay2COE(1, s, true);
+    M = s(end);
+    stem3(cos(M), sin(M), 1, 'r', 'filled');
 end
 for i = 2:size(Constellation_1.OrbitSet,1)
     if (Constellation_1.OrbitSet{i,2}.InitialEpoch + S{i}(end)/86400 >= ObservationSpan(pos))

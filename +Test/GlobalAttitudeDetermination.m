@@ -14,12 +14,12 @@ format long;
 %% Sensor information 
 % Covariance matrices
 Rm = 0.6^2 * eye(3);                % Magnetometer covariance matrix
-Rs = 1e-1^2 * eye(3);               % Sun vector covariance matrix
+Rs = 1e-2^2 * eye(3);               % Sun vector covariance matrix
 Rg = deg2rad(0.07)^2 * eye(3);      % Gyroscope covariance matrix
 
 %% Telemetry reading
 % Epoch
-t = (0:100:86400).'; 
+t = (0:5:3500).'; 
 D = datetime([2022 06 11]) + seconds(t);
 JD = juliandate(D);
 d = decyear(D);
@@ -38,7 +38,7 @@ SC_orbit = Orbit(Earth_obj.mu, 'COE', s0, JD(1)).SetFinalEpoch(JD(end)).SetCurre
 SC_orbit = SC_orbit.Propagate().Normalize(false, Earth_obj.Re);
 
 options = odeset('AbsTol', 1e-22, 'RelTol', 2.25e-14);
-[~, ASV] = ode113(@(t,s)DiffEvolution(t,s), SC_orbit.StateEvolution(:,1), [0;0;0;1;0;0.1;0], options);
+[~, ASV] = ode113(@(t,s)DiffEvolution(t,s), SC_orbit.StateEvolution(:,1), [0;0;0;1;0;0;0.1], options);
 
 index = zeros(1,length(SC_orbit.StateEvolution(:,1)));
 k = 1;
@@ -69,9 +69,8 @@ nref(:,4:6) = nref(:,4:6) ./ sqrt(dot(nref(:,4:6), nref(:,4:6), 2));
 omega = mvnrnd(ASV(:,5:7), Rg, length(t));
 nmeas = zeros(length(t), 6); 
 for i = 1:length(t)
-    Q = QuaternionAlgebra.right_isoclinic(ASV(i,1:4).');
-    y1 = Q * [nref(i,1:3).'; 0];
-    y2 = Q * [nref(i,4:6).'; 0];
+    y1 = QuaternionAlgebra.RotateVector(ASV(i,1:4).', nref(i,1:3).');
+    y2 = QuaternionAlgebra.RotateVector(ASV(i,1:4).', nref(i,4:6).');
     nmeas(i,:) = [y1(1:3,1).' ./ norm(y1(1:3,1).'), y2(1:3,1).' ./ norm(y2(1:3,1).')];
 end
 
@@ -148,18 +147,19 @@ end
 
 %% Attitude UKF estimation 
 % Some constants 
-Q = 1e-3 * eye(6);      % Process noise covariance
+Q = 1e-1 * eye(6);      % Process noise covariance
 
 % Resolution of Wahba's problem as initial conditions for the UKF 
-WSolver = Filters.WahbaSolver();
-[q0, Sigmaq] = WSolver.Davenports(ones(1, 2 * size(nmeas(1,:),1)), [nmeas(1,1:3).' nmeas(1,4:6).'], [nref(1,1:3).' nref(1,4:6).']);
+% WSolver = Filters.WahbaSolver();
+% [q0, Sigmaq] = WSolver.Davenports(ones(1, 2 * size(nmeas(1,:),1)), [nmeas(1,1:3).' nmeas(1,4:6).'], [nref(1,1:3).' nref(1,4:6).']);
 
 omega0 = omega(1,:).';                      % Initial angular velocity
 
 % Initial conditions 
-s0 = [q0; omega0];                          % Complete state vector
-Sigma0 = 1e-6 * eye(6);                     % Initial covariance matrix
-Sigma0(1:3,1:3) = Sigmaq;                   % Initial MPR covariance
+s0 = [rand(4,1); omega0];                          % Complete state vector
+s0(1:4,1) = s0(1:4,1) / norm(s0(1:4,1));
+Sigma0 = 1e-6 * eye(6);                            % Initial covariance matrix
+Sigma0(1:3,1:3) = 1e-6 * eye(3);                   % Initial MPR covariance
 
 % Propagation model 
 SS = @(s, time_step)StateEvolution(s, time_step);
@@ -168,10 +168,11 @@ SS = @(s, time_step)StateEvolution(s, time_step);
 % Construction of the estimator 
 tspan = t;
 StateDim = 6;
-USQUE_FC = Filters.USQUE('UKF-A', 2, 1e-2, 0, 1).AdditiveCovariances(Q, zeros(3));
+USQUE_FC = Filters.USQUE('UKF-A', 2, 1e-3, 0, 1);
 USQUE_FC = USQUE_FC.AssignStateProcess(StateDim, SS);
 USQUE_FC = USQUE_FC.Init();
 USQUE_FC = USQUE_FC.InitConditions(s0, Sigma0);
+USQUE_FC.InitFlag = true;
 
 % Preallocation     
 S = zeros(7,length(tspan));                            % State estimation
@@ -236,6 +237,7 @@ while (i <= length(tspan))
 
             % New initial conditions 
             State_C = State_C([7:size(State_C,1) 4:6],1);
+            USQUE_FC.InitFlag = true;
             USQUE_FC = USQUE_FC.InitConditions(State_C, Sigma_C);
             last_epoch = prop_epoch;
         end
@@ -288,15 +290,15 @@ xlabel('Mission time [s]')
 ylabel('$\hat{\textbf{q}}$')
 grid on;
 
-e = zeros(3,size(S,2)); 
+e = zeros(1,size(S,2)); 
 for i = 1:size(S,2)
-    E = QuaternionAlgebra.right_isoclinic(ASV(:,1:4).') * QuaternionAlgebra.quaternion_inverse(S(1:4,i));
-    e = QuaternionAlegbra.log_map(E, [0;0;0;1]);
+    error = QuaternionAlgebra.right_isoclinic(ASV(i,1:4).') * QuaternionAlgebra.quaternion_inverse(S(1:4,i));
+    e(i) = 2 * acos(error(4));%QuaternionAlgebra.log_map(error, [0;0;0;1]);
 end
 
 figure
 hold on 
-plot(tspan, e(1:3,:))
+plot(tspan, e)
 hold off
 xlabel('Mission time [s]')
 ylabel('$\textbf{e}_q$')
@@ -304,11 +306,10 @@ grid on;
 
 figure
 hold on 
-plot(tspan, ASV(:,5:7))
-scatter(tspan, S(5:7,:) )
+plot(tspan, rad2deg( ASV(:,5:7)-S(5:7,:).' ) )
 hold off
 xlabel('Mission time [s]')
-ylabel('$\hat{\textbf{\omega}}$ [deg/s]')
+ylabel('$\hat{\omega}$ [deg/s]')
 grid on;
 
 figure
@@ -327,11 +328,11 @@ function [sp] = DiffEvolution(time_step, s)
     omega = s(5:7,:);       % Angular velocity
 
     % Kinematics propagation 
-    dq = 0.5 * QuaternionAlgebra.right_isoclinic( q ) * [omega; 0];
+    dq = 0.5 * QuaternionAlgebra.right_isoclinic( [omega; 0] ) * q + 1e-3 * (1-q.'*q) * q;
     sp = [dq; zeros(3,1)];
 end
 
-function [sp] = StateEvolution(s,time_step)
+function [sp] = StateEvolution(s, time_step)
     % Constant 
     One = [0;0;0;1];        % Identity quaternion
 
@@ -344,7 +345,7 @@ function [sp] = StateEvolution(s,time_step)
     % Kinematics propagation 
     qp = s(1:4,:); 
     for i = 1:size(s,2)
-        qp(:,i) = QuaternionAlgebra.right_isoclinic(q(:,i)) * QuaternionAlgebra.exp_map([Omega(:,i); 0], One);
+        qp(:,i) = QuaternionAlgebra.right_isoclinic( QuaternionAlgebra.exp_map(Omega(:,i), One) ) * q(:,i);
     end
 
     sp = [qp; omega];
@@ -359,7 +360,7 @@ function [y] = MeasurementModel(s, r)
     y = zeros(size(r,1), size(s,2));
 
     for i = 1:size(s,2)
-        y(:,i) = QuaternionAlgebra.Quat2Matrix(s(1:4,i)) * r;
+        y(:,i) = QuaternionAlgebra.RotateVector(s(1:4,i), r);
     end
 
     % Final measurement vector
@@ -376,8 +377,8 @@ function [y] = FullMeasurementModel(s, r)
     y = zeros(size(r,1), size(s,2));
 
     for i = 1:size(s,2)
-        y(1:3,i) = QuaternionAlgebra.Quat2Matrix(s(1:4,i)) * r(1:3,1);
-        y(4:6,i) = QuaternionAlgebra.Quat2Matrix(s(1:4,i)) * r(4:6,1);
+        y(1:3,i) = QuaternionAlgebra.RotateVector(s(1:4,i), r(1:3,1));
+        y(4:6,i) = QuaternionAlgebra.RotateVector(s(1:4,i), r(4:6,1));
     end
 
     % Final measurement vector

@@ -15,5 +15,5 @@ function [q, Sigma] = AverageQuat(w, dq)
         Qi = QuaternionAlgebra.left_isoclinic(dq(:,i));
         R = R + w(i) * Qi(:,1:3) * Qi(:,1:3).';
     end
-    Sigma = (Q(:,1:3).' * R * Q(:,1:3))^(-1);
+    Sigma = (Q(:,1:3).' * R * Q(:,1:3)) \ eye(3);
 end

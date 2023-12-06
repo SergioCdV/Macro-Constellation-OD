@@ -23,7 +23,7 @@ if (1)
     InitialEpoch = juliandate(datetime('now'));         % Initial epoch in JD
     T = 1;                                              % Number of days 
     EndEpoch = juliandate(datetime('now')+days(T));     % End epoch
-    Step = 600;                                         % Integration step in seconds
+    Step = 60;                                          % Integration step in seconds
     tspan = 0:Step:T * 86400;                           % Relative lifetime in seconds
     
     % Target birth 
@@ -92,7 +92,7 @@ if (1)
     
     for i = 1:size(Plane,1)
         % Generate a random anomaly 
-        ElementSet = [Plane(i,1:5) deg2rad(60 *(i-1))];
+        ElementSet = [Plane(i,1:5) deg2rad(60 * (i-1))];
     
         % Add the orbit to the constellation
         AuxOrbit = Orbit(mu, ElementType, ElementSet, InitialEpoch + S{i}(1)/86400);
@@ -108,14 +108,14 @@ if (1)
     %% Sensor network 
     Pc = 0.0;                  % Probability of false measurements
     Vc = 0;                    % Number of false measurements per sensor (surveillance region)
-    
     PD = 0.98;                 % Detection probability
+    sampling_rate = 600;         % Sampling rate
     
     % Define an inertial observer
     InitialState = [0 1 0];
     InitialEpoch = juliandate(datetime('now'));
     Sigma = diag([5e1 5e1 5e1]);
-    InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD);
+    InObs = Sensors.GibbsSensor(InitialEpoch, InitialState, Sigma, PD, sampling_rate);
     
     % Define a radar topocentric observer located at the Equator
     InitialState = [36.533 -6.283];
@@ -179,7 +179,7 @@ if (1)
     
     for i = 1:length(index)
         if (index(i) <= size(InTime,1))
-            Sigma = diag([1e3 1e3 1e3]./[Re Re Re]);
+            Sigma = diag([5e2 5e2 5e2]./[Re Re Re]);
 
             L = 0;
             Measurements(i,2) = { InMeas(index(i)-L,:)./[1 Re Re Re] };
@@ -190,7 +190,7 @@ if (1)
             Measurements(i,7) = {'INERTIAL'};
 
         elseif (index(i) <= size(RadarTime,1) + size(InTime,1))
-            Sigma = diag([5e2 5e1].^2 ./ [Re Re/Tc].^2);
+            Sigma = diag([1e2 5e1].^2 ./ [Re Re/Tc].^2);
 
             L = size(InTime,1);
             Measurements(i,2) = { RdMeas(index(i)-L,:) };
@@ -334,12 +334,12 @@ yticklabels(strrep(yticklabels, '-', '$-$'));
 zticklabels(strrep(zticklabels, '-', '$-$'));
 
 % figure 
-% scatter(RdMeas(:,2)/Re, RdMeas(:,3)*Tc/Re, 'filled');
-% grid on; 
-% xlabel('$\rho$')
-% ylabel('$\dot{\rho}$')
-% xticklabels(strrep(xticklabels, '-', '$-$'));
-% yticklabels(strrep(yticklabels, '-', '$-$'));
+scatter(RdMeas(:,2)/Re, RdMeas(:,3)*Tc/Re, 'filled');
+grid on; 
+xlabel('$\rho$')
+ylabel('$\dot{\rho}$')
+xticklabels(strrep(xticklabels, '-', '$-$'));
+yticklabels(strrep(yticklabels, '-', '$-$'));
 
 figure 
 scatter(RaMeas(:,2), RaMeas(:,3), 'filled');
@@ -400,13 +400,17 @@ grid on;
 
 %% 
 % Anomaly plot 
-pos = 838;
+pos = 77;
 figure 
 view(3)
 hold on
 plot3(cos(MTT.nu), sin(MTT.nu), f{pos}); 
 for i = 1:min(size(x{pos},2), 1)
-    stem3(cos(x{pos}(8,i)), sin(x{pos}(8,i)), 1, 'r', 'filled');
+    s = Astrodynamics.Delaunay2MyElements(x{pos}(1:7,i), false);
+    s(1,1) = x{pos}(8,i);
+    s = Astrodynamics.Delaunay2COE(1, s, true);
+    M = s(end);
+    stem3(cos(M), sin(M), 1, 'r', 'filled');
 end
 xlabel('$X$')
 ylabel('$Y$')
@@ -421,7 +425,11 @@ end
 legend('$f(M)$', '$\hat{M}_i$', '$M$', 'AutoUpdate', 'off')
 plot(cos(MTT.nu), sin(MTT.nu), 'k');
 for i = 2:size(x{pos},2)
-    stem3(cos(x{pos}(8,i)), sin(x{pos}(8,i)), 1, 'r', 'filled');
+    s = Astrodynamics.Delaunay2MyElements(x{pos}(1:7,i), false);
+    s(1,1) = x{pos}(8,i);
+    s = Astrodynamics.Delaunay2COE(1, s, true);
+    M = s(end);
+    stem3(cos(M), sin(M), 1, 'r', 'filled');
 end
 for i = 2:size(Constellation_1.OrbitSet,1)
     if (Constellation_1.OrbitSet{i,2}.InitialEpoch + S{i}(end)/86400 >= ObservationSpan(pos))
