@@ -28,6 +28,8 @@ classdef PHIOD_filter < Filters.BayesFilter
         % Kalman Filter 
         KF_type = 'UKF-A';
         PD_tol = 1e-6;
+        a = 1; 
+        f = 4; 
 
         % Phase space delimiters 
         Lmin = 1.03;

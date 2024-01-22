@@ -20,7 +20,7 @@ end
 %% Estimation: IOD
 % Estimator configuration
 PD = 0.9;                                               % Probability of detection
-PHIOD_filter = Filters.PHIOD_filter(1, 1e3, PS, PD);    % Filter initialization
+PHIOD_filter = Filters.PHIOD_filter(1, 1e2, PS, PD);    % Filter initialization
 
 PHIOD_filter.Jmax = 100;                                % Maximum number of mixture components
 

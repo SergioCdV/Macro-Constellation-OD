@@ -1,6 +1,3 @@
-%% In-orbit validation %% 
-% Sergio Cuevas del Valle
-
 %% Global attitude determination
 % This file provides the function to provide global attitude determination for a given spacecraft.
 

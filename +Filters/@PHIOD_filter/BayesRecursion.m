@@ -16,11 +16,11 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
     switch (obj.KF_type)
         case 'UKF-A'
-            ScEstimator = Filters.USQUE('UKF-A', 2, 1E-2, 0, 1);
+            ScEstimator = Filters.USQUE('UKF-A', 2, 1E-2, 0, obj.a, obj.f);
             ScEstimator.StateDim = pos-1;
             ScEstimator = ScEstimator.AdditiveCovariances(Q, zeros(3)).Init();
         case 'UKF-S'
-            ScEstimator = Filters.USQUE('UKF-S', 2, 1E-2, 0, 1);
+            ScEstimator = Filters.USQUE('UKF-S', 2, 1E-2, 0, obj.a, obj.f);
             ScEstimator.StateDim = pos-1;
             ScEstimator = ScEstimator.AdditiveCovariances(Q, zeros(3)).Init();
     end
@@ -136,7 +136,7 @@ function [X, N, Prior, E] = BayesRecursion(obj, tspan, Measurements)
 
             % Pruning of the weights and merging of the particles
             [particles, weights] = obj.Pruning(particles, weights);
-%               [particles, weights] = obj.Resampling(particles, weights, obj.Jmax);
+%             [particles, weights] = obj.Resampling(particles, weights, obj.Jmax);
         else
             % Propagate to the new epoch the clustered states
             prop_epoch = tspan(i);
