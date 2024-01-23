@@ -43,11 +43,11 @@ index = logical(randsrc(size(s,1), 1, [0, 1; 1-PD, PD]));        % Observation e
 
 % Observed state vector
 sobs = [tp(index) s(index,:)];
-meas = sobs;
 
-% % Measurements with some noise 
-for i = 1:size(meas,1)
-    meas(i,2:end) = mvnrnd(sobs(i,2:end), Pobs, 1);
+meas = sobs;
+for i = 1:size(sobs,1)
+    meas(i,2:end) = observation_model(sobs(i,2:end));   % Go through the measurement model
+    meas(i,2:end) = mvnrnd(sobs(i,2:end), Pobs, 1);     % Add some noises
 end
 
 %% Offline estimation (EKF)
