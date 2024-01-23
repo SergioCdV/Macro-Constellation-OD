@@ -62,13 +62,13 @@ classdef EKF < Filters.BayesFilter
 
     % Internal methods
     methods 
-        % UKF estimation 
+        % EKF estimation 
         function [obj] = BayesStep(obj, time_step, z)
             % Prediction step 
             [state, sigma, y, H, K] = PropagationStep(obj, time_step);
 
             % Correction step 
-            [state, sigma] = CorrectionStep(obj, state, sigma, y, z, H, K); 
+            [state, sigma] = CorrectionStep(obj, state, sigma, z); 
 
             % Clock update 
             obj.Clock = obj.Clock + time_step;
@@ -83,8 +83,7 @@ classdef EKF < Filters.BayesFilter
         [State, Sigma, y, H, P, K] = PropagationStep(obj, time_step);
         
         % EKF correction
-        [State, Sigma] = CorrectionStep(obj, State, Sigma, y, z, H, K) ;
-
+        [State, Sigma] = CorrectionStep(obj, State, Sigma, z) ;
     end
 end
 

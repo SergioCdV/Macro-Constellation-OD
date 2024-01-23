@@ -1,6 +1,6 @@
 
 
-function [State, Sigma] = CorrectionStep(obj, z, State, Sigma)        
+function [State, Sigma] = CorrectionStep(obj, State, Sigma, z)        
     % Measurement prediction 
     [y, H] = obj.ObservationModel(State);
 

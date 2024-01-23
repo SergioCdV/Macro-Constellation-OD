@@ -1,7 +1,7 @@
 %% Orbital estimation Example %%
 % Author: Sergio Cuevas 
 % Date: 22/01/2024
-% This file provides an EKF filter implementation for the Milankovitch dynamics
+% This file provides an UKF filter implementation for the Milankovitch dynamics
 
 clear; 
 close all; 
@@ -63,10 +63,13 @@ s_dim = 7;              % Dimension of the state vector
 y_dim = 7;              % Dimension of the observation vector
 
 % Estimator setup
-EKF_estimator = Filters.EKF();
-EKF_estimator = EKF_estimator.AssignStateProcess(s_dim, @(Q, s, sigma, time_step)state_model(J2, Keci, Q, s, sigma, time_step));
-EKF_estimator = EKF_estimator.AssignObservationProcess(y_dim, @(s)observation_model(s));
-EKF_estimator = EKF_estimator.AdditiveCovariances(Q, R);
+beta = 2; 
+alpha = 1E-3; 
+k = 0;
+UKF_estimator = Filters.UKF('UKF-A', beta, alpha, k);
+UKF_estimator = UKF_estimator.AdditiveCovariances(Q, R);
+UKF_estimator = UKF_estimator.AssignStateProcess(s_dim, @(s, time_step)state_model(J2, Keci, s, time_step)).Init();
+UKF_estimator = UKF_estimator.AssignObservationProcess(y_dim, @(s)observation_model(s));
 
 % Initial conditions 
 se = [0; 0; 1.5; 0; 0; 0.01; 0];        % Estimator initial conditions 
@@ -80,14 +83,12 @@ while (i <= size(meas,1))
     % Propagation 
     tic 
     dt = meas(i,1) - epoch;
-    if (dt > 0)
-        EKF_estimator.State = se;
-        EKF_estimator.Sigma = Pe;
-        [se, Pe] = EKF_estimator.PropagationStep(dt);
-    end
+    UKF_estimator.State = se;
+    UKF_estimator.Sigma = Pe;
+    [sigma_points, se, Pe] = UKF_estimator.PropagationStep(dt);
 
     % Correction
-    [se, Pe] = EKF_estimator.CorrectionStep(se, Pe, meas(i,2:end).');
+    [se, Pe] = UKF_estimator.CorrectionStep(sigma_points, se, Pe, meas(i,2:end).');
 
     % Save results
     S(:,i) = se;                                   % Corrected state
@@ -237,17 +238,18 @@ xlabel('$t$')
 
 %% Auxiliary functions 
 % Propagation model 
-function [s, P] = state_model(J2, Keci, Q, s0, P0, dt)
+function [s] = state_model(J2, Keci, s0, dt)
     % Integration of the state vector 
     options = odeset('AbsTol', 1E-22, 'RelTol', 2.25E-14);      % Integration tolerances
+    
+    s = s0;
 
-    [~, s] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(J2, Keci, t, s), [0 dt], s0, options);
-
-    % Integration of the covariance matrix 
-    A = Astrodynamics.milankovitch_jacobian(J2, Keci, s0);
-    Phi = expm(A * dt);
-    P = Phi * P0 * Phi.' + Q;
-    s = s(end,:).';
+    if (dt > 0)
+        for i = 1:size(s0,2)
+            [~, saux] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(J2, Keci, t, s), [0 dt], s0(:,i), options);
+            s(:,i) = saux(end,:).';
+        end
+    end
 end
 
 % Observation model 
