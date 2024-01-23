@@ -16,6 +16,9 @@
 % Outputs: - vector ds, the dynamics of the orbital set
 
 function [ds] = milankovitch_dynamics(J2, Keci, t, s)
+    % Reshape 
+    s = reshape(s, 7, []); 
+
     % State vector partition 
     h = s(1:3,:);                       % Angular momentum vector 
     e = s(4:6,:);                       % Eccentricity vector 
@@ -32,7 +35,9 @@ function [ds] = milankovitch_dynamics(J2, Keci, t, s)
     zeta = Keci.' * uH;                 % Cosine of the inclination
 
     % Dynamics
-    ds(1:3,:) = + 3*n*J2 ./ (4*p.^2) .* QuaternionAlgebra.hat_map(Keci) * (zeta.*uH);
-    ds(4:6,1) = - 3*n*J2 ./ (4*p.^2) .* QuaternionAlgebra.hat_map( (1-5*zeta.^2).*uH + 2 * zeta * Keci ) * e;
+    ds(1:3,:) = + 3*n*J2 ./ (4*p.^2) .* ( QuaternionAlgebra.hat_map(Keci) * (zeta.*uH) );
+    ds(4:6,:) = - 3*n*J2 ./ (4*p.^2) .* cross( (1-5*zeta.^2).*uH + 2 * zeta .* repmat(Keci, 1, length(zeta)), e);
     ds(7,:) = n + 3*n*J2 ./ (4*p.^2) .* (eta .* (3*zeta.^2-1) + 5 * zeta.^2 - 2 * zeta - 1);
+
+    ds = reshape(ds, [], 1);
 end

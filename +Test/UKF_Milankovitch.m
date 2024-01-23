@@ -242,13 +242,13 @@ function [s] = state_model(J2, Keci, s0, dt)
     % Integration of the state vector 
     options = odeset('AbsTol', 1E-22, 'RelTol', 2.25E-14);      % Integration tolerances
     
-    s = s0;
-
     if (dt > 0)
-        for i = 1:size(s0,2)
-            [~, saux] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(J2, Keci, t, s), [0 dt], s0(:,i), options);
-            s(:,i) = saux(end,:).';
-        end
+        S0 = reshape(s0, [], 1);
+        [~, saux] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(J2, Keci, t, s), [0 dt], S0, options);
+        s = saux(end,:); 
+        s = reshape(s, size(s0));
+    else
+        s = s0;
     end
 end
 
