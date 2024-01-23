@@ -17,22 +17,22 @@
 
 function [ds] = milankovitch_dynamics(J2, Keci, t, s)
     % State vector partition 
-    h = s(1:3,1);                       % Angular momentum vector 
-    e = s(4:6,1);                       % Eccentricity vector 
-    l = s(7,1);                         % Longitude
+    h = s(1:3,:);                       % Angular momentum vector 
+    e = s(4:6,:);                       % Eccentricity vector 
+    l = s(7,:);                         % Longitude
 
     % Constants of the dynamics 
-    h_norm = norm(h);                   % Angular momentum
-    uH = h / h_norm;                    % Angular momentum unit vector
-    e_norm = norm(e);                   % Orbital eccentricity
-    p = h_norm^2;                       % Semilatus rectum
-    a = p^2 / (1-e_norm^2);             % Semimajor axis 
-    eta = sqrt(1-e_norm^2);             % Eccentricity function
-    n = a^(-3/2);                       % Mean motion
-    zeta = dot(Keci, uH);
+    p = dot(h,h,1);                     % Semilatus rectum
+    h_norm = sqrt(p);                   % Angular momentum
+    uH = h ./ h_norm;                   % Angular momentum unit vector
+    e_norm = sqrt(dot(e,e,1));          % Orbital eccentricity
+    a = p.^2 ./ (1-e_norm.^2);          % Semimajor axis 
+    eta = sqrt(1-e_norm.^2);            % Eccentricity function
+    n = a.^(-3/2);                      % Mean motion
+    zeta = Keci.' * uH;                 % Cosine of the inclination
 
     % Dynamics
-    ds(1:3,1) = - 3*n*J2 / (4*p^2) * cross(zeta*uH, Keci);
-    ds(4:6,1) = - 3*n*J2 / (4*p^2) * cross((1-5*zeta^2)*uH + 2 * zeta * Keci, e);
-    ds(7,1) = n + 3*n*J2 / (4*p^2) * (eta * (3*zeta^2-1) + 3*zeta^2 - 1);
+    ds(1:3,:) = + 3*n*J2 ./ (4*p.^2) .* QuaternionAlgebra.hat_map(Keci) * (zeta.*uH);
+    ds(4:6,1) = - 3*n*J2 ./ (4*p.^2) .* QuaternionAlgebra.hat_map( (1-5*zeta.^2).*uH + 2 * zeta * Keci ) * e;
+    ds(7,:) = n + 3*n*J2 ./ (4*p.^2) .* (eta .* (3*zeta.^2-1) + 5 * zeta.^2 - 2 * zeta - 1);
 end

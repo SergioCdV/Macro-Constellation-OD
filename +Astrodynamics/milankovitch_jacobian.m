@@ -18,18 +18,16 @@ function [J] = milankovitch_jacobian(J2, Keci, s)
     % State vector partition 
     h = s(1:3,1);                       % Angular momentum vector 
     e = s(4:6,1);                       % Eccentricity vector 
-    l = s(7,1);                         % Longitude
 
     % Constants of the dynamics 
     h_norm = norm(h);                   % Angular momentum
     uH = h / h_norm;                    % Angular momentum unit vector
     e_norm = norm(e);                   % Orbital eccentricity
-    i = e / e_norm;                     % Orbital eccentricity unit vector
     p = h_norm^2;                       % Semilatus rectum
     a = p^2 / (1-e_norm^2);             % Semimajor axis 
     eta = sqrt(1-e_norm^2);             % Eccentricity function
     n = a^(-3/2);                       % Mean motion
-    zeta = dot(Keci, uH);
+    zeta = dot(Keci, uH);               % Cosine of the inclination
 
     % Jacobian 
     J = zeros(size(s,1), size(s,1)); 
