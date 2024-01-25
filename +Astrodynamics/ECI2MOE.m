@@ -12,10 +12,7 @@
 
 % Outputs: - vector S, the transformed orbital state vector
 
-function [S] = ECI2MOE(obj, s, direction)
-    % Constants 
-    mu = obj.mu; 
-    
+function [S] = ECI2MOE(mu, s, direction)
     % Switch directions 
     if (direction)
         % Preallocation 

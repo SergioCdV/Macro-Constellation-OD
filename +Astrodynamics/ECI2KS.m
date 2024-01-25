@@ -10,10 +10,7 @@
 
 % Outputs: - array S, the transformed state vector
 
-function [S] = ECI2KS(obj, x, direction)
-    % Constants
-    mu = obj.mu; 
-
+function [S] = ECI2KS(mu, x, direction)
     % Compute the mapping
     if (direction)
         % Preallocation 

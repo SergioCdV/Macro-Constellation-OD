@@ -11,10 +11,7 @@
 
 % Ouputs: - vector elements, containing the mean classical Euler orbital elements (a, e, RAAN, i, omega, M, p)
 
-function [elements] = ECI2COE(obj, s, direction)
-    % Constants
-    mu = obj.mu; 
-    
+function [elements] = ECI2COE(mu, s, direction)    
     % Main computation 
     if (direction)
         % Preallocation 

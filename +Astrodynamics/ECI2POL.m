@@ -10,7 +10,7 @@
 
 % Outputs: - array S, the transformed state vector
 
-function [S] = ECI2POL(obj, x, direction)
+function [S] = ECI2POL(x, direction)
     s = x.'; 
 
     % Sanity check on the s dimensions 
