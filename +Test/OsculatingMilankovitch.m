@@ -40,6 +40,9 @@ end
 
 fclose(fid);                    % Close file
 
+model = 'SGP4';
+options = odeset('AbsTol', 1E-22, 'RelTol', 2.24E-14);
+
 %% Verification and validation of the propagator
 % Preallocation of variables
 curobj = 0;     % Current object index
@@ -67,28 +70,51 @@ while ( ischar(line1) )
         tle = tles{ind};
 
     elseif (curobj > 0)
-        %% SGP4 MODEL PROPAGATION
-        % Initial conditions for the Milankovitch elements
-        mu = tle.rec.mu;                                               % Gravitational constant used (check for correct units in the other propagator!!!)
+        %% PROPAGATION
+        % Dimensional units 
+        mu = tle.rec.mu;                            % Gravitational constant used        
+        L = tle.rec.radiusearthkm;                  % Characteristic length
+        T = sqrt( L^3 / mu );                       % Characteristic time                                      
  
         % Get the initial Milankovitch elements conditions in the TEME frame from the TLE (which is approximately equivalent to Brouwer's elements)
-        a = (mu / (2*pi/86400 * tle.n)^2)^(1/3);
+        a = (mu / (2*pi/86400 * tle.n)^2)^(1/3);                                    % Mean semimajor axis
         meanElements = [a tle.ecc tle.raanDeg tle.incDeg tle.argpDeg tle.maDeg];    % Mean COE elements
-        meanElements(3:end) = deg2rad(meanElements(3:end));  
-        RV = Astrodynamics.ECI2COE(mu, meanElements, false).';                      % Cartesian elements
-
-        % Initial conditions 
-        s0 = Astrodynamics.MKV2ECI(mu, RV, false);                                             
-
-        options = odeset('AbsTol', 1E-22, 'RelTol', 2.24E-14);
+        meanElements(3:end) = deg2rad(meanElements(3:end));                         % All angles in radians
+        meanElements(1) = meanElements(1) / L;                                      % Non-dimensional semimajor axis
+        s0 = Astrodynamics.ECI2COE(1, meanElements, false).';                       % Cartesian elements
+        s0 = Astrodynamics.MKV2ECI(1, s0, false);                                   % Initial mean Milankovitch elements
 
         % Propagation
         verout = sscanf(line1, '%f');   % TLE output data for verification purposes
-
-        % Propagate to the given epoch by means of the SGP4 model
         elapsed_epoch = verout(1);      % Elapsed time to propagate since the generation of the TLE (initial conditions)
-        rv = tle.getRV(elapsed_epoch);  % TEME propagated Cartesian elements
-        mu = tle.rec.mu;                % Gravitational constant used (check for correct units in the other propagator!!!)
+        
+        switch (model)
+            case 'SGP4'
+                % Propagate to the given epoch by means of the SGP4 model
+                rv = tle.getRV(elapsed_epoch);                  % TEME propagated Cartesian elements
+                rv = reshape(rv, [], 1);
+
+            case 'APSO'
+                % Propagate to the given epoch by means of the osculating J2 problem model
+                rv0 = tle.getRV(0);                             % TEME propagated Cartesian elements (initial osculating conditions)
+                rv0 = reshape(rv0, [], 1);
+                
+                % Propagation
+                if (elapsed_epoch > 0)
+                    tspan = linspace(0, elapsed_epoch * 60, 1E1) / T;
+                    rv0(1:3,1) = rv0(1:3,1) / L;
+                    rv0(4:6,1) = rv0(4:6,1) / L * T;
+                    [~, rv] = ode113(@(t,s)Astrodynamics.APSO_dynamics(1, tle.rec.j2, 1, s, 0, 0), tspan, rv0);
+                    rv = rv(end,:).';
+                    rv(1:3,1) = rv(1:3,1) * L;
+                    rv(4:6,1) = rv(4:6,1) * L / T;
+                else
+                    rv = rv0;
+                end
+            
+            otherwise
+                error('No valid dynamics model was selected');
+        end
         
         % Original code reused RV so if there is an error we need to carry old values
         if (tle.sgp4Error > 0)
@@ -97,21 +123,14 @@ while ( ischar(line1) )
 
         % Compute the osculating, propagated SPG4 perifocal triad (angular momentum, eccentricity and Hamilton's vector) in the TEME frame
         cnt = cnt + 1;
-        RV(:,cnt) = [rv(:,1); rv(:,2)];
+        RV(:,cnt) = rv;
 
         %% Compute the very same quantities by propagating the Milankovitcch elements
-        % Dimensional untis 
-        L = tle.rec.radiusearthkm;                  % Characteristic length
-        T = sqrt( L^3 / mu );                       % Characteristic time
-
-        % Propagate them 
-        elapsed_epoch = elapsed_epoch * 60;         % Propagation time in seconds   
-
-        tspan = linspace(0, elapsed_epoch, 1E2) / T;
-        s0(1:3,1) = s0(1:3,1) * (T / L^2);
-
         if (elapsed_epoch > 0)
-            [~, s] = ode113(@(t,s)Astrodynamics.milankovitch_dynamics(tle.rec.j2, [0;0;1], t, s), tspan, s0, options);
+            % Propagate them 
+            elapsed_epoch = elapsed_epoch * 60;             % Propagation time in seconds   
+            tspan = linspace(0, elapsed_epoch, 1E2) / T;
+            [~, s] = ode113(@(t,s)Astrodynamics.milankovitch_dynamics(0*tle.rec.j2, [0;0;1], t, s), tspan, s0, options);
             s = s(end,:).';
         else
             s = s0;
@@ -120,7 +139,7 @@ while ( ischar(line1) )
         % Save the results for the further processing
         eci_rv = Astrodynamics.MKV2ECI(1, s, true);
         LM = Astrodynamics.Lara2ECI(s(3,1), eci_rv, false);
-        LEO = Astrodynamics.Lara_solution(0, s(3,1), LM);
+        LEO = Astrodynamics.BrouwerLaraCorrections(tle.rec.j2, tle.rec.j3, s(3,1), LM);
         RV2(:,cnt) = Astrodynamics.Lara2ECI(s(3,1), LEO, true);
         RV2(1:3,cnt) = RV2(1:3,cnt) * L;
         RV2(4:6,cnt) = RV2(4:6,cnt) * L / T;
@@ -130,6 +149,7 @@ while ( ischar(line1) )
 
     line1 = fgetl(fid);
 end
+
 fclose(fid);
 
 %% Analysis

@@ -59,8 +59,8 @@ classdef TLE < handle
             tmp(2) ='.';
             this.nddot = str2double(tmp);
             ev = str2double(this.line1(51:52));
-            this.nddot = 0 * this.nddot * (10^ev);
-            this.nddot = 0 * tm*this.nddot;
+            this.nddot = this.nddot * (10^ev);
+            this.nddot = tm*this.nddot;
         
             % Bstar coefficient (floating point assumed)
             tm = 1;
@@ -114,8 +114,8 @@ classdef TLE < handle
             this.rec.ecco =   this.ecc;
         
             this.rec.no_kozai = this.n/xpdotp;
-            this.rec.ndot =     0 * this.ndot / (xpdotp*1440.0);
-            this.rec.nddot =    0 * this.nddot / (xpdotp*1440.0*1440.0);
+            this.rec.ndot =     this.ndot / (xpdotp*1440.0);
+            this.rec.nddot =    this.nddot / (xpdotp*1440.0*1440.0);
         
             % Initialize the remaining temporal variables
             SGP4.SGP4().sgp4init('a', this.rec);

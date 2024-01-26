@@ -1,13 +1,14 @@
 
-function [S] = Lara_solution(epsilon, H, L)
-    % Delaunay to Lara variables 
-    epsilon = epsilon/4;              % J2/4
+function [S] = BrouwerLaraCorrections(J2, J3, H, L)
+    % Perturbations parameters in the expansion of the Hamiltonian
+    epsilon(1) = -J2/4;              % 1/4 J2 * 1       (non-dimensional Re)
+    epsilon(2) = +(J3/J2) / 2;       % 1/2 (J3/J2) * 1  (non-dimensional Re)
 
     % Mean to long-period transformation
-    Ll = L; %Mean2Long(+epsilon, L);
+    L_long = Mean2Long(epsilon(2), L);
 
     % Long-period to osculating transformation
-    S = Long2Osc(H, -epsilon, Ll);   % -J2/4
+    S = Long2Osc(H, epsilon(1), L_long);  
 end
 
 %% Auxiliary functions 
@@ -18,21 +19,22 @@ function [Do] = Mean2Long(epsilon, L)
     xi = L(3);       
     r = L(4);           
     R = L(5);           
-    Theta = L(6);         
+    Theta = L(6);               % Angular momentum       
 
     % Auxiliary functions 
-    p = Theta^2;
-    k = -1+p/r;
+    p = Theta^2;            % Semilatus rectum
+    k = p/r-1;
     sigma = p*R/Theta;
-    epsilon = epsilon/p^2;
+    eps = epsilon/p;        % 1/2 (J3/J2)(Re/p)
+    c = sqrt(1-chi^2-xi^2);
 
     % Transformation
-    psi_l = psi;                                                     % no J3
-    chi_l = chi + 7/8 * epsilon * (xi*(k^2-sigma^2)+2*k*sigma*chi);
-    xi_l = xi -7/8 * epsilon * (chi*(k^2-sigma^2)-2*k*sigma*xi);
-    r_l = r;                                                         % no J3
-    R_l = R;                                                         % no J3
-    Theta_l = Theta;                                                 % no J3
+    psi_l = psi + eps * (2*xi + (k*xi-c*chi*sigma) / (1+c));
+    chi_l = chi + eps * (2*xi^2 + k * (1-chi^2));
+    xi_l = xi - eps * (c^2*sigma + (2+k)*chi*xi);                                              
+    r_l = r + eps * chi * p;
+    R_l = R + eps * (1+k) * xi * Theta/r;
+    Theta_l = Theta + eps * (k*chi - sigma*xi) * Theta;
 
     % Output
     Do = [psi_l, chi_l, xi_l, r_l, R_l, Theta_l].';
@@ -45,11 +47,11 @@ function [Lo] = Long2Osc(H, epsilon, L)
     xi = L(3);       
     r = L(4);           
     R = L(5);           
-    Theta = L(6);     
+    Theta = L(6);               % Angular momentum
 
-    p = Theta^2;
-    c = H/Theta;
-    epsilon = epsilon/p^2; 
+    p = Theta^2;                % Semilatus rectum
+    c = H/Theta;                % Cosine of the inclination
+    epsilon = epsilon/p^2;      % J2/p^2
 
     % Transformation
     psi_o = psi - epsilon * (1+7*c)/(1+c) * chi * xi;

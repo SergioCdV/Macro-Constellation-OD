@@ -29,13 +29,13 @@ function [ds] = milankovitch_dynamics(J2, Keci, t, s)
     h_norm = sqrt(p);                   % Angular momentum
     uH = h ./ h_norm;                   % Angular momentum unit vector
     e_norm = sqrt(dot(e,e,1));          % Orbital eccentricity
-    a = p.^2 ./ (1-e_norm.^2);          % Semimajor axis 
+    a = p ./ (1-e_norm.^2);             % Semimajor axis 
     eta = sqrt(1-e_norm.^2);            % Eccentricity function
     n = a.^(-3/2);                      % Mean motion
     zeta = Keci.' * uH;                 % Cosine of the inclination
 
     % Dynamics
-    ds(1:3,:) = + 3*n*J2 ./ (4*p.^2) .* ( QuaternionAlgebra.hat_map(Keci) * (zeta.*uH) );
+    ds(1:3,:) = - 3*n*J2 ./ (2*p.^2) .* zeta .* QuaternionAlgebra.hat_map(Keci) * h;
     ds(4:6,:) = - 3*n*J2 ./ (4*p.^2) .* cross( (1-5*zeta.^2).*uH + 2 * zeta .* repmat(Keci, 1, length(zeta)), e);
     ds(7,:) = n + 3*n*J2 ./ (4*p.^2) .* (eta .* (3*zeta.^2-1) + 5 * zeta.^2 - 2 * zeta - 1);
 
