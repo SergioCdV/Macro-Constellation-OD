@@ -73,7 +73,7 @@ classdef TLE < handle
             this.bstar = str2double(tmp);
             ev = str2double(this.line1(60:61));
             this.bstar = this.bstar * (10^ev);
-            this.bstar = 0 * tm * this.bstar;
+            this.bstar = tm * this.bstar;
         
             % Epoch 
             this.elnum = str2double(strtrim(this.line1(65:68)));
@@ -106,7 +106,7 @@ classdef TLE < handle
             this.rec.elnum = this.elnum;
             this.rec.revnum = this.revnum;
             this.rec.satnum = this.objectNum;
-            this.rec.bstar =  0 * this.bstar;
+            this.rec.bstar =  this.bstar;
             this.rec.inclo =  this.incDeg  * deg2rad;
             this.rec.nodeo =  this.raanDeg * deg2rad;
             this.rec.argpo =  this.argpDeg * deg2rad;
