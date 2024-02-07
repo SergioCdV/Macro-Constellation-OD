@@ -37,7 +37,7 @@ while ( ischar(line1) )
     line1 = fgetl(fid);
 end
 
-fclose(fid);                    % Close file
+fclose(fid);                             % Close file
 
 %% Verification and validation of the propagator
 % Dimensional units 
@@ -45,13 +45,15 @@ mu = tle.rec.mu;                            % Gravitational constant used
 L = tle.rec.radiusearthkm;                  % Characteristic length
 T = sqrt( L^3 / mu );                       % Characteristic time                                      
 
-% Get the initial Milankovitch elements conditions in the TEME frame from the TLE (which is approximately equivalent to Brouwer's elements)
-a = (mu / (2*pi/86400 * tle.n)^2)^(1/3);                                    % Mean semimajor axis
-meanElements = [a tle.ecc tle.raanDeg tle.incDeg tle.argpDeg tle.maDeg];    % Mean COE elements
-meanElements(3:end) = deg2rad(meanElements(3:end));                         % All angles in radians
-meanElements(1) = meanElements(1) / L;                                      % Non-dimensional semimajor axis
-s0 = Astrodynamics.ECI2COE(1, meanElements, false).';                       % Cartesian elements
-s0 = Astrodynamics.MKV2ECI(1, s0, false);                                   % Initial mean Milankovitch elements
+% Get the initial Milankovitch elements conditions in the TEME frame from the TLE (which is approximately equivalent to Brouwer's elements)ç
+meanElements = [tle.n * 2*pi/1440 tle.ecc tle.raanDeg tle.incDeg tle.argpDeg tle.maDeg];      % Mean COE elements
+meanElements(3:end) = deg2rad(meanElements(3:end));                                           % All angles in radians
+
+% Un-kozai the mean motion
+meanElements = Astrodynamics.TLE2COE(tle.rec.xke, tle.rec.j2, meanElements, true);
+
+% Initial conditions
+s0 = Astrodynamics.MKV2COE(1, meanElements, false);                         % Initial mean Milankovitch elements                                
 
 % TEME propagated Cartesian elements (initial osculating conditions in TEME)
 rv0 = tle.getRV(0);                                                         
@@ -64,7 +66,7 @@ model = 'SGP4';
 options = odeset('AbsTol', 1E-22, 'RelTol', 2.24E-14);
 
 % Elapsed time to propagate since the generation of the TLE (initial conditions)
-elapsed_epoch = linspace(0, 1 * 86400, 1E2);    % Seconds since the TLE epoch
+elapsed_epoch = linspace(0, 7 * 86400, 1E2);    % Seconds since the TLE epoch
 
 % Preallocation for speed 
 RV = zeros(6,length(elapsed_epoch));            % TEME Cartesian state vector from SGP4
@@ -73,12 +75,12 @@ RV2 = RV;                                       % TEME Cartesian state vector fr
 for i = 1:length(elapsed_epoch)
 
     dt = elapsed_epoch(i) - elapsed_epoch(1);   % Propagation step in seconds
-    dt_min = dt / 60;                           % Propagation step in minutes
-
+    
     switch (model)
         case 'SGP4'
             % Propagate to the given epoch by means of the SGP4 model
-            rv = tle.getRV(dt_min);                 % TEME propagated Cartesian elements
+            dt_min = dt / 60;                   % Propagation step in minutes
+            rv = tle.getRV(dt_min);             % TEME propagated Cartesian elements
             rv = reshape(rv, [], 1);
             sgp_rv(1:3,1) = rv(1:3,1) / L;      % Non-dimensional position
             sgp_rv(4:6,1) = rv(4:6,1) / L * T;  % Non-dimensional velocity
@@ -86,8 +88,8 @@ for i = 1:length(elapsed_epoch)
         case 'APSO'
             % Propagate to the given epoch by means of the osculating J2 problem model
             if (dt > 0)
-                tspan = linspace(0, dt, 1E2) / T;
-                [~, rv] = ode45(@(t,s)Astrodynamics.APSO_dynamics(1, tle.rec.j2, 1, s, 0, 0), tspan, rv0, options);
+                tspan = linspace(0, dt / T, 1E3);
+                [~, rv] = ode45(@(t,s)Astrodynamics.APSO_dynamics(1, tle.rec.j2, 1, s, 0, 0), [0 dt / T], rv0, options);
                 sgp_rv = rv(end,:).';
 %                 rv(1:3,1) = rv(1:3,1) * L;
 %                 rv(4:6,1) = rv(4:6,1) * L / T;
@@ -102,7 +104,7 @@ for i = 1:length(elapsed_epoch)
     % Compute the very same quantities by propagating the Milankovitcch elements
     if (dt > 0)
         % Propagate them   
-        tspan = linspace(0, dt, 1E3) / T;
+        tspan = linspace(0, dt / T, 1E4);
         [~, s] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(1, tle.rec.j2, [0;0;1], t, s), tspan, s0, options);
         s = s(end,:).';
     else
@@ -127,13 +129,13 @@ end
 % Orbit geometry error quantities
 r_error = RV(1:3,:) - RV2(1:3,:);
 r_error = sqrt(dot(r_error, r_error, 1));             % Propagated angular momentum relative error to the SGP4 reference
-r_error = r_error;
+r_error = r_error * L;
 mu_rerr = mean(r_error);                              % Mean of the position vector error to the SGP4 reference
 sigma_rerr = std(r_error);                            % Standard deviation of the position vector error to the SGP4 reference
 
 v_error = RV(4:6,:) - RV2(4:6,:);
 v_error = sqrt(dot(v_error, v_error, 1));             % Propagated velocity vector error to the SGP4 reference
-v_error = v_error;
+v_error = v_error * L / T;
 mu_verr = mean(v_error);                              % Mean of the velocity vector error to the SGP4 reference
 sigma_verr = std(v_error);                            % Standard deviation of the velocity vector error to the SGP4 reference
 
@@ -172,7 +174,7 @@ legend('SGP4', 'MKV')
 figure
 subplot(3,1,1)
 hold on
-plot(elapsed_epoch / 60, RV(1,:), 'b')
+scatter(elapsed_epoch / 60, RV(1,:), 'b*')
 scatter(elapsed_epoch / 60, RV2(1,:), 'r')
 ylabel('X')
 legend('SGP4', 'MKV')
@@ -180,7 +182,7 @@ grid on;
 
 subplot(3,1,2)
 hold on
-plot(elapsed_epoch / 60, RV(2,:), 'b')
+scatter(elapsed_epoch / 60, RV(2,:), 'b*')
 scatter(elapsed_epoch / 60, RV2(2,:), 'r')
 ylabel('Y')
 legend('SGP4', 'MKV')
@@ -188,7 +190,7 @@ grid on;
 
 subplot(3,1,3)
 hold on
-plot(elapsed_epoch / 60, RV(3,:), 'b')
+scatter(elapsed_epoch / 60, RV(3,:), 'b*')
 scatter(elapsed_epoch / 60, RV2(3,:), 'r')
 ylabel('Z')
 legend('SGP4', 'MKV')

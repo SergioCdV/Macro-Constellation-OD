@@ -21,7 +21,7 @@ function [s] = MKV2COE(mu, x, direction)
         s(3:6) = mod(s(3:6),2*pi);
     else
         % Transformation to Cartesian elements 
-        s = Orbit(mu, 'COE', x.', 0).ECI2COE(x, false);
+        s = Astrodynamics.ECI2COE(mu, x, false).';
 
         % Transformation from ECI to MKV
         s = Astrodynamics.MKV2ECI(mu, s, false);
