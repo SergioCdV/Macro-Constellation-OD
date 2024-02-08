@@ -110,6 +110,8 @@ for i = 1:length(elapsed_epoch)
     else
         s = s0;
     end
+
+    J = Astrodynamics.milankovitch_jacobian(tle.rec.j2, [0;0;1], s);
     
     % Save the results for the further processing
     mkv_rv = Astrodynamics.MKV2ECI(1, s, true);
