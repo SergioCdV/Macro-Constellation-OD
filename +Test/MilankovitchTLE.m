@@ -66,7 +66,7 @@ model = 'SGP4';
 options = odeset('AbsTol', 1E-22, 'RelTol', 2.24E-14);
 
 % Elapsed time to propagate since the generation of the TLE (initial conditions)
-elapsed_epoch = linspace(0, 7 * 86400, 1E2);    % Seconds since the TLE epoch
+elapsed_epoch = linspace(0, 1 * 86400, 1E2);    % Seconds since the TLE epoch
 
 % Preallocation for speed 
 RV = zeros(6,length(elapsed_epoch));            % TEME Cartesian state vector from SGP4

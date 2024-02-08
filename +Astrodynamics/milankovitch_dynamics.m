@@ -37,7 +37,7 @@ function [ds] = milankovitch_dynamics(Re, J2, Keci, t, s)
     Keci = repmat(Keci, 1, length(zeta));
 
     % Dynamics
-    ds(1:3,:) = + 3*n*J2*Re^2 ./ (2*p.^2) .* zeta .* cross(uH,  Keci) .* h_norm;
+    ds(1:3,:) = + 3*n*J2*Re^2 ./ (2*p.^2) .* zeta .* cross(h,  Keci);
     ds(4:6,:) = - 3*n*J2*Re^2 ./ (4*p.^2) .* cross( (1-5*zeta.^2).*uH + 2 * zeta .* Keci, e);
     ds(7,:) = n + 3*n*J2*Re^2 ./ (4*p.^2) .* (eta .* (3*zeta.^2-1) + 5 * zeta.^2 - 2 * zeta - 1);
 
