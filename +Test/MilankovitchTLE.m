@@ -53,7 +53,7 @@ meanElements(3:end) = deg2rad(meanElements(3:end));                             
 meanElements = Astrodynamics.TLE2COE(tle.rec.xke, tle.rec.j2, meanElements, true);
 
 % Initial conditions
-s0 = Astrodynamics.MKV2COE(1, meanElements, false);                         % Initial mean Milankovitch elements                                
+s0 = Astrodynamics.MKV2COE(1, meanElements.', false);                         % Initial mean Milankovitch elements                                
 
 % TEME propagated Cartesian elements (initial osculating conditions in TEME)
 rv0 = tle.getRV(0);                                                         

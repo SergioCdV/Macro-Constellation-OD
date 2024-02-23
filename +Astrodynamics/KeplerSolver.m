@@ -1,23 +1,23 @@
 function [theta, E] = KeplerSolver(e, M)
     % Laguerre-Conway's method
-    maxIter = 10;
-    iter = 1;
-    GoOn = true;
-    k = 1; 
-    tol = 1e-5;
+    maxIter = 10;       % Maximum number of iterations
+    iter = 1;           % Initial iteration
+    GoOn = true;        % Convergene boolean flag
+    k = 1;              % Laguerre constant
+    tol = 1E-15;        % Convergence tolerance
 
     % Warm start
     u = M + e;
-    E = M*(1-sin(u)) + u*sin(M)/(1+sin(M)-sin(u));
+    E = M .* (1-sin(u)) + u .* sin(M) ./ (1+sin(M)-sin(u));
 
     while (iter < maxIter && GoOn)
-        fn = E - e * sin(E) - M;
-        dfn = 1 - e * cos(E);
-        ddfn = e * sin(E);
+        fn = E - e .* sin(E) - M;
+        dfn = 1 - e .* cos(E);
+        ddfn = e .* sin(E);
         dn = -k*fn/(dfn+sqrt((k-1)^2*dfn^2-k*(k-1)*dfn*ddfn));
         E = E + dn;
 
-        if (abs(dn) < tol)
+        if all(abs(dn) < tol)
             GoOn = false;
         else
             iter = iter+1;
@@ -25,7 +25,7 @@ function [theta, E] = KeplerSolver(e, M)
     end
 
     % Solve for the true anomaly 
-    sin_E = sqrt(1-e^2) * sin(E)/(1-e*cos(E));
-    cos_E = (cos(E)-e)/(1-e*cos(E));
+    sin_E = sqrt(1-e.^2) .* sin(E) ./ (1-e.*cos(E));
+    cos_E = (cos(E)-e) ./ (1-e.*cos(E));
     theta = atan2(sin_E, cos_E);
 end

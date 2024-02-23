@@ -133,7 +133,7 @@ while ( ischar(line1) )
             % Propagate them 
             elapsed_epoch = elapsed_epoch * 60;             % Propagation time in seconds   
             tspan = linspace(0, elapsed_epoch, 1E2) / T;
-            [~, s] = ode113(@(t,s)Astrodynamics.milankovitch_dynamics(tle.rec.j2, [0;0;1], t, s), tspan, s0, options);
+            [~, s] = ode113(@(t,s)Astrodynamics.milankovitch_dynamics(1, tle.rec.j2, [0;0;1], t, s), tspan, s0, options);
             s = s(end,:).';
         else
             s = s0;
