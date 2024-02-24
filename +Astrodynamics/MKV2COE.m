@@ -5,14 +5,13 @@ function [s] = MKV2COE(mu, x, direction)
         I = x(4:6,:) ./ sqrt( dot(x(4:6,:), x(4:6,:), 1) );
         j = cross(k,I); 
 
-        for i = 1:size(x,2)
-            % Compute the Euler angles
-            Q = [I(:,i) j(:,i) k(:,i)].';
-            Omega = atan2(Q(3,1),-Q(3,2));                  % RAAN
-            omega = atan2(Q(1,3),Q(2,3));                   % Argument of perigee
-            I = acos(Q(3,3));                               % Inclination 
-        end
+        % Perifocal rotation matrix
+        Q = reshape([I; j; k], 3, []).';             
 
+        % Compute the Euler angles
+        Omega = atan2(Q(3,1:3:end),-Q(3,2:3:end));          % RAAN
+        omega = atan2(Q(1,3:3:end),Q(2,3:3:end));           % Argument of perigee
+        I = acos(Q(3,3:3:end));                             % Inclination 
         M = x(7,:) - Omega - omega;                         % Mean anomaly
     
         % Compute the geometry of the orbit

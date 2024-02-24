@@ -50,10 +50,10 @@ meanElements = [tle.n * 2*pi/1440 tle.ecc tle.raanDeg tle.incDeg tle.argpDeg tle
 meanElements(3:end) = deg2rad(meanElements(3:end));                                           % All angles in radians
 
 % Un-kozai the mean motion
-meanElements = Astrodynamics.TLE2COE(tle.rec.xke, tle.rec.j2, meanElements, true);
+meanElements = Astrodynamics.TLE2COE(tle.rec.xke, tle.rec.j2, meanElements.', true);
 
 % Initial conditions
-s0 = Astrodynamics.MKV2COE(1, meanElements.', false);                         % Initial mean Milankovitch elements                                
+s0 = Astrodynamics.MKV2COE(1, meanElements, false);                         % Initial mean Milankovitch elements                                
 
 % TEME propagated Cartesian elements (initial osculating conditions in TEME)
 rv0 = tle.getRV(0);                                                         
@@ -66,7 +66,7 @@ model = 'SGP4';
 options = odeset('AbsTol', 1E-22, 'RelTol', 2.24E-14);
 
 % Elapsed time to propagate since the generation of the TLE (initial conditions)
-elapsed_epoch = linspace(0, 1 * 86400, 1E2);    % Seconds since the TLE epoch
+elapsed_epoch = linspace(0, 7 * 86400, 1E2);    % Seconds since the TLE epoch
 
 % Preallocation for speed 
 RV = zeros(6,length(elapsed_epoch));            % TEME Cartesian state vector from SGP4

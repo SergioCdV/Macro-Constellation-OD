@@ -22,6 +22,9 @@ end
 
 %% Auxiliary functions 
 % Function to compute the orbital elements from the inertial state vector 
+% Inputs: - scalar mu, the gravitational parameter of the central body.
+%         - vector s, containing the state vector in the inertial frame (position and velocity vectors)
+% Ouputs: - vector elements, containing the classical orbital elements. 
 function [elements] = rv2coe(mu, s)
     % State variables     
     r = s(1:3,:);                                   % Position vector
@@ -39,10 +42,6 @@ function [elements] = rv2coe(mu, s)
 
     a = zeros(1,size(s,2));             % Semimajor axis
     p = zeros(1,size(s,2));             % Semilatus rectum
-    I = p;                              % Inclination
-    RAAN = p;                           % RAAN
-    omega = p;                          % AoP
-    r0 = zeros(3,size(s,2));            % Position vector in the perifocal frame
     
     % Determine type of orbit 
     a(1, e_norm ~= 1) = -mu ./ (2*H(1, e_norm ~= 1));       % Semimajor axis of the orbit
@@ -54,19 +53,18 @@ function [elements] = rv2coe(mu, s)
     % Compute the unit perifocal triad  
     m = e ./ e_norm; 
     k = h ./ sqrt( dot(h, h, 1) ); 
-    j = cross(k,I);
+    j = cross(k,m);
 
-    for i = 1:size(x,2)               
-        % Compute the rotation matrix
-        Q = [m(:,i).'; j(:,i).'; k(:,i).'];             % Perifocal rotation matrix
-        r0(:,i) = Q*r(:,i);                             % Position in the perifocal frame 
-        
-        % Compute the rest of the orbital elements
-        RAAN(i) = atan2(Q(3,1),-Q(3,2));                % RAAN
-        omega(i) = atan2(Q(1,3),Q(2,3));                % Argument of perigee
-        I(i) = acos(Q(3,3));                            % Inclination of the orbit
-    end
-    
+    Q = reshape([m; j; k], 3, []).';  
+
+    % Rest of elements 
+    RAAN = atan2(Q(3,1:3:end),-Q(3,2:3:end));           % RAAN
+    omega = atan2(Q(1,3:3:end),Q(2,3:3:end));           % Argument of perigee
+    I = acos(Q(3,3:3:end));                             % Inclination
+
+    % Position in the perifocal frame 
+    r0 = squeeze(sum(Q .* permute(r, [3, 1, 2]), 2));                             
+
     % Mean anomaly
     theta = atan2(r0(2,:), r0(1,:));                                     % True anomaly of the orbit
     sinE = sqrt(1-e_norm.^2).*sin(theta)./(1+e_norm.*cos(theta));        % Sine of the eccentric anomaly
@@ -75,7 +73,7 @@ function [elements] = rv2coe(mu, s)
     M = E - e_norm .* sin(E);                                            % Mean anomaly
         
     % Save the classical orbital elements 
-    elements = [a; e_norm; RAAN; i; omega; M; p];
+    elements = [a; e_norm; RAAN; I; omega; M; p];
 
     for i = 1:size(elements,2)
         Q = [m(:,i).'; j(:,i).'; k(:,i).'];                                   % Perifocal rotation matrix
@@ -131,7 +129,7 @@ function [elements] = rv_singularity(ev, n, r, Q, elements)
 end
 
 % Transform COE to Cartesian state vector
-% Inputs: - scalar mu, the gravitational parameter of the central voyd.
+% Inputs: - scalar mu, the gravitational parameter of the central body.
 %         - vector elements, containing the classical orbital elements. 
 % Ouputs: - vector s, containing the state vector in the inertial frame (position and velocity vectors).
 function [s] = coe2state(mu, elements)
