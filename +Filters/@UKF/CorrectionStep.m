@@ -1,16 +1,16 @@
 
 function [State, Sigma, Pmeas, y] = CorrectionStep(obj, sigma, State, Sigma, z)
     % Measurement prediction 
-    Y = feval(obj.ObservationModel, sigma);
-    y = measurements_prediction(obj, Y);
+    y = feval(obj.ObservationModel, sigma);
+    Y = measurements_prediction(obj, y);
     
     % State and covariance prediction 
     switch (obj.Algorithm)
         case 'UKF-A'
-            [State, Sigma, Pmeas] = UKFA_correction(obj, sigma, State, Sigma, Y, y, z);
+            [State, Sigma, Pmeas] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);
             
         case 'UKF-S'
-            [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, Y, y, z);
+            [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z);
             Pmeas = Sy*Sy.';
     end
 end

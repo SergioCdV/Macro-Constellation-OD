@@ -31,7 +31,7 @@ tf = 20;                         % Final epoch [orbital periods at the Earth's W
 tspan = linspace(t0, tf, N);    % Integration time span
 
 %% Propagation 
-[tp, s] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(J2, Keci, t, s), tspan, s0, options);
+[tp, s] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(1, J2, Keci, t, s), tspan, s0, options);
 
 %% Offline observation 
 % Constants 
@@ -244,7 +244,7 @@ function [s] = state_model(J2, Keci, s0, dt)
     
     if (dt > 0)
         S0 = reshape(s0, [], 1);
-        [~, saux] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(J2, Keci, t, s), [0 dt], S0, options);
+        [~, saux] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(1, J2, Keci, t, s), [0 dt], S0, options);
         s = saux(end,:); 
         s = reshape(s, size(s0));
     else
