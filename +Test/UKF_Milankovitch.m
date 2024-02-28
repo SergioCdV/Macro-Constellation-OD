@@ -57,7 +57,7 @@ fprintf('Running the filter: \n');
 
 % Constants 
 Q = 1e-5 * eye(7);      % Dynamical noise 
-R = 1e-4 * eye(7);      % Measurement noise 
+R = 1e-8 * eye(7);      % Measurement noise 
 
 s_dim = 7;              % Dimension of the state vector
 y_dim = 7;              % Dimension of the observation vector
@@ -66,14 +66,14 @@ y_dim = 7;              % Dimension of the observation vector
 beta = 2; 
 alpha = 1E-3; 
 k = 0;
-UKF_estimator = Filters.UKF('UKF-A', beta, alpha, k);
+UKF_estimator = Filters.UKF('UKF-S', beta, alpha, k);
 UKF_estimator = UKF_estimator.AdditiveCovariances(Q, R);
 UKF_estimator = UKF_estimator.AssignStateProcess(s_dim, @(s, time_step)state_model(J2, Keci, s, time_step)).Init();
 UKF_estimator = UKF_estimator.AssignObservationProcess(y_dim, @(s)observation_model(s));
 
 % Initial conditions 
 se = [0; 0; 1.5; 0; 0; 0.01; 0];        % Estimator initial conditions 
-Pe = 1e-2 * eye(7);                     % Initial covariance matrix
+Pe = 1e-8 * eye(7);                     % Initial covariance matrix
 
 % Main loop
 i = 1;
@@ -88,7 +88,7 @@ while (i <= size(meas,1))
     [sigma_points, se, Pe] = UKF_estimator.PropagationStep(dt);
 
     % Correction
-    [se, Pe] = UKF_estimator.CorrectionStep(sigma_points, se, Pe, meas(i,2:end).');
+    [se, Pe, ~] = UKF_estimator.CorrectionStep(sigma_points, se, Pe, meas(i,2:end).');
 
     % Save results
     S(:,i) = se;                                   % Corrected state

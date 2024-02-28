@@ -1,6 +1,6 @@
 
 
-function [sigma, State, Sigma] = PropagationStep(obj, time_step)
+function [sigma, X, P] = PropagationStep(obj, time_step)
     % Generate sigma points 
     sigma = sigma_points(obj, obj.State, obj.Sigma);
 
@@ -10,8 +10,8 @@ function [sigma, State, Sigma] = PropagationStep(obj, time_step)
     % State and covariance prediction 
     switch (obj.Algorithm)
         case 'UKF-A'
-            [State, Sigma] = UKFA_prediction(obj, sigma);
+            [X, P] = UKFA_prediction(obj, sigma);
         case 'UKF-S'
-            [State, Sigma] = UKFS_prediction(obj, sigma);
+            [X, P] = UKFS_prediction(obj, sigma);
     end
 end

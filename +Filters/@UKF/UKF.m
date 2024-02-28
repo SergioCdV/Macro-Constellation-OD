@@ -85,8 +85,8 @@ classdef UKF < Filters.BayesFilter
         function [obj] = AdditiveCovariances(obj, Q, R)
             switch (obj.Algorithm)
                 case 'UKF-S'
-                    obj.Q = chol(Q).';
-                    obj.R = chol(R).';
+                    obj.Q = chol(Q);
+                    obj.R = chol(R);
                 otherwise
                     obj.Q = Q;
                     obj.R = R;
@@ -100,7 +100,7 @@ classdef UKF < Filters.BayesFilter
             switch (obj.Algorithm)
                 case 'UKF-S'
                     if (obj.InitFlag)
-                        Sigma = chol(Sigma).';
+                        Sigma = chol(Sigma);
                         obj.InitFlag = false;
                     end
             end
@@ -153,7 +153,7 @@ classdef UKF < Filters.BayesFilter
 
             switch (obj.Algorithm)
                 case 'UKF-S'
-                    A = Sigma;
+                    A = Sigma.';
                 otherwise
                     [A, flag] = chol(Sigma);
                     if (flag)
@@ -172,16 +172,16 @@ classdef UKF < Filters.BayesFilter
     methods (Access = private)
         % Measurements reconstruction
         function [Y] = measurements_prediction(obj, y)
-            Y = sum(obj.W(1,:).*y,2);
+            Y = sum(obj.W(1,:) .* y, 2);
         end
 
         % Additive UKF
-        [X, P] = UKFA_prediction(obj, sigma);                                           % Prediction
-        [State, Sigma, Pyy] = UKFA_correction(obj, sigma, State, Sigma, y, Y, z);       % Correction
+        [X, P] = UKFA_prediction(obj, sigma);                           % Prediction
+        [X, P, Pyy] = UKFA_correction(obj, sigma, X, P, y, Y, z);       % Correction
 
         % Square root UKF 
-        [X, P] = UKFS_prediction(obj, sigma);                                           % Prediction
-        [State, Sigma, Sy] = UKFS_correction(obj, sigma, State, Sigma, y, Y, z);        % Correction
+        [X, P] = UKFS_prediction(obj, sigma);                           % Prediction
+        [X, P, Sy] = UKFS_correction(obj, sigma, X, P, y, Y, z);        % Correction
         
     end
 end
