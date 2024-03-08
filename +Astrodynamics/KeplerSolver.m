@@ -3,7 +3,7 @@ function [theta, E] = KeplerSolver(e, M)
     maxIter = 10;       % Maximum number of iterations
     iter = 1;           % Initial iteration
     GoOn = true;        % Convergene boolean flag
-    k = 1;              % Laguerre constant
+    k = 5;              % Laguerre constant
     tol = 1E-15;        % Convergence tolerance
 
     % Warm start
@@ -14,7 +14,13 @@ function [theta, E] = KeplerSolver(e, M)
         fn = E - e .* sin(E) - M;
         dfn = 1 - e .* cos(E);
         ddfn = e .* sin(E);
-        dn = -k*fn/(dfn+sqrt((k-1)^2*dfn^2-k*(k-1)*dfn*ddfn));
+
+        dg(1) = k / (dfn+sqrt( abs((k-1)^2*dfn^2-k*(k-1)*dfn*ddfn)) );
+        dg(2) = k / (dfn-sqrt( abs((k-1)^2*dfn^2-k*(k-1)*dfn*ddfn)) );
+
+        dg = dg( abs(dg) == max( abs(dg) ) );
+
+        dn = - fn / dg;
         E = E + dn;
 
         if all(abs(dn) < tol)
