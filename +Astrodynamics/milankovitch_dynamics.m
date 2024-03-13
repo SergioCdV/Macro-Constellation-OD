@@ -6,12 +6,13 @@
 % Function to compute the Milankovitch's set of classical elements dynamics
 % vector field
 
-% Inputs: - scalar J2, the J2 parameter of the central body under
+% Inputs: - scalar Re, the mean radius of the reference ellipsoid of the central body
+%         - scalar J2, the J2 parameter of the central body under
 %           consideration
 %         - vector Keci, denoting the third vector in the ECI triad of unit
 %           vectors
 %         - scalar t, the current epoch 
-%         - vector s, the state vector to be integrated
+%         - array s (6 x n), the state vectors to be integrated
 
 % Outputs: - vector ds, the dynamics of the orbital set
 

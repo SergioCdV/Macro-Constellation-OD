@@ -1,10 +1,17 @@
-%% Constellation macro-orbit determination 
-% Date: 07/02/2024
-% Author: Sergio Cuevas del Valle
+%% Constellation tracking
+% Author: Sergio Cuevas
+% Date: 13/03/2024
 
 %% TLE to classical orbital elements %%
 % This file contains the function to change from the state vector to the
-% classical orbital elements bu un-kozai the mean motion
+% classical orbital elements by un-kozaing the mean motion
+
+% Inputs: -xke, scalar, the gravitational constant of the central body to normalize the mean motion
+%         - J2, scalar, the associated zonal J2 coefficient of the central body
+%         -x,  an array with the same dimensions of x, containing the set of Kozai's mean elements
+%         -direction, a boolean to indicate the direction of the transformation (currently only TLE to COE available)
+
+% Ouput: - elements, an array with the same dimensions of x, containing the set of Brouwer's mean elements
 
 function [elements] = TLE2COE(xke, J2, s, direction)    
     % Initialization of the solution

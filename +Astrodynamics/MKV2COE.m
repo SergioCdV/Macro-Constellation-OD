@@ -1,3 +1,18 @@
+%% Constellation tracking
+% Author: Sergio Cuevas
+% Date: 13/03/2024
+
+%% Milankovitch's to COE transformation
+% The following function provides the transformation between Milankovitch's
+% element set (angular momentum, LRL vector and true longitude) and the
+% classical orbital elements
+
+% Inputs: -mu, scalar, the gravitational constant of the central body
+%         -x, an array of 6 x n, containing the set of states to be transformed along the column space
+%         -direction, a boolean to indicate the direction of the transformation (1 for MKV 2 COE, else for COE 2 MKV)
+
+% Ouput: - s, an array with the same dimensions of x, containing the transformed variables
+
 function [s] = MKV2COE(mu, x, direction)
     
     if (direction)
@@ -25,9 +40,9 @@ function [s] = MKV2COE(mu, x, direction)
         s(3:6,:) = mod(s(3:6,:), 2 * pi);
     else
         % Transformation to Cartesian elements 
-        s = Astrodynamics.ECI2COE(mu, x, false);
+        s = utils.ECI2COE(mu, x, false);
 
         % Transformation from ECI to MKV
-        s = Astrodynamics.MKV2ECI(mu, s, false);
+        s = utils.MKV2ECI(mu, s, false);
     end
 end

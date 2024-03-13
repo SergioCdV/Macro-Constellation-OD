@@ -1,4 +1,17 @@
+%% Constellation tracking
+% Author: Sergio Cuevas
+% Date: 13/03/2024
 
+%% Lara to ECI transformation
+% The following function provides the transformation between Martin Lara's
+% nonsingular variables and the position and velocity Cartesian state. It
+% also provides the inverse map (from Cartesian to Lara's)
+
+% Inputs: -H, scalar, the projection of the angular momentum of the orbit onto the central body's symmetry axis (usually Z)
+%         -x, an array of 6 x n, containing the set of states to be transformed along the column space
+%         -direction, a boolean to indicate the direction of the transformation (1 for Lara 2 ECI, else for ECI 2 Lara)
+
+% Ouput: - s, an array with the same dimensions of x, containing the transformed variables
 
 function [s] = Lara2ECI(H, x, direction)
     if (direction)

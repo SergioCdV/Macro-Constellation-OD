@@ -1,3 +1,16 @@
+%% Constellation tracking
+% Author: Sergio Cuevas
+% Date: 13/03/2024
+
+%% Kepler equation solver
+% The following function solves Kepler's equation by means of the Laguerre-Conway method
+
+% Inputs: -e, scalar, the orbital eccentricity
+%         - M, scalar, the mean anomaly
+
+% Ouput: - theta, scalar, the associated true anomaly
+%        - E, scalar, the associated eccentric anomaly
+
 function [theta, E] = KeplerSolver(e, M)
     % Laguerre-Conway's method
     maxIter = 10;       % Maximum number of iterations

@@ -1,7 +1,22 @@
+%% Constellation tracking
+% Author: Sergio Cuevas
+% Date: 13/03/2024
+
+%% Milankovitch's to ECI transformation
+% The following function provides the transformation between Milankovitch's
+% element set (angular momentum, LRL vector and true longitude) and the
+% Cartesian position and velocity state
+
+% Inputs: -mu, scalar, the gravitational constant of the central body
+%         -x, an array of 6 x n, containing the set of states to be transformed along the column space
+%         -direction, a boolean to indicate the direction of the transformation (1 for MKV 2 ECI, else for ECI 2 MKV)
+
+% Ouput: - s, an array with the same dimensions of x, containing the transformed variables
+
 function [s] = MKV2ECI(mu, x, direction)
     if (direction)
-        COE = Astrodynamics.MKV2COE(mu, x, true); 
-        s = Astrodynamics.ECI2COE(mu, COE, false);
+        COE = utils.MKV2COE(mu, x, true); 
+        s = utils.ECI2COE(mu, COE, false);
     else
         % Preallocation 
         s = zeros(6,size(x,2));     % Transformed state

@@ -1,3 +1,19 @@
+%% Constellation tracking
+% Author: Sergio Cuevas
+% Date: 13/03/2024
+
+%% Lara's osculating to mean transformations
+% The following function provides the mean-to-osculating and osculating-to-mean transformatiosn for the zonal J2/J3 Brouwer's problem
+% The transformations are of first order in the eccentricity, just as  Simplified General Perturbations 4 (SGP4), and make use of Lara's
+% nonsingular set of variables (a torsion transformations of the Delaunay orbital elements
+
+% Inputs: -J2, scalar, the unnormalized J2 zonal coefficient of the central body
+%         -J3, scalar, the unnormalized J3 zonal coefficient of the central body
+%         - H, scalar, the projection of the orbital motion angular momentum onto the symmetry axis of the elliosoid of reference (usually z). H is an integral of the zonal problem
+%         - L, a 6 x n vector of Lara's variables, in the order (psi, chi, phi, R, r, Theta) 
+%         - direction, a boolean to indicate the direction of the transformation: 1 for mean to osculating and -1 from osculating to mean
+
+% Ouput: - S, an array with the same dimensions of L, containing the transformed Lara's variables
 
 function [S] = BrouwerLaraCorrections(J2, J3, H, L, direction)
     % Perturbations parameters in the expansion of the Hamiltonian
@@ -10,13 +26,20 @@ function [S] = BrouwerLaraCorrections(J2, J3, H, L, direction)
 
     if (~direction)
         epsilon = -1 * epsilon;
+        % Osculating to long-period transformation (short period transformation)
+        L_long = Long2Osc(H, epsilon(1), L); 
+
+        % Long-period to mean transformation
+        S = Mean2Long(epsilon(2), L_long);
+
+    else
+        % Mean to long-period transformation
+        L_long = Mean2Long(epsilon(2), L);
+    
+        % Long-period to osculating transformation (short period transformation)
+        S = Long2Osc(H, epsilon(1), L_long);  
     end
 
-    % Mean to long-period transformation
-    L_long = Mean2Long(epsilon(2), L);
-
-    % Long-period to osculating transformation
-    S = Long2Osc(H, epsilon(1), L_long);  
 end
 
 %% Auxiliary functions 

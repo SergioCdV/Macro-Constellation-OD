@@ -5,7 +5,6 @@
 %% Jacobian of the Milankovitch's elements dyanmics %% 
 % Function to compute the Jacobian of the Milankovitch's set of classical elements dynamics
 
-
 % Inputs: - scalar J2, the J2 parameter of the central body under
 %           consideration
 %         - vector Keci, denoting the third vector in the ECI triad of unit
