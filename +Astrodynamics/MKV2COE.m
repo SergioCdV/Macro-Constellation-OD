@@ -40,9 +40,9 @@ function [s] = MKV2COE(mu, x, direction)
         s(3:6,:) = mod(s(3:6,:), 2 * pi);
     else
         % Transformation to Cartesian elements 
-        s = utils.ECI2COE(mu, x, false);
+        s = Astrodynamics.ECI2COE(mu, x, false);
 
         % Transformation from ECI to MKV
-        s = utils.MKV2ECI(mu, s, false);
+        s = Astrodynamics.MKV2ECI(mu, s, false);
     end
 end

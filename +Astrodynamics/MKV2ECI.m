@@ -15,8 +15,8 @@
 
 function [s] = MKV2ECI(mu, x, direction)
     if (direction)
-        COE = utils.MKV2COE(mu, x, true); 
-        s = utils.ECI2COE(mu, COE, false);
+        COE = Astrodynamics.MKV2COE(mu, x, true); 
+        s = Astrodynamics.ECI2COE(mu, COE, false);
     else
         % Preallocation 
         s = zeros(6,size(x,2));     % Transformed state
