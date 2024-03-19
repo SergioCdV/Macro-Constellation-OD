@@ -1,3 +1,8 @@
+%% Constellation macro-orbit determination %%
+% Date: 19/03/2024
+
+%% Propagation step in additive UKF
+% This script provides the implementation of the propagation step in an additive UKF
 
 function [X, P] = UKFA_prediction(obj, sigma)
     % State prediction

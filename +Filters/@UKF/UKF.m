@@ -1,35 +1,34 @@
-%% Constellation macro-orbit determination 
-% Date: 19/01/2023
-% Author: Sergio Cuevas del Valle
+%% Constellation macro-orbit determination %%
+% Date: 19/03/2024
 
 %% Class implementation of several UKF Estimators 
-% This script provides the function implementing the class UKF
-% implementation, inlcuding UKF additive and UKF square 
+% This script provides the implementation of the class UKF, inlcuding UKF additive and UKF square root versions
 
 classdef UKF < Filters.BayesFilter
     % Properties
     properties
         % UKF hyperparameters
         Algorithm = 'UKF-A'   % UKF version in use
-        beta    
-        alpha
-        k
+        beta = 2              % Sigma points spread coefficient (2 is optimal for Gaussian processes)  
+        alpha                 % Sigma points spread coefficient (1E-4 to 1E-1) 
+        k = 0                 % Sigma points spread coefficient (usually 0) 
         
-        Clock = 0
-        InitFlag = true
-        State 
-        Sigma
-        Measurements
+        InitFlag = true         % Boolean flag to mark the need to initialize the filter
+
+        Clock = 0               % Initial clock for the estimation process
+        State                   % State vector (mean)
+        Sigma                   % Covariance matrix estimation
+        Measurements            % Measurements to be processed
 
         % State and covariance
-        StateDim
-        MeasDim
+        StateDim                    % Dimension of the state variable
+        MeasDim                     % Dimension of the measurement space
 
-        Q
-        R
+        Q                           % Dynamical noise matrix
+        R                           % Measurement noise matrix
 
-        StateModel 
-        ObservationModel
+        StateModel                  % Function handler for the state model
+        ObservationModel            % Function handler for the observation model
     end
 
     properties (Access = private)

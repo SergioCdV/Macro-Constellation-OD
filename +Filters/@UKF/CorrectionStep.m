@@ -1,3 +1,8 @@
+%% Constellation macro-orbit determination %%
+% Date: 19/03/2024
+
+%% Correction step UKF
+% This script provides the implementation of the generic update step in a UKF
 
 function [X, P, Pmeas, Y] = CorrectionStep(obj, sigma, X, P, z)
     % Measurement prediction 

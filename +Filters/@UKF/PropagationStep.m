@@ -1,4 +1,8 @@
+%% Constellation macro-orbit determination %%
+% Date: 19/03/2024
 
+%% Propagation step UKF
+% This script provides the implementation of the generic propagation step in a UKF
 
 function [sigma, X, P] = PropagationStep(obj, time_step)
     % Generate sigma points 

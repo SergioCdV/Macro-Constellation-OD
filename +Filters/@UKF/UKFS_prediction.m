@@ -1,4 +1,8 @@
+%% Constellation macro-orbit determination %%
+% Date: 19/03/2024
 
+%% Correction step in square root UKF
+% This script provides the implementation of the correction step in an square root additive UKF
 
 function [X, S] = UKFS_prediction(obj, sigma)
     % State prediction
