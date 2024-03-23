@@ -52,8 +52,11 @@ meanElements(3:end) = deg2rad(meanElements(3:end));                             
 % Un-kozai the mean motion
 meanElements = Astrodynamics.TLE2COE(tle.rec.xke, tle.rec.j2, meanElements.', true);
 
+rv = Astrodynamics.ECI2COE(1, meanElements, false);
+
 % Initial conditions
-s0 = Astrodynamics.MKV2COE(1, meanElements, false);                         % Initial mean Milankovitch elements                                
+s0 = Astrodynamics.MKV2COE(1, meanElements, false);              % Initial mean Milankovitch elements                                
+s2 = Astrodynamics.MKV2COE(1, s0, true);                         % Initial mean Milankovitch elements  
 
 % TEME propagated Cartesian elements (initial osculating conditions in TEME)
 rv0 = tle.getRV(0);                                                         
@@ -66,7 +69,7 @@ model = 'SGP4';
 options = odeset('AbsTol', 1E-22, 'RelTol', 2.24E-14);
 
 % Elapsed time to propagate since the generation of the TLE (initial conditions)
-elapsed_epoch = linspace(0, 7 * 86400, 1E2);    % Seconds since the TLE epoch
+elapsed_epoch = linspace(0, 1 * 86400, 1E2);    % Seconds since the TLE epoch
 
 % Preallocation for speed 
 RV = zeros(6,length(elapsed_epoch));            % TEME Cartesian state vector from SGP4
@@ -105,7 +108,7 @@ for i = 1:length(elapsed_epoch)
     if (dt > 0)
         % Propagate them   
         tspan = linspace(0, dt / T, 1E4);
-        [~, s] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(1, tle.rec.j2, [0;0;1], t, s), tspan, s0, options);
+        [~, s] = ode45(@(t,s)Astrodynamics.milankovitch_dynamics(1, 1, tle.rec.j2, [0;0;1], t, s), tspan, s0, options);
         s = s(end,:).';
     else
         s = s0;
@@ -115,10 +118,14 @@ for i = 1:length(elapsed_epoch)
     
     % Save the results for the further processing
     mkv_rv = Astrodynamics.MKV2ECI(1, s, true);
-    LM = Astrodynamics.Lara2ECI(s0(3,1), mkv_rv, false);
-    LEO = Astrodynamics.BrouwerLaraCorrections(tle.rec.j2, tle.rec.j3, s0(3,1), LM);
-    mkv_rv = Astrodynamics.Lara2ECI(s0(3,1), LEO, true);
+    s2 = Astrodynamics.MKV2ECI(1, mkv_rv, false);
 
+    s - s2
+
+    LM = Astrodynamics.Lara2ECI(s0(3,1), mkv_rv, false);
+    LEO = Astrodynamics.BrouwerLaraCorrections(1, tle.rec.j2, tle.rec.j3, s0(3,1), LM, 1);
+    mkv_rv = Astrodynamics.Lara2ECI(s0(3,1), LEO, true);
+    
     % Save results
     RV(:,i) = sgp_rv;
     RV2(:,i) = mkv_rv;

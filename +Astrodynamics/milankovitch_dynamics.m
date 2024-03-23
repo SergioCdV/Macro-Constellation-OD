@@ -16,7 +16,7 @@
 
 % Outputs: - vector ds, the dynamics of the orbital set
 
-function [ds] = milankovitch_dynamics(Re, J2, Keci, t, s)
+function [ds] = milankovitch_dynamics(mu, Re, J2, Keci, t, s)
     % Reshape 
     s = reshape(s, 7, []); 
 
@@ -26,13 +26,13 @@ function [ds] = milankovitch_dynamics(Re, J2, Keci, t, s)
     l = s(7,:);                         % Longitude
 
     % Constants of the dynamics 
-    p = dot(h,h,1);                     % Semilatus rectum
-    h_norm = sqrt(p);                   % Angular momentum
+    p = dot(h,h,1) / mu;                % Semilatus rectum
+    h_norm = sqrt(mu * p);              % Angular momentum
     uH = h ./ h_norm;                   % Angular momentum unit vector
     e_norm = dot(e,e,1);                % Orbital eccentricity
     eta = sqrt(1-e_norm);               % Eccentricity function
     a = p ./ (1-e_norm);                % Semimajor axis 
-    n = sqrt(1./a.^3);                  % Mean motion
+    n = sqrt(mu./a.^3);                 % Mean motion
     zeta = Keci.' * uH;                 % Cosine of the inclination
 
     Keci = repmat(Keci, 1, length(zeta));

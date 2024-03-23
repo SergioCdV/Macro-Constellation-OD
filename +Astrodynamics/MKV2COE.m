@@ -16,33 +16,68 @@
 function [s] = MKV2COE(mu, x, direction)
     
     if (direction)
-        k = x(1:3,:) ./ sqrt( dot(x(1:3,:), x(1:3,:), 1) );
-        I = x(4:6,:) ./ sqrt( dot(x(4:6,:), x(4:6,:), 1) );
+        % Pre-allocation 
+        s = zeros(7, size(x,2));
+
+        % Eccentricity
+        ev = x(4:6,:);                                  % Eccentricity vector
+        s(2,:) = sqrt( dot(ev, ev, 1) );                % Eccentricity norm
+
+        % Semimajor axis 
+        h = x(1:3,:);                                   % Angular momentum vector
+        s(1,:) = dot(h,h,1) ./ (mu * (1 - s(2,:).^2));  % Semimajor axis
+
+        % Semilatus rectum 
+        s(7,:) = s(1,:) .* (1 - s(2,:).^2);
+
+        % Euler matrix
+        k = reshape(h./ sqrt( dot(h, h, 1) ), [], 1);
+        
+        I = reshape(ev ./ s(2,:), [], 1);
+        K = repmat([0;0;1], 1, size(x,2));              % Inertial Z axis
+        n = cross(repmat(K, 1, size(x,2)), s(1:3,:));   % Node vector
+        I(:, s(2,:) == 0) = n(:, s(2,:) == 0);          % Circular orbit singularity
+
         j = cross(k,I); 
 
-        % Perifocal rotation matrix
-        Q = reshape([I; j; k], 3, []).';             
+        Q = reshape([I; j; k], 3, []).';
+        Omega = atan2(Q(3,1:3:end),-Q(3,2:3:end));      % RAAN
+        omega = atan2(Q(1,3:3:end), Q(2,3:3:end));      % Argument of perigee
+        i = acos(Q(3,3:3:end));                         % Inclination
 
-        % Compute the Euler angles
-        Omega = atan2(Q(3,1:3:end),-Q(3,2:3:end));          % RAAN
-        omega = atan2(Q(1,3:3:end),Q(2,3:3:end));           % Argument of perigee
-        I = acos(Q(3,3:3:end));                             % Inclination 
-        M = x(7,:) - Omega - omega;                         % Mean anomaly
-    
-        % Compute the geometry of the orbit
-        p = dot(x(1:3,:), x(1:3,:), 1) / mu;                % Semilatus rectum
-        eta = 1 - dot(x(4:6,:), x(4:6,:), 1);               % Eccentricity function
-        a = p ./ eta;                                       % Semimajor axis of the orbit 
-        e = sqrt( dot(x(4:6,:), x(4:6,:), 1) );             % Orbital eccentricity
-    
-        % Compute the transformation from COE to ECI
-        s = [a; e; Omega; I; omega; M; p];
-        s(3:6,:) = mod(s(3:6,:), 2 * pi);
+        s(3,:) = Omega; 
+        s(4,:) = i; 
+        s(5,:) = omega; 
+        s(6,:) = x(7,:) - Omega - omega;                % Mean anomaly
+        
+        % Circular orbit singularity 
+        idx = s(2,:) == 0;
+        s(6, idx) = x(7,idx) - Omega(idx);
+
+        % Equatorial singularity
+        
     else
-        % Transformation to Cartesian elements 
-        s = Astrodynamics.ECI2COE(mu, x, false);
-
-        % Transformation from ECI to MKV
-        s = Astrodynamics.MKV2ECI(mu, s, false);
+        % Pre-allocation 
+        e = zeros(3, size(x,2));        % Eccentricity vector
+        h = zeros(3, size(x,2));        % Angular momentum vector
+    
+        % Eccentricity vector 
+        e(1,:) = x(2,:);
+    
+        % Angular momentum
+        h(3,:) = sqrt(mu * x(1,:) .* (1 - x(2,:).^2));
+    
+        % Compute Euler matrix 
+        for i = 1:size(x,2)
+            Q = Astrodynamics.euler_matrix(x(:,i)).';
+            h(:,i) = Q * h(:,i);
+            e(:,i) = Q * e(:,i);
+        end
+    
+        % Mean longitude 
+        l = x(3,:) + x(5,:) + x(6,:);
+    
+        % Final result 
+        s = [h; e; l];
     end
 end
