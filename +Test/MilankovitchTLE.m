@@ -120,10 +120,8 @@ for i = 1:length(elapsed_epoch)
     mkv_rv = Astrodynamics.MKV2ECI(1, s, true);
     s2 = Astrodynamics.MKV2ECI(1, mkv_rv, false);
 
-    s - s2
-
     LM = Astrodynamics.Lara2ECI(s0(3,1), mkv_rv, false);
-    LEO = Astrodynamics.BrouwerLaraCorrections(1, tle.rec.j2, tle.rec.j3, s0(3,1), LM, 1);
+    LEO = Astrodynamics.BrouwerLaraCorrections(1, 1, tle.rec.j2, tle.rec.j3, s0(3,1), LM, 1);
     mkv_rv = Astrodynamics.Lara2ECI(s0(3,1), LEO, true);
     
     % Save results
