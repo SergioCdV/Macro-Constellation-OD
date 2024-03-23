@@ -36,22 +36,26 @@ function [s] = MKV2ECI(mu, x, direction)
         e = sqrt( dot(s(4:6,:), s(4:6,:), 1) );                             % Orbital eccentricity 
 
         % Compute Euler's rotation matrix and the associated angles 
-        k = reshape(s(1:3,:) ./ sqrt( dot(s(1:3,:), s(1:3,:), 1) ), [], 1);
+        k = s(1:3,:) ./ sqrt( dot(s(1:3,:), s(1:3,:), 1) );
         
-        I = reshape(s(4:6,:) ./ e, [], 1);
+        I = s(4:6,:) ./ e;
         K = repmat([0;0;1], 1, size(x,2));                     % Inertial Z axis
-        n = cross(repmat(K, 1, size(x,2)), s(1:3,:));          % Node vector
+        n = cross(K, s(1:3,:));                                % Node vector
         I(:, e == 0) = n(:, e == 0);                           % Circular orbit singularity
 
         j = cross(k,I); 
 
         % Position in the perifocal frame 
         Q = reshape([I; j; k], 3, []).';
-        Omega = atan2(Q(3,1:3:end),-Q(3,2:3:end));                    % RAAN
-        omega = atan2(Q(1,3:3:end), Q(2,3:3:end));                    % Argument of perigee
-        i = acos(Q(3,3:3:end));                                       % Inclination
+        Omega = atan2(Q(3:3:end,1),-Q(3:3:end,2));             % RAAN
+        omega = atan2(Q(1:3:end,3),Q(2:3:end,3));              % Argument of perigee
+        i = acos(Q(3:3:end,3));                                % Inclination
 
-        r0 = squeeze(sum(Q .* permute(x(1:3,:), [3, 1, 2]), 2));      % Perifocal position vector
+        r0 = r;
+        for j = 1:size(r,2)
+            r0(:,j) = Q(1+3*(j-1):3*j,:) * r(:,j);
+        end
+
         theta = atan2(r0(2,:), r0(1,:));                              % True anomaly
 
         % Longitude
@@ -62,9 +66,9 @@ function [s] = MKV2ECI(mu, x, direction)
         M = E - e .* sin(E);                                          % Mean anomaly
 
         % Non-singular COE
-        elements = [zeros(1,size(e,2)); e; Omega; i; omega; M];
+        elements = [zeros(1,size(e,2)); e; Omega.'; i.'; omega.'; M];
         elements = Astrodynamics.rv_singularity(s(4:6,:), n, r, Q, elements);  
         
-        s(7,:) = Omega + omega + elements(6,:);                       % Longitude
+        s(7,:) = Omega.' + omega.' + elements(6,:);                   % Mean longitude
     end
 end

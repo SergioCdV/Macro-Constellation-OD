@@ -31,24 +31,24 @@ function [s] = MKV2COE(mu, x, direction)
         s(7,:) = s(1,:) .* (1 - s(2,:).^2);
 
         % Euler matrix
-        k = reshape(h./ sqrt( dot(h, h, 1) ), [], 1);
+        k = h./ sqrt( dot(h, h, 1) );
         
-        I = reshape(ev ./ s(2,:), [], 1);
+        I = ev ./ s(2,:);
         K = repmat([0;0;1], 1, size(x,2));              % Inertial Z axis
-        n = cross(repmat(K, 1, size(x,2)), s(1:3,:));   % Node vector
+        n = cross(K, s(1:3,:));                         % Node vector
         I(:, s(2,:) == 0) = n(:, s(2,:) == 0);          % Circular orbit singularity
 
         j = cross(k,I); 
 
         Q = reshape([I; j; k], 3, []).';
-        Omega = atan2(Q(3,1:3:end),-Q(3,2:3:end));      % RAAN
-        omega = atan2(Q(1,3:3:end), Q(2,3:3:end));      % Argument of perigee
-        i = acos(Q(3,3:3:end));                         % Inclination
+        Omega = atan2(Q(3:3:end,1),-Q(3:3:end,2));             % RAAN
+        omega = atan2(Q(1:3:end,3),Q(2:3:end,3));              % Argument of perigee
+        i = acos(Q(3:3:end,3));                                % Inclination
 
-        s(3,:) = Omega; 
-        s(4,:) = i; 
-        s(5,:) = omega; 
-        s(6,:) = x(7,:) - Omega - omega;                % Mean anomaly
+        s(3,:) = Omega.'; 
+        s(4,:) = i.'; 
+        s(5,:) = omega.'; 
+        s(6,:) = x(7,:) - Omega.' - omega.';                   % Mean anomaly
         
         % Circular orbit singularity 
         idx = s(2,:) == 0;

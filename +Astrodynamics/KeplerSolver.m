@@ -28,13 +28,13 @@ function [theta, E] = KeplerSolver(e, M)
         dfn = 1 - e .* cos(E);
         ddfn = e .* sin(E);
 
-        root = abs( (k-1)^2 * dfn^2 - k * (k-1) * fn * ddfn );
-        dg(1) = dfn + sqrt(root);
-        dg(2) = dfn - sqrt(root);
+        root = abs( (k-1).^2 * dfn.^2 - k .* (k-1) .* fn .* ddfn );
+        dg(1,:) = dfn + sqrt(root);
+        dg(2,:) = dfn - sqrt(root);
 
-        dg = dg( abs(dg) == max( abs(dg) ) );
+        dg = dg(abs(dg) == max( abs(dg), [], 1)).';
 
-        dn = - k * fn / dg;
+        dn = - k * fn ./ dg;
         E = E + dn;
 
         if all(abs(dn) < tol)

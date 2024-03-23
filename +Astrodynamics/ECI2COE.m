@@ -60,12 +60,15 @@ function [elements] = rv2coe(mu, s)
     Q = reshape([m; j; k], 3, []).';  
 
     % Rest of elements 
-    RAAN = atan2(Q(3,1:3:end),-Q(3,2:3:end));             % RAAN
-    omega = atan2(Q(1,3:3:end),Q(2,3:3:end));             % Argument of perigee
-    I = acos(Q(3,3:3:end));                               % Inclination
+    RAAN = atan2(Q(3:3:end,1),-Q(3:3:end,2));             % RAAN
+    omega = atan2(Q(1:3:end,3),Q(2:3:end,3));             % Argument of perigee
+    I = acos(Q(3:3:end,3));                               % Inclination
 
     % Position in the perifocal frame 
-    r0 = squeeze(sum(Q .* permute(r, [3, 1, 2]), 2));                             
+    r0 = r;
+    for i = 1:size(r,2)
+        r0(:,i) = Q(1+3*(i-1):3*i,:) * r(:,i);
+    end
 
     % Mean anomaly
     theta = atan2(r0(2,:), r0(1,:));                      % True anomaly of the orbit
@@ -76,7 +79,7 @@ function [elements] = rv2coe(mu, s)
     M = E - e_norm .* sin(E);                             % Mean anomaly
         
     % Save the classical orbital elements 
-    elements = [a; e_norm; RAAN; I; omega; M; p];
+    elements = [a; e_norm; RAAN.'; I.'; omega.'; M; p];
 
     % Non-singular COE
     elements = Astrodynamics.rv_singularity(e, n, r, Q, elements);     
@@ -105,10 +108,10 @@ function [s] = coe2state(mu, elements)
     h = sqrt(mu .* p);                                                    % Angular momentum of the orbit
     
     % Compute the mean anomaly
-    theta = Astrodynamics.KeplerSolver(e, elements(6,:));                 % True anomaly in the orbit
+    theta = Astrodynamics.KeplerSolver(e, elements(6,:));                         % True anomaly in the orbit
     
     % Compute the perifocal state vector
-    r_norm = p / (1 + e * cos(theta) );
+    r_norm = p ./ (1 + e .* cos(theta) );
     r = r_norm .* [cos(theta); sin(theta); zeros(1,size(theta,2))];       % Position vector in the perifocal frame
     v = mu ./ h .* [-sin(theta); e+cos(theta); zeros(1,size(theta,2))];   % Velocity vector in the perifocal frame
 
