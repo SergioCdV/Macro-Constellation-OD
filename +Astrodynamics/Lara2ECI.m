@@ -24,18 +24,16 @@ function [s] = Lara2ECI(H, x, direction)
         Theta = x(6,:);
 
         c = H ./ Theta;
-        signo = sign(c); 
-        c = abs(c);
         
         b = 1 - chi.^2 ./ (1+c);
         tau = 1 - xi.^2. / (1+c);
         q = chi .* xi ./ (1+c);
 
         s(1,:) = r .* (b.*cos(psi)+q.*sin(psi));
-        s(2,:) = signo .* r .* (b.*sin(psi)-q.*cos(psi));
+        s(2,:) = r .* (b.*sin(psi)-q.*cos(psi));
         s(3,:) = r .* chi;
         s(4,:) = s(1,:) .* R./r - Theta./r .* (q.*cos(psi)+tau.*sin(psi));
-        s(5,:) = signo .* (s(2,:) .* R./r - Theta./r .* (q.*sin(psi)-tau.*cos(psi)));
+        s(5,:) = s(2,:) .* R./r - Theta./r .* (q.*sin(psi)-tau.*cos(psi));
         s(6,:) = s(3,:) .* R./r + Theta./r .* xi;
 
     else
